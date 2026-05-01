@@ -93,9 +93,30 @@ create policy "Admins can view all RSVPs" on rsvps
     exists (select 1 from members where id = auth.uid() and is_admin = true)
   );
 
+-- Login tokens for magic link auth
+create table login_tokens (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid references members(id) on delete cascade,
+  token text unique not null,
+  expires_at timestamp with time zone not null,
+  used boolean default false,
+  created_at timestamp with time zone default now()
+);
+
+-- Sessions for authenticated users
+create table sessions (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid references members(id) on delete cascade,
+  token text unique not null,
+  expires_at timestamp with time zone not null,
+  created_at timestamp with time zone default now()
+);
+
 -- Indexes
 create index idx_members_email on members(email);
 create index idx_members_stripe_customer on members(stripe_customer_id);
 create index idx_events_date on events(event_date);
 create index idx_rsvps_event on rsvps(event_id);
 create index idx_rsvps_member on rsvps(member_id);
+create index idx_login_tokens_token on login_tokens(token);
+create index idx_sessions_token on sessions(token);

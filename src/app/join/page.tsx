@@ -10,21 +10,32 @@ export default function Join() {
     phone: '',
   })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
 
-    // TODO: Create member in Supabase
-    // TODO: Create Stripe customer
-    // TODO: Create Stripe checkout session
-    // TODO: Redirect to Stripe checkout
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
 
-    // For now, simulate redirect
-    setTimeout(() => {
-      alert('This will redirect to Stripe checkout')
+      const data = await response.json()
+
+      if (response.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        setError(data.error || 'Something went wrong. Please try again.')
+        setLoading(false)
+      }
+    } catch {
+      setError('Failed to connect. Please try again.')
       setLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -50,6 +61,12 @@ export default function Join() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
@@ -95,9 +112,13 @@ export default function Join() {
             disabled={loading}
             className="w-full py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition disabled:opacity-50"
           >
-            {loading ? 'Processing...' : 'Continue to Payment'}
+            {loading ? 'Redirecting to payment...' : 'Continue to Payment'}
           </button>
         </form>
+
+        <p className="text-center text-xs text-gray-500 mt-4">
+          Secure payment powered by Stripe. Cancel anytime.
+        </p>
 
         <p className="text-center text-sm text-gray-600 mt-6">
           Already a member?{' '}
