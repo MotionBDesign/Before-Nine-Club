@@ -9,6 +9,7 @@ Pip Decks-based tools and systems for how Motion By Design briefs, gives feedbac
 3. **`02-slack-operating-system.md`** — the day-to-day rules: five message rules, per-client pinned canvas, urgency triage, weekly rhythm.
 4. **`03-templates/`** — fill-in templates: `brief.md`, `feedback.md`, `meeting-recap-email.md`, `weekly-status.md`.
 5. **`04-findings/`** — the evidence: `slack-audit.md`, `email-audit.md`.
+6. **`05-performance-culture-kpis.md`** — the 8-number monthly scorecard, culture & teamwork moves, and dashboard additions for the Before Nine Club portal.
 
 ## Claude skills (in `.claude/skills/`)
 
