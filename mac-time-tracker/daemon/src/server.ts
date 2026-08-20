@@ -70,18 +70,40 @@ function findEntry(day: DayFile, id: string): ProposedEntry | undefined {
   return day.entries.find((e) => e.id === id);
 }
 
+/** Deleted entries are tombstones: they count toward nothing. */
+const isLive = (e: ProposedEntry) => e.status !== 'deleted';
+const countsTowardDay = (e: ProposedEntry) => e.status !== 'deleted' && e.status !== 'rejected';
+
 function summarise(day: DayFile) {
   const total = (predicate: (e: ProposedEntry) => boolean) =>
     day.entries.filter(predicate).reduce((sum, e) => sum + e.durationMs, 0);
   return {
-    trackedMs: total(() => true),
+    trackedMs: total(isLive),
     pendingMs: total((e) => e.status === 'pending'),
     approvedMs: total((e) => e.status === 'approved'),
     syncedMs: total((e) => e.status === 'synced'),
-    billableMs: total((e) => e.billable && e.status !== 'rejected'),
+    billableMs: total((e) => e.billable && countsTowardDay(e)),
     /** Everything that will end up on the timesheet — what counts toward the day. */
-    loggedMs: total((e) => e.status !== 'rejected'),
+    loggedMs: total(countsTowardDay),
   };
+}
+
+/** Monday of the week containing `date`, as YYYY-MM-DD. */
+export function weekStart(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const at = new Date(y!, (m ?? 1) - 1, d ?? 1);
+  // getDay(): 0 = Sunday. Shift so Monday is the first column.
+  const offset = (at.getDay() + 6) % 7;
+  at.setDate(at.getDate() - offset);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const at = new Date(y!, (m ?? 1) - 1, (d ?? 1) + days);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
 }
 
 export function createServer(runtime: Runtime): http.Server {
@@ -161,6 +183,24 @@ export function createServer(runtime: Runtime): http.Server {
       return;
     }
 
+    if (method === 'GET' && url.pathname === '/api/week') {
+      const anchor = url.searchParams.get('date')?.trim() || localDate();
+      const monday = weekStart(anchor);
+      const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i)).map((date) => {
+        const day = loadDay(date);
+        const summary = summarise(day);
+        const byClient: Record<string, number> = {};
+        for (const entry of day.entries) {
+          if (!countsTowardDay(entry)) continue;
+          const client = entry.suggestion.folderName ?? entry.suggestion.spaceName ?? 'Unassigned';
+          byClient[client] = (byClient[client] ?? 0) + entry.durationMs;
+        }
+        return { date, summary, byClient, entryCount: day.entries.filter(isLive).length };
+      });
+      json(res, 200, { weekStart: monday, days, targets: runtime.config.targets });
+      return;
+    }
+
     if (method === 'GET' && url.pathname === '/api/tasks') {
       const query = (url.searchParams.get('q') ?? '').toLowerCase().trim();
       const tasks = runtime.getContext().catalog.tasks;
@@ -203,8 +243,18 @@ export function createServer(runtime: Runtime): http.Server {
       if (typeof patch.billable === 'boolean') entry.billable = patch.billable;
       if (typeof patch.durationMinutes === 'number' && Number.isFinite(patch.durationMinutes)) {
         entry.durationMs = Math.max(0, Math.round(patch.durationMinutes)) * 60_000;
+        entry.end = entry.start + entry.durationMs;
+        entry.corrected = true;
       }
-      if (patch.status === 'approved' || patch.status === 'rejected' || patch.status === 'pending') {
+      // Dragging a block on the timeline moves its start; the duration comes
+      // along unless the drag was a resize, which sends both.
+      if (typeof patch.start === 'number' && Number.isFinite(patch.start)) {
+        entry.start = Math.round(patch.start);
+        entry.end = entry.start + entry.durationMs;
+        entry.corrected = true;
+      }
+      if (patch.status === 'approved' || patch.status === 'rejected' || patch.status === 'pending'
+          || patch.status === 'deleted') {
         if (patch.status === 'approved' && !entry.taskId) {
           json(res, 400, { error: 'Pick a task before approving.' });
           return;

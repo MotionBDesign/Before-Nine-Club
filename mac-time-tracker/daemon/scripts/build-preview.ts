@@ -160,13 +160,15 @@ var PREVIEW = (function () {
     function total(fn) {
       return d.entries.filter(fn).reduce(function (sum, e) { return sum + e.durationMs; }, 0);
     }
+    function live(e) { return e.status !== 'deleted'; }
+    function counts(e) { return e.status !== 'deleted' && e.status !== 'rejected'; }
     return {
-      trackedMs: total(function () { return true; }),
+      trackedMs: total(live),
       pendingMs: total(function (e) { return e.status === 'pending'; }),
       approvedMs: total(function (e) { return e.status === 'approved'; }),
       syncedMs: total(function (e) { return e.status === 'synced'; }),
-      billableMs: total(function (e) { return e.billable && e.status !== 'rejected'; }),
-      loggedMs: total(function (e) { return e.status !== 'rejected'; })
+      billableMs: total(function (e) { return e.billable && counts(e); }),
+      loggedMs: total(counts)
     };
   }
 
@@ -191,6 +193,36 @@ var PREVIEW = (function () {
       if (q) { date = decodeURIComponent(q); }
       if (state[date]) current = date;
       return payload(current);
+    }
+
+    if (path.indexOf('/api/week') === 0) {
+      // Build a Mon-Fri week around whichever sample day is showing, so the
+      // week view has something real to draw.
+      var anchor = state[current];
+      var parts = anchor.date.split('-').map(Number);
+      var at = new Date(parts[0], parts[1] - 1, parts[2]);
+      at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
+      var out = [];
+      for (var i = 0; i < 7; i++) {
+        var iso = at.getFullYear() + '-' + String(at.getMonth() + 1).padStart(2, '0') + '-' + String(at.getDate()).padStart(2, '0');
+        var d = state[iso];
+        var byClient = {};
+        if (d) {
+          d.entries.forEach(function (e) {
+            if (e.status === 'deleted' || e.status === 'rejected') return;
+            var c = e.suggestion.folderName || e.suggestion.spaceName || 'Unassigned';
+            byClient[c] = (byClient[c] || 0) + e.durationMs;
+          });
+        }
+        out.push({
+          date: iso,
+          summary: d ? summarise(d) : { trackedMs: 0, pendingMs: 0, approvedMs: 0, syncedMs: 0, billableMs: 0, loggedMs: 0 },
+          byClient: byClient,
+          entryCount: d ? d.entries.length : 0
+        });
+        at.setDate(at.getDate() + 1);
+      }
+      return { weekStart: out[0].date, days: out, targets: DATA.targets };
     }
 
     if (path.indexOf('/api/tasks') === 0) {
@@ -226,7 +258,14 @@ var PREVIEW = (function () {
       }
       if (typeof body.description === 'string') entry.description = body.description;
       if (typeof body.billable === 'boolean') entry.billable = body.billable;
-      if (typeof body.durationMinutes === 'number') entry.durationMs = Math.max(0, Math.round(body.durationMinutes)) * 60000;
+      if (typeof body.durationMinutes === 'number') {
+        entry.durationMs = Math.max(0, Math.round(body.durationMinutes)) * 60000;
+        entry.end = entry.start + entry.durationMs;
+      }
+      if (typeof body.start === 'number') {
+        entry.start = Math.round(body.start);
+        entry.end = entry.start + entry.durationMs;
+      }
       if (body.status) {
         if (body.status === 'approved' && !entry.taskId) throw new Error('Pick a task before approving.');
         entry.status = body.status;
@@ -369,7 +408,7 @@ const frame = `
 let html = page.replace(realApi, mockApi);
 // The runtime has to exist before the page's own script runs.
 html = html.replace('<body>', `<body>\n${previewRuntime}${frame}`);
-html = html.replace('<title>Timesheet review</title>', '<title>Timesheet Review Preview</title>');
+html = html.replace('<title>Timesheet Review</title>', '<title>Timesheet Review Preview</title>');
 
 fs.writeFileSync(out, html);
 console.log(`  Wrote ${out} (${Math.round(fs.statSync(out).size / 1024)} KB)`);

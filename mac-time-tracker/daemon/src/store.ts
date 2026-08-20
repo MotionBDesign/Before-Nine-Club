@@ -59,6 +59,31 @@ function isLocked(entry: ProposedEntry): boolean {
   return entry.status !== 'pending' || entry.corrected === true || entry.manual === true;
 }
 
+/**
+ * A deleted entry is kept as a tombstone rather than removed. Its time range
+ * still carves the underlying snapshots out of a rebuild, which is what stops
+ * the same wrong entry reappearing ten minutes later.
+ */
+export function deleteEntry(date: string, id: string): ProposedEntry | null {
+  const day = loadDay(date);
+  const entry = day.entries.find((e) => e.id === id);
+  if (!entry) return null;
+  if (entry.status === 'synced') return null;
+  entry.status = 'deleted';
+  saveDay(day);
+  return entry;
+}
+
+/** Undo a deletion while the day is still open. */
+export function restoreEntry(date: string, id: string): ProposedEntry | null {
+  const day = loadDay(date);
+  const entry = day.entries.find((e) => e.id === id);
+  if (!entry || entry.status !== 'deleted') return null;
+  entry.status = 'pending';
+  saveDay(day);
+  return entry;
+}
+
 export function rebuildDay(date: string, ctx: MatchContext): DayFile {
   const existing = loadDay(date);
   const locked = existing.entries.filter(isLocked);

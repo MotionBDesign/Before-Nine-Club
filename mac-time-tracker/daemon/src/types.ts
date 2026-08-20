@@ -69,7 +69,12 @@ export interface Suggestion {
   billable: boolean | null;
 }
 
-export type EntryStatus = 'pending' | 'approved' | 'rejected' | 'synced';
+/**
+ * `rejected` is "not billable work" — it stays visible, greyed, and can be
+ * brought back. `deleted` is "this entry should not exist" — hidden from the
+ * day and, crucially, tombstoned so a rebuild cannot resurrect it.
+ */
+export type EntryStatus = 'pending' | 'approved' | 'rejected' | 'synced' | 'deleted';
 
 /** A one-click header button that logs a block of time to a fixed task. */
 export interface QuickLogButton {
