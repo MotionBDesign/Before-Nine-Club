@@ -14,6 +14,8 @@ import { allowedHosts } from './netguard.ts';
 import { loadRules } from './config.ts';
 import { openUrl } from './notify.ts';
 import { LOW_CONFIDENCE } from './matcher.ts';
+import { applyUpdate, checkForUpdate, installedVersion } from './update.ts';
+import { assess, readFleet } from './fleet.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
@@ -25,6 +27,7 @@ const paint = (code: string, text: string): string =>
 const green = (t: string) => paint('32', t);
 const amber = (t: string) => paint('33', t);
 const dim = (t: string) => paint('2', t);
+const red = (t: string) => paint('31', t);
 
 function hhmm(ms: number): string {
   const mins = Math.round(ms / 60_000);
@@ -166,6 +169,50 @@ function init(): void {
   console.log('\n  Edit those, then run `node src/cli.ts doctor`.\n');
 }
 
+function ago(ts: number): string {
+  const minutes = Math.round((Date.now() - ts) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hrs = Math.round(minutes / 60);
+  return hrs < 48 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`;
+}
+
+/** The studio-wide view: who is running what, and who needs help. */
+function fleet(runtime: Runtime): void {
+  const dir = runtime.config.fleet.statusDir;
+  if (!dir) {
+    console.log('\n  No fleet.statusDir configured — nothing to report on.\n');
+    return;
+  }
+  const statuses = readFleet(dir);
+  if (statuses.length === 0) {
+    console.log(`\n  No status files in ${dir}. Is the share mounted, and has anyone reported yet?\n`);
+    return;
+  }
+
+  const badge: Record<string, string> = {
+    ok: green('  ok  '), attention: amber(' check'), broken: red(' BROKEN'), stale: dim(' stale'),
+  };
+  const versions = new Set(statuses.map((s) => s.version ?? 'unknown'));
+
+  console.log('');
+  for (const status of statuses) {
+    const { verdict, note } = assess(status);
+    const who = `${status.user}@${status.mac}`.padEnd(28).slice(0, 28);
+    const version = (status.version ?? 'unknown').padEnd(18);
+    const today = `${(status.today.loggedMinutes / 60).toFixed(1)}h logged`;
+    const target = `${(status.targets.dailyMinutes / 60).toFixed(1)}h`;
+    console.log(`  ${badge[verdict]}  ${who} ${dim(version)} ${today} / ${target}   ${dim(ago(status.reportedAt))}`);
+    if (note) console.log(`            ${amber(note)}`);
+  }
+
+  if (versions.size > 1) {
+    console.log(`\n  ${amber('!')} ${versions.size} different versions in use: ${[...versions].join(', ')}`);
+    console.log('    Stage a release and they will pick it up on their next update check.');
+  }
+  console.log('');
+}
+
 async function main(): Promise<void> {
   const [command = 'help', arg] = process.argv.slice(2);
   const date = arg && /^\d{4}-\d{2}-\d{2}$/.test(arg) ? arg : localDate();
@@ -216,6 +263,29 @@ async function main(): Promise<void> {
       if (result.failures.length > 0) process.exitCode = 1;
       return;
     }
+    case 'fleet': {
+      fleet(new Runtime());
+      return;
+    }
+    case 'update': {
+      const runtime = new Runtime();
+      const check = checkForUpdate(runtime.config);
+      console.log(`\n  Installed: ${check.installed ?? 'unknown'}`);
+      console.log(`  Published: ${check.published ?? 'unavailable'}`);
+      console.log(`  ${check.reason}\n`);
+      if (check.available) {
+        if (arg === '--apply') {
+          applyUpdate(check);
+          console.log('  Installer launched; the agents will restart shortly.\n');
+        } else {
+          console.log('  Run `node src/cli.ts update --apply` to install it now.\n');
+        }
+      }
+      return;
+    }
+    case 'version':
+      console.log(`  ${installedVersion() ?? 'source checkout (no bundle stamp)'}`);
+      return;
     case 'review': {
       const runtime = new Runtime();
       openUrl(`http://${runtime.config.server.host}:${runtime.config.server.port}/`);
@@ -234,6 +304,9 @@ async function main(): Promise<void> {
     approve-all   Approve every matched pending entry for a day
     push          Write approved entries to ClickUp
     review        Open the review UI in your browser
+    version       Show which bundle is installed
+    update        Check the server for a newer bundle (--apply to install)
+    fleet         Show every Mac's tracker health from the shared status folder
 `);
   }
 }

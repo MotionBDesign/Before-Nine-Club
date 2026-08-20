@@ -115,7 +115,9 @@ if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/
 else
   note "Create a personal token at ClickUp > Settings > Apps > API Token."
   TOKEN=""
-  if [[ -t 0 ]]; then
+  if [[ -n "${MBD_TT_UNATTENDED:-}" ]]; then
+    note "Unattended update; leaving the existing token alone."
+  elif [[ -t 0 ]]; then
     printf '  Paste it here (input hidden, blank to skip): '
     # `read` returns non-zero at EOF, which would abort the whole install
     # under `set -e` — never let a blank answer kill the run.

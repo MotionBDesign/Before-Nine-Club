@@ -39,6 +39,17 @@
     "billableMinutes": 390
   },
 
+  "update": {
+    "channel": "/Volumes/MBD Server/Software/TimeTracker",
+    "checkEveryHours": 6,
+    "autoApply": true
+  },
+
+  "fleet": {
+    "statusDir": "/Volumes/MBD Server/Software/TimeTracker/status",
+    "reportEveryMinutes": 30
+  },
+
   "quickLog": [
     { "label": "MBD Meeting", "taskId": "86d2c5302", "minutes": 30, "billable": false },
     { "label": "Admin", "taskId": "86d2c55nd", "minutes": 15, "billable": false },

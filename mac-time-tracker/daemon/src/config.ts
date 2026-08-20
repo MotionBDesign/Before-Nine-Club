@@ -29,6 +29,8 @@ export const defaultConfig: Config = {
   // 6.5 hours: the studio's daily minimum, billable-first.
   targets: { dailyMinutes: 390, billableMinutes: 390 },
   quickLog: [],
+  update: { channel: '', checkEveryHours: 6, autoApply: true },
+  fleet: { statusDir: '', reportEveryMinutes: 30 },
   projectRoots: [],
   clientAliases: {},
   appPhases: {
@@ -83,6 +85,8 @@ export function loadConfig(): Config {
     review: { ...base.review, ...user.review },
     targets: { ...base.targets, ...user.targets },
     quickLog: user.quickLog ?? base.quickLog,
+    update: { ...base.update, ...user.update },
+    fleet: { ...base.fleet, ...user.fleet },
     projectRoots: user.projectRoots ?? base.projectRoots,
     clientAliases: { ...base.clientAliases, ...user.clientAliases },
     appPhases: { ...base.appPhases, ...user.appPhases },

@@ -9,6 +9,8 @@ import { appendSnapshot, loadDay, localDate, pruneSnapshots, rebuildDay } from '
 import { paths } from './paths.ts';
 import { notify } from './notify.ts';
 import { InstanceLock } from './lock.ts';
+import { applyUpdate, checkForUpdate, confirmInstalled } from './update.ts';
+import { buildStatus, reportStatus } from './fleet.ts';
 import { validateConfig, validateRules } from './validate.ts';
 import { log } from './log.ts';
 
@@ -137,6 +139,51 @@ async function main(): Promise<void> {
     }
   }, MINUTE);
 
+  // A version that has started successfully is a version that works; clear
+  // any failure counter from an earlier update attempt.
+  confirmInstalled();
+
+  const startedAt = Date.now();
+  let lastError: string | null = null;
+
+  function publishStatus(): void {
+    if (!config.fleet.statusDir) return;
+    try {
+      reportStatus(config, buildStatus(config, {
+        hasToken: runtime.hasToken(),
+        catalogTasks: runtime.getContext().catalog.tasks.length,
+        startedAt,
+        lastError,
+      }));
+    } catch (error) {
+      log.debug('Fleet report failed', String(error));
+    }
+  }
+
+  function checkUpdates(): void {
+    if (!config.update.channel) return;
+    const check = checkForUpdate(config);
+    if (!check.available) {
+      log.debug(`Update check: ${check.reason}`);
+      return;
+    }
+    if (!config.update.autoApply) {
+      log.info(`Update ${check.published} is available (autoApply is off).`);
+      notify('Tracker update available', `Version ${check.published} is on the server. Run install.sh when convenient.`);
+      return;
+    }
+    log.info(`Applying update ${check.published}; this process will be restarted.`);
+    if (applyUpdate(check)) {
+      // The installer stops this agent shortly. Get a final status out first so
+      // the fleet view shows the attempt rather than an unexplained silence.
+      lastError = null;
+      publishStatus();
+    }
+  }
+
+  const fleetTimer = setInterval(publishStatus, Math.max(5, config.fleet.reportEveryMinutes) * MINUTE);
+  const updateTimer = setInterval(checkUpdates, Math.max(1, config.update.checkEveryHours) * 60 * MINUTE);
+
   const server = createServer(runtime);
   server.listen(config.server.port, config.server.host, () => {
     log.info(`Review UI on ${reviewUrl}`);
@@ -159,6 +206,8 @@ async function main(): Promise<void> {
     log.info(`Received ${signal}; shutting down`);
     clearInterval(rebuildTimer);
     clearInterval(tickTimer);
+    clearInterval(fleetTimer);
+    clearInterval(updateTimer);
     source.stop();
     rebuildToday();
     lock.release();
@@ -176,12 +225,17 @@ async function main(): Promise<void> {
   process.on('unhandledRejection', (reason) => {
     // Log and keep running: one failed ClickUp call should not stop tracking.
     log.error('Unhandled promise rejection', String(reason));
+    lastError = String(reason).slice(0, 200);
   });
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   rebuildToday();
+  publishStatus();
+  // Check on the way up so a Mac that was off during a release catches up at
+  // login rather than waiting for the first interval.
+  setTimeout(checkUpdates, 30_000).unref();
   log.info('Tracker running.');
 }
 

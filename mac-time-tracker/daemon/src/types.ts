@@ -225,6 +225,26 @@ export interface Config {
   };
   /** One-click logging buttons shown in the review header. */
   quickLog: QuickLogButton[];
+  update: {
+    /**
+     * Folder on the file server that `stage-release.sh` publishes into — the
+     * one holding LATEST and the MBDTimeTracker-<version> bundles. Empty
+     * disables update checking entirely.
+     */
+    channel: string;
+    checkEveryHours: number;
+    /** Install a newer bundle automatically. False only notifies. */
+    autoApply: boolean;
+  };
+  fleet: {
+    /**
+     * Folder on the file server where each Mac drops a small health file, so
+     * one person can see at a glance whether the tracker is alive everywhere.
+     * Operational state only — never what anyone worked on. Empty disables it.
+     */
+    statusDir: string;
+    reportEveryMinutes: number;
+  };
   projectRoots: ProjectRoot[];
   /** Maps a folder name found on disk to a ClickUp folder name. */
   clientAliases: Record<string, string>;

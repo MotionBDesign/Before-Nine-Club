@@ -61,10 +61,28 @@ chmod +x "$STAGE/observer/BNObserver" "$STAGE/scripts/install.sh"
 echo "$VERSION" > "$STAGE/BUNDLE"
 
 # SMB shares handle symlinks unreliably, so LATEST is a plain text pointer.
+# Writing it last means a half-copied bundle is never advertised.
 echo "MBDTimeTracker-$VERSION" > "$DEST/LATEST"
+
+# Keep the previous few bundles so a bad release can be rolled back by
+# pointing LATEST at an older one — no rebuild, no git.
+KEEP=5
+mapfile -t OLD < <(ls -1d "$DEST"/MBDTimeTracker-* 2>/dev/null | sort -r | tail -n +$((KEEP + 1)))
+for stale in "${OLD[@]:-}"; do
+  [[ -n "$stale" && -d "$stale" ]] || continue
+  note "Removing old bundle $(basename "$stale")"
+  rm -rf "$stale"
+done
 
 say "Done"
 note "Staged: $STAGE"
 note ""
-note "Tell the team: open the server folder, then run"
+note "Staged as LATEST — machines already running the tracker will pick this up"
+note "on their next update check (within a few hours, or at login)."
+note ""
+note "For a first-time install, tell the person to run:"
 note "  cd \"$STAGE\" && ./scripts/install.sh"
+note ""
+note "To roll back, point LATEST at an older bundle:"
+note "  ls \"$DEST\""
+note "  echo MBDTimeTracker-<older> > \"$DEST/LATEST\""

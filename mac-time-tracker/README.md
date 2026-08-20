@@ -121,12 +121,76 @@ Per-machine state also keeps the raw activity log — window titles, file paths,
 sampled every few seconds — owner-readable on local disk instead of sitting on
 a share the whole studio can browse.
 
-### Updating
+### Shipping a fix
 
-Re-run `stage-release.sh` to publish, and each person re-runs `install.sh` from
-the new folder. Upgrades stop the running agents before replacing anything,
-keep config, rules, tokens, corrections and history, and clear out stale files
-from the previous version.
+Publish, and the studio picks it up on its own:
+
+```bash
+./scripts/stage-release.sh "/Volumes/MBD Server/Software/TimeTracker"
+```
+
+Each tracker checks `LATEST` every few hours and 30 seconds after login. When
+it names a newer bundle it runs that bundle's installer, which stops the
+agents, swaps the local copy and restarts them. Nobody is asked to do
+anything. Config, rules, token, learned corrections and history all survive;
+stale files from the old version are cleared.
+
+Set `update.autoApply` to `false` on a machine that should only be notified,
+or clear `update.channel` to opt out entirely.
+
+Things that stop a bad release from spreading:
+
+- `LATEST` is written **after** the bundle is copied, so a half-published
+  release is never advertised.
+- A bundle missing its installer is ignored rather than half-applied.
+- A version that fails three times is retried only once a day.
+- The **observer keeps running throughout**, so even a failed update loses no
+  activity — the daemon catches up from the spool when it returns.
+
+**Rolling back** needs no rebuild. The last five bundles stay on the server:
+
+```bash
+ls "/Volumes/MBD Server/Software/TimeTracker"
+echo MBDTimeTracker-20260820-accff26 > "/Volumes/MBD Server/Software/TimeTracker/LATEST"
+```
+
+Every Mac returns to that version on its next check.
+
+Manual control, on any machine:
+
+```bash
+node daemon/src/cli.ts version          which bundle is installed
+node daemon/src/cli.ts update           is a newer one published?
+node daemon/src/cli.ts update --apply   install it now
+```
+
+### Seeing the whole studio at once
+
+The silent failures are the dangerous ones — Accessibility permission revoked,
+the observer agent not running — because the person often doesn't notice for
+days. Each Mac drops a small health file into `fleet.statusDir`, and:
+
+```
+$ node daemon/src/cli.ts fleet
+
+   BROKEN  sergio@imac-sergio     20260820-c445b93   0.0h logged / 6.5h   just now
+            observer agent is not producing samples
+    ok     ashley@mbp-ashley      20260825-fixfix1   6.8h logged / 6.5h   just now
+   BROKEN  kavindu@mbp-kavindu    20260825-fixfix1   0.8h logged / 6.5h   just now
+            Accessibility permission missing — titles and file paths are blank
+   stale   natali@mbp-natali      20260825-fixfix1   6.2h logged / 6.5h   30h ago
+            no report for 30h — Mac off, or the tracker is not running
+    ok     dom@studio-imac        20260825-fixfix1   6.2h logged / 6.5h   just now
+
+  ! 2 different versions in use: 20260820-c445b93, 20260825-fixfix1
+```
+
+**What the health file contains, and what it does not.** It carries the
+version, whether the observer is alive, whether a token is present, and the
+minute totals already destined for ClickUp. It carries no task, file, app,
+window title or URL — none of that leaves the machine, and a test asserts it.
+Today's minutes are included because "0 logged at 4pm" is the clearest sign an
+install has quietly broken. Clear `fleet.statusDir` to switch it off.
 
 ### Everyone needs their own ClickUp token
 
