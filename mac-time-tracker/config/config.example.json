@@ -1,0 +1,79 @@
+{
+  "clickup": {
+    "workspaceId": "9003163669",
+    "tokenEnv": "CLICKUP_API_TOKEN",
+    "keychainService": "mbd-time-tracker",
+    "keychainAccount": "clickup-api-token",
+    "defaultBillable": true,
+    "spaces": ["CAAS MBD Clients", "Project-Base Clients", "MBD Non billable"],
+    "onlyMyTasks": false,
+    "catalogTtlMinutes": 60
+  },
+
+  "capture": {
+    "sampleIntervalSeconds": 5,
+    "idleThresholdSeconds": 180,
+    "minBlockSeconds": 60,
+    "mergeGapSeconds": 300,
+    "roundToMinutes": 5,
+    "minEntryMinutes": 5
+  },
+
+  "observer": {
+    "mode": "spool",
+    "spoolPath": "",
+    "binaryPath": "",
+    "pollSeconds": 5
+  },
+
+  "server": { "port": 7878, "host": "127.0.0.1" },
+
+  "review": {
+    "notifyHours": [13, 17],
+    "rebuildEveryMinutes": 10
+  },
+
+  "projectRoots": [
+    { "path": "/Volumes/Projects/Clients", "clientSegment": 0 },
+    { "path": "~/Dropbox/MBD/Clients", "clientSegment": 0 }
+  ],
+
+  "clientAliases": {
+    "SA Power Networks": "SAPN",
+    "SAPN (SA Power Networks)": "SAPN",
+    "ResMed": "Resmed",
+    "ResMed B2B2C": "Resmed - B2B2C",
+    "Cole School Experts": "Cole School Experts",
+    "Ilim": "Ilim College",
+    "Symons Clark Legal": "Symons Clark",
+    "Australian Outdoor Living": "AOL",
+    "WA Health Department": "WA Health",
+    "Fujifilm": "Fujifilm-Aus (Inactive)",
+    "MBD": "MBD Billable",
+    "Internal": "MBD Billable"
+  },
+
+  "ignore": {
+    "bundleIds": [
+      "com.apple.loginwindow",
+      "com.apple.ScreenSaver.Engine",
+      "com.1password.1password",
+      "com.agilebits.onepassword7"
+    ],
+    "titlePatterns": [
+      "(?i)\\b(bank|payroll|xero|myob)\\b",
+      "(?i)password"
+    ],
+    "pathPatterns": [
+      "/Library/Caches/",
+      "(?i)/personal/"
+    ]
+  },
+
+  "privacy": {
+    "recordTitles": true,
+    "recordUrls": true,
+    "redactUrlQuery": true,
+    "retainRawSnapshotDays": 30
+  }
+}

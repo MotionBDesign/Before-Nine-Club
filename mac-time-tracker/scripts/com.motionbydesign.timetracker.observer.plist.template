@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.motionbydesign.timetracker.observer</string>
+
+  <!--
+    launchd starts this binary directly, which is the whole point: macOS then
+    attributes the Accessibility permission to BNObserver itself rather than to
+    whatever process spawned it. Grant the permission to the path below.
+  -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>__OBSERVER__</string>
+    <string>--interval</string>
+    <string>5</string>
+    <string>--out</string>
+    <string>__SPOOL__</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/mbd-time-tracker.observer.log</string>
+</dict>
+</plist>

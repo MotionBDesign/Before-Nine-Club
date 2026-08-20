@@ -1,0 +1,9 @@
+# Swift build products
+observer/.build/
+observer/.swiftpm/
+
+# Dev-only type packages; the daemon has no runtime dependencies
+daemon/node_modules/
+
+# Anything a local run might leave behind
+*.log

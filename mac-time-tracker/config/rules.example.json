@@ -1,0 +1,75 @@
+[
+  {
+    "name": "ClickUp task open in the browser",
+    "when": { "urlRegex": "app\\.clickup\\.com/t/(?:\\d+/)?(?<taskId>[A-Za-z0-9-]{5,})" },
+    "then": { "taskIdFrom": "taskId" },
+    "weight": 100
+  },
+  {
+    "name": "Task id written into the filename, e.g. Poster_[86abc1234].psd",
+    "when": { "pathRegex": "\\[(?<taskId>86[a-z0-9]{6,})\\]" },
+    "then": { "taskIdFrom": "taskId" },
+    "weight": 100
+  },
+
+  {
+    "name": "Client folder on the server",
+    "when": { "pathRegex": "/Clients/(?<client>[^/]+)/" },
+    "then": { "folderFrom": "client" },
+    "weight": 65
+  },
+  {
+    "name": "Client folder in Dropbox",
+    "when": { "pathRegex": "/Dropbox/MBD/Clients/(?<client>[^/]+)/" },
+    "then": { "folderFrom": "client" },
+    "weight": 65
+  },
+  {
+    "name": "ResMed B2B2C work lives in its own folder",
+    "when": { "pathRegex": "(?i)/resmed[^/]*/.*(b2b2c|partner)" },
+    "then": { "folder": "Resmed - B2B2C" },
+    "weight": 75
+  },
+
+  {
+    "name": "Figma file named for a client",
+    "when": {
+      "bundleId": "com.figma.Desktop",
+      "titleRegex": "^(?<client>[A-Za-z][A-Za-z0-9 &-]{2,30})\\s*[-–—_|]"
+    },
+    "then": { "folderFrom": "client" },
+    "weight": 45
+  },
+  {
+    "name": "Slack channel named for a client",
+    "when": {
+      "bundleId": "com.tinyspeck.slackmacgap",
+      "titleRegex": "(?<client>[a-z0-9-]+)\\s*\\(Channel\\)"
+    },
+    "then": { "folderFrom": "client" },
+    "weight": 40
+  },
+
+  {
+    "name": "Internal admin apps with no client signal",
+    "when": { "bundleId": "com.apple.mail" },
+    "then": { "space": "MBD Non billable" },
+    "weight": 12,
+    "billable": false
+  },
+  {
+    "name": "Xero and bookkeeping is never billable to a client",
+    "when": { "urlRegex": "(?i)(xero\\.com|myob\\.com)" },
+    "then": { "space": "MBD Non billable" },
+    "weight": 55,
+    "billable": false
+  },
+
+  {
+    "name": "Never record password manager activity",
+    "when": { "appRegex": "(?i)1password|bitwarden|keychain access" },
+    "then": {},
+    "weight": 100,
+    "ignore": true
+  }
+]
