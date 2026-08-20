@@ -26,8 +26,15 @@ const HTML = `<!doctype html>
   header {
     position: sticky; top: 0; z-index: 5; background: var(--panel);
     border-bottom: 1px solid var(--line); padding: 10px 16px;
-    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    display: flex; flex-direction: column; gap: 8px;
   }
+  /* Two deliberate rows: context and actions on top, one-click logging
+     below. Left to wrap on its own the primary buttons ended up on a second
+     line anyway, just untidily. Named hrow, not bar — .bar is the progress
+     meter further down, and sharing the name squashed these to its height. */
+  .hrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hrow--log { border-top: 1px solid var(--line); padding-top: 8px; }
+  .hrow--log:empty { display: none; }
   h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; }
   main { padding: 20px; max-width: 1180px; margin: 0 auto; }
   button, select, input[type=text], input[type=number] {
@@ -39,7 +46,7 @@ const HTML = `<!doctype html>
   button:disabled { opacity: 0.45; cursor: default; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .spacer { flex: 1; }
-  .quick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .quick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; }
   .quick .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 2px; }
   .quick button { border-style: dashed; }
   .progress { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -113,15 +120,17 @@ const HTML = `<!doctype html>
 </head>
 <body>
 <header>
-  <h1>Timesheet review</h1>
-  <select id="date"></select>
-  <button id="rebuild">Rebuild from activity</button>
-  <button id="refresh">Refresh ClickUp tasks</button>
-  <span class="spacer"></span>
-  <span id="quick" class="quick"></span>
-  <span id="catalog" class="chip"></span>
-  <button id="approveAll">Approve all matched</button>
-  <button id="push" class="primary">Push approved to ClickUp</button>
+  <div class="hrow">
+    <h1>Timesheet review</h1>
+    <select id="date"></select>
+    <button id="rebuild">Rebuild from activity</button>
+    <button id="refresh">Refresh ClickUp tasks</button>
+    <span class="spacer"></span>
+    <span id="catalog" class="chip"></span>
+    <button id="approveAll">Approve all matched</button>
+    <button id="push" class="primary">Push approved to ClickUp</button>
+  </div>
+  <div class="hrow hrow--log" id="quick"></div>
 </header>
 <main>
   <div class="progress" id="progress" style="display:none"></div>
@@ -213,6 +222,7 @@ const HTML = `<!doctype html>
   function renderQuickLog() {
     var el = document.getElementById('quick');
     if (!state.quickLog.length) { el.innerHTML = ''; return; }
+    el.className = 'hrow hrow--log quick';
     el.innerHTML = '<span class="lbl">Quick log</span>' + state.quickLog.map(function (q) {
       return '<button data-quick="' + q.index + '" title="' + esc(q.taskName || q.label) + '">+ ' +
         esc(q.label) + ' ' + q.minutes + 'm</button>';
