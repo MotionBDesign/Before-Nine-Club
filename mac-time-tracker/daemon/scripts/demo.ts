@@ -18,7 +18,13 @@ const { buildContext } = await import('../src/matcher.ts');
 const { defaultConfig } = await import('../src/config.ts');
 const { createServer } = await import('../src/server.ts');
 const store = await import('../src/store.ts');
-const { catalog, config, rules, snapshots } = await import('../test/fixtures.ts');
+const { snapshots } = await import('../test/fixtures.ts');
+const { realCatalog } = await import('../test/real-tasks.ts');
+const { evalConfig, evalRules } = await import('../test/real-cases.ts');
+// The demo runs against the live workspace's actual task names and rules.
+const catalog = realCatalog;
+const config = () => structuredClone(evalConfig);
+const rules = evalRules;
 
 const day = new Date();
 day.setHours(9, 0, 0, 0);
@@ -26,32 +32,57 @@ const T0 = day.getTime();
 const minutes = (n: number) => n * 60_000;
 
 // Sample counts are in 5-second ticks, so 720 ticks is an hour.
+const ROOT = '/Volumes/Projects/Clients';
 const timeline = [
-  ...snapshots(T0, 720, {
+  // 9:00-10:30  Photoshop on the SAPN curtailment styleframes (a DESIGN child
+  // in a four-way phase family — the app is what settles which sibling).
+  ...snapshots(T0, 1080, {
     app: 'Photoshop', bundleId: 'com.adobe.Photoshop',
-    title: 'SAPN_PowerlineSafety_Poster_A2_v3.psd @ 100%',
-    documentPath: '/Volumes/Projects/Clients/SAPN/2026/Artwork/SAPN_PowerlineSafety_Poster_A2_v3.psd',
+    title: 'Curtailment_styleframes_01.psd @ 100%',
+    documentPath: `${ROOT}/SAPN/2026/Smarter Homes Solar Curtailment/Curtailment_styleframes_01.psd`,
   }),
-  ...snapshots(T0 + minutes(37), 6, {
-    app: 'Slack', bundleId: 'com.tinyspeck.slackmacgap', title: 'sapn-artwork (Channel) - Motion by Design',
+  // A 30-second Slack glance mid-morning — absorbed, never its own line.
+  ...snapshots(T0 + minutes(45), 6, {
+    app: 'Slack', bundleId: 'com.tinyspeck.slackmacgap', title: 'sapn-team (Channel) - Motion by Design',
   }),
-  ...snapshots(T0 + minutes(60), 120, {
+  // 10:30-10:40  the ClickUp task itself open in Chrome...
+  ...snapshots(T0 + minutes(90), 120, {
     app: 'Google Chrome', bundleId: 'com.google.Chrome',
-    title: 'Sleep clinic brochure refresh', url: 'https://app.clickup.com/t/9003163669/86bbb0002',
+    title: 'Resmed - CPAP Trial EDM - ClickUp',
+    url: 'https://app.clickup.com/t/86d42ff8d',
   }),
-  ...snapshots(T0 + minutes(70), 1320, {
-    app: 'InDesign', bundleId: 'com.adobe.InDesign',
-    title: 'Sleep_clinic_brochure.indd',
-    documentPath: '/Volumes/Projects/Clients/Resmed/2026/Print/Sleep_clinic_brochure.indd',
+  // ...then 10:40-12:10 in Photoshop on that EDM; both merge into one entry.
+  ...snapshots(T0 + minutes(100), 1080, {
+    app: 'Photoshop', bundleId: 'com.adobe.Photoshop',
+    title: 'CPAP_trial_EDM_header.psd',
+    documentPath: `${ROOT}/Resmed/2026/CPAP Trial EDM/CPAP_trial_EDM_header.psd`,
   }),
-  // A long lunch: sampled, but idle, so it should never reach the timesheet.
-  ...snapshots(T0 + minutes(180), 720, {
+  // 12:10-13:00  idle lunch — sampled, never billed.
+  ...snapshots(T0 + minutes(190), 600, {
     app: 'Google Chrome', bundleId: 'com.google.Chrome', title: 'News', idleSeconds: 1800,
   }),
-  ...snapshots(T0 + minutes(240), 1440, {
-    app: 'After Effects', bundleId: 'com.adobe.AfterEffects',
-    title: 'drilling_explainer_v2.aep',
-    documentPath: '/Volumes/Projects/Clients/Maptek/2026/Video/drilling_explainer_v2.aep',
+  // 13:00-14:30  Premiere on the Symons onboarding edit (POSTPRODUCTION child).
+  ...snapshots(T0 + minutes(240), 1080, {
+    app: 'Adobe Premiere Pro', bundleId: 'com.adobe.PremierePro',
+    title: 'Onboarding_Visitors_edit.prproj',
+    documentPath: `${ROOT}/Symons Clark/2026/Onboarding Visitors video/Onboarding_Visitors_edit.prproj`,
+  }),
+  // 14:30-15:15  Word on the Aurizn GPTW copy (Word implies COPY work).
+  ...snapshots(T0 + minutes(330), 540, {
+    app: 'Microsoft Word', bundleId: 'com.microsoft.Word',
+    title: 'GPTW_wallpapers_banners_posters_copy.docx',
+    documentPath: `${ROOT}/Aurizn/2026/GPTW/GPTW_wallpapers_banners_posters_copy.docx`,
+  }),
+  // 15:15-15:45  a deliberately ambiguous Resmed promo file — shows the
+  // low-confidence state where the UI asks rather than guesses hard.
+  ...snapshots(T0 + minutes(375), 360, {
+    app: 'Photoshop', bundleId: 'com.adobe.Photoshop',
+    title: 'promo.psd',
+    documentPath: `${ROOT}/Resmed/2026/Promos/promo.psd`,
+  }),
+  // 15:45-16:00  Terminal — nothing to go on; the honest "no task" state.
+  ...snapshots(T0 + minutes(405), 180, {
+    app: 'Terminal', bundleId: 'com.apple.Terminal', title: 'dom@studio: ~',
   }),
 ];
 
