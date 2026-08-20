@@ -14,7 +14,8 @@
     "doctor": "node src/cli.ts doctor",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "demo": "node scripts/demo.ts"
+    "demo": "node scripts/demo.ts",
+    "evaluate": "node scripts/evaluate.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

@@ -44,11 +44,15 @@ function looksLikeSnapshot(value: unknown): value is Snapshot {
   return typeof v.ts === 'number' && typeof v.bundleId === 'string' && typeof v.idleSeconds === 'number';
 }
 
+/** Roughly a fortnight of samples; far past this the daemon is not running. */
+const DEFAULT_MAX_SPOOL_BYTES = 64 * 1024 * 1024;
+
 export function startSpoolReader(
   file: string,
   config: Config,
   onSnapshot: (snapshot: Snapshot) => void,
   pollMs = 5000,
+  maxBytes = DEFAULT_MAX_SPOOL_BYTES,
 ): SpoolHandle {
   let offset = loadOffset(file);
   /** A line the observer was still writing when we read; completed next poll. */
@@ -67,6 +71,33 @@ export function startSpoolReader(
       return 0;
     }
     missingWarned = false;
+
+    // If the daemon has been down, the observer keeps appending. Without a cap
+    // a long outage would fill the disk; past it we keep only the recent tail.
+    if (stat.size > maxBytes) {
+      log.error(
+        `Observer spool reached ${Math.round(stat.size / 1e6)}MB — the daemon was probably down. ` +
+        'Discarding all but the most recent activity.',
+      );
+      try {
+        const keep = Math.floor(maxBytes / 2);
+        const handle = fs.openSync(file, 'r');
+        const buffer = Buffer.alloc(keep);
+        const read = fs.readSync(handle, buffer, 0, keep, stat.size - keep);
+        fs.closeSync(handle);
+        // Start at the first clean line boundary in the kept tail.
+        const text = buffer.subarray(0, read).toString('utf8');
+        const firstBreak = text.indexOf('\n');
+        fs.writeFileSync(file, firstBreak === -1 ? '' : text.slice(firstBreak + 1), { mode: 0o600 });
+      } catch (error) {
+        log.error('Could not trim the spool; truncating it', String(error));
+        try { fs.truncateSync(file, 0); } catch { /* nothing else to try */ }
+      }
+      offset = 0;
+      partial = '';
+      saveOffset(file, 0);
+      return 0;
+    }
 
     if (stat.size < offset) {
       // Truncated or replaced — start again from the top.

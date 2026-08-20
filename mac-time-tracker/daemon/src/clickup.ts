@@ -46,27 +46,50 @@ export class ClickUpClient {
     if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
   }
 
-  async request<T>(endpoint: string, init: RequestInit = {}, attempt = 0): Promise<T> {
+  /**
+   * `idempotent` gates automatic retries. Re-sending a GET is free; re-sending
+   * a POST that created a time entry we never saw the response for would bill
+   * the client twice, so writes never retry themselves — `pushApproved`
+   * reconciles against the API instead.
+   */
+  async request<T>(
+    endpoint: string,
+    init: RequestInit = {},
+    options: { idempotent?: boolean } = {},
+    attempt = 0,
+  ): Promise<T> {
+    const idempotent = options.idempotent ?? (init.method ?? 'GET') === 'GET';
     await this.#throttle();
-    const response = await fetch(`${API}${endpoint}`, {
-      ...init,
-      headers: {
-        Authorization: this.#token,
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    });
 
+    const controller = new AbortController();
+    // Without a timeout a stalled socket hangs the push indefinitely.
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let response: Response;
+    try {
+      response = await fetch(`${API}${endpoint}`, {
+        signal: controller.signal,
+        ...init,
+        headers: {
+          Authorization: this.#token,
+          'Content-Type': 'application/json',
+          ...(init.headers ?? {}),
+        },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    // A 429 is safe to retry either way: it means nothing was processed.
     if (response.status === 429 && attempt < 4) {
       const retryAfter = Number(response.headers.get('retry-after') ?? '0');
       const delay = retryAfter > 0 ? retryAfter * 1000 : 2 ** attempt * 1000;
       log.warn(`ClickUp rate limited; retrying in ${delay}ms`, endpoint);
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return this.request<T>(endpoint, init, attempt + 1);
+      return this.request<T>(endpoint, init, options, attempt + 1);
     }
-    if (response.status >= 500 && attempt < 3) {
+    if (response.status >= 500 && idempotent && attempt < 3) {
       await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
-      return this.request<T>(endpoint, init, attempt + 1);
+      return this.request<T>(endpoint, init, options, attempt + 1);
     }
     if (!response.ok) {
       const body = await response.text();
@@ -124,6 +147,10 @@ export class ClickUpClient {
       );
       tasks.push(...result.tasks);
       if (result.last_page || result.tasks.length === 0) break;
+      if (page === 49) {
+        // 5000 open tasks. Say so rather than quietly matching against a slice.
+        log.warn(`Stopped paging tasks at ${tasks.length}. Narrow clickup.spaces or set onlyMyTasks.`);
+      }
     }
     return tasks;
   }
@@ -133,10 +160,26 @@ export class ClickUpClient {
     teamId: string,
     entry: { tid: string; start: number; duration: number; description?: string; billable?: boolean; tags?: string[] },
   ): Promise<{ data: { id: string } }> {
-    return this.request(`/team/${teamId}/time_entries`, {
-      method: 'POST',
-      body: JSON.stringify(entry),
+    return this.request(
+      `/team/${teamId}/time_entries`,
+      { method: 'POST', body: JSON.stringify(entry) },
+      { idempotent: false },
+    );
+  }
+
+  /**
+   * Used to reconcile after a failed push: if the entry actually landed before
+   * the connection dropped, it will be in here and must not be created again.
+   */
+  getTimeEntries(
+    teamId: string,
+    range: { start: number; end: number },
+  ): Promise<{ data: Array<{ id: string; task?: { id?: string }; start?: string | number; duration?: string | number }> }> {
+    const params = new URLSearchParams({
+      start_date: String(range.start),
+      end_date: String(range.end),
     });
+    return this.request(`/team/${teamId}/time_entries?${params.toString()}`);
   }
 
   getRunningEntry(teamId: string): Promise<{ data: unknown }> {

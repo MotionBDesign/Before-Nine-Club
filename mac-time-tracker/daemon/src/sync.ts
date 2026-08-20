@@ -60,6 +60,10 @@ export async function refreshCatalog(client: ClickUpClient, config: Config): Pro
     };
   }).filter((task) => listsById.has(task.listId));
 
+  const dropped = toTaskRefs(raw).length - tasks.length;
+  if (dropped > 0) {
+    log.warn(`${dropped} tasks were skipped because their list is outside the configured spaces.`);
+  }
   log.info(`Catalog refreshed: ${spaces.length} spaces, ${folders.length} folders, ${lists.length} lists, ${tasks.length} tasks`);
 
   return { fetchedAt: Date.now(), workspaceId: teamId, userId: me.user.id, spaces, folders, lists, tasks };
@@ -68,7 +72,43 @@ export async function refreshCatalog(client: ClickUpClient, config: Config): Pro
 export interface PushResult {
   pushed: number;
   skipped: number;
+  /** Entries that turned out to already exist in ClickUp. */
+  reconciled: number;
   failures: Array<{ entryId: string; reason: string }>;
+}
+
+/**
+ * Days currently being pushed, so a double-click on "Push approved" or a
+ * second client cannot run two pushes over the same entries at once.
+ */
+const inFlight = new Set<string>();
+
+/**
+ * After a failed create, ask ClickUp whether the entry landed anyway. A
+ * dropped connection after the server committed is exactly the case that would
+ * otherwise bill a client twice.
+ */
+async function findExistingEntry(
+  client: ClickUpClient,
+  teamId: string,
+  entry: ProposedEntry,
+): Promise<string | null> {
+  try {
+    // Widen the window slightly; ClickUp rounds and we only need a candidate.
+    const { data } = await client.getTimeEntries(teamId, {
+      start: entry.start - 60_000,
+      end: entry.start + entry.durationMs + 60_000,
+    });
+    const match = data.find((existing) => {
+      if (existing.task?.id !== entry.taskId) return false;
+      const start = Number(existing.start ?? 0);
+      return Math.abs(start - entry.start) < 60_000;
+    });
+    return match?.id ?? null;
+  } catch (error) {
+    log.warn('Could not check ClickUp for an existing entry', String(error));
+    return null;
+  }
 }
 
 /**
@@ -80,38 +120,62 @@ export async function pushApproved(
   config: Config,
   day: DayFile,
 ): Promise<PushResult> {
-  const result: PushResult = { pushed: 0, skipped: 0, failures: [] };
+  const result: PushResult = { pushed: 0, skipped: 0, reconciled: 0, failures: [] };
   const teamId = config.clickup.workspaceId;
   if (!teamId) {
     result.failures.push({ entryId: '-', reason: 'clickup.workspaceId is not set' });
     return result;
   }
+  if (inFlight.has(day.date)) {
+    result.failures.push({ entryId: '-', reason: `a push for ${day.date} is already running` });
+    return result;
+  }
+  inFlight.add(day.date);
 
-  for (const entry of day.entries) {
-    if (entry.status !== 'approved') continue;
-    if (!entry.taskId) {
-      result.skipped++;
-      result.failures.push({ entryId: entry.id, reason: 'approved without a task' });
-      continue;
+  try {
+    for (const entry of day.entries) {
+      if (entry.status !== 'approved') continue;
+      if (!entry.taskId) {
+        result.skipped++;
+        result.failures.push({ entryId: entry.id, reason: 'approved without a task' });
+        continue;
+      }
+      try {
+        const created = await client.createTimeEntry(teamId, {
+          tid: entry.taskId,
+          start: entry.start,
+          duration: entry.durationMs,
+          description: buildDescription(entry),
+          billable: entry.billable,
+        });
+        entry.status = 'synced';
+        entry.clickupEntryId = created.data?.id;
+        entry.syncedAt = Date.now();
+        saveDay(day);
+        result.pushed++;
+      } catch (error) {
+        const reason = error instanceof ClickUpError
+          ? `${error.message}: ${error.body.slice(0, 200)}`
+          : String(error);
+
+        // The write may have succeeded even though we never saw the response.
+        const existing = await findExistingEntry(client, teamId, entry);
+        if (existing) {
+          log.warn(`Entry ${entry.id} was already in ClickUp; adopting it instead of re-creating`);
+          entry.status = 'synced';
+          entry.clickupEntryId = existing;
+          entry.syncedAt = Date.now();
+          saveDay(day);
+          result.reconciled++;
+          continue;
+        }
+
+        log.error(`Failed to push entry ${entry.id}`, reason);
+        result.failures.push({ entryId: entry.id, reason });
+      }
     }
-    try {
-      const created = await client.createTimeEntry(teamId, {
-        tid: entry.taskId,
-        start: entry.start,
-        duration: entry.durationMs,
-        description: buildDescription(entry),
-        billable: entry.billable,
-      });
-      entry.status = 'synced';
-      entry.clickupEntryId = created.data?.id;
-      entry.syncedAt = Date.now();
-      saveDay(day);
-      result.pushed++;
-    } catch (error) {
-      const reason = error instanceof ClickUpError ? `${error.message}: ${error.body.slice(0, 200)}` : String(error);
-      log.error(`Failed to push entry ${entry.id}`, reason);
-      result.failures.push({ entryId: entry.id, reason });
-    }
+  } finally {
+    inFlight.delete(day.date);
   }
   return result;
 }

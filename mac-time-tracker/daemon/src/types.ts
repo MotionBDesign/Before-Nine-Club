@@ -209,6 +209,16 @@ export interface Config {
   projectRoots: ProjectRoot[];
   /** Maps a folder name found on disk to a ClickUp folder name. */
   clientAliases: Record<string, string>;
+  /**
+   * Which phase of work each app implies, keyed by bundle id.
+   *
+   * Tasks here are routinely split into "… COPY", "… DESIGN", "… STORYBOARD",
+   * "… ANIMATION", "… POSTPRODUCTION" siblings under one parent. The filename
+   * often can't tell them apart, but the app you are in can: After Effects
+   * means animation, Word means copy. These words are matched against task
+   * names to break exactly that tie.
+   */
+  appPhases: Record<string, string[]>;
   ignore: {
     bundleIds: string[];
     titlePatterns: string[];

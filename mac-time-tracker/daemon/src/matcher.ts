@@ -27,6 +27,11 @@ const WEIGHT = {
   folderInTitle: 22,
   /** Maximum contribution from task-name token overlap. */
   taskNameOverlap: 40,
+  /**
+   * The app implies a phase of work that this task's name mentions. Sized to
+   * settle a parent-vs-child tie without ever outranking a clear name match.
+   */
+  appPhase: 22,
   /** Default weight for a rule that does not set one. */
   ruleDefault: 50,
 } as const;
@@ -118,7 +123,7 @@ export function buildContext(
   corrections: Correction[] = [],
 ): MatchContext {
   const taskTokens = new Map<string, string[]>();
-  for (const task of catalog.tasks) taskTokens.set(task.taskId, tokenize(task.taskName));
+  for (const task of catalog.tasks) taskTokens.set(task.taskId, tokenize(task.taskName, 'name'));
   const idf = buildIdf([...taskTokens.values()]);
 
   const tasksById = new Map(catalog.tasks.map((t) => [t.taskId, t]));
@@ -357,11 +362,18 @@ function collectScopeHints(block: ActivityBlock, hits: RuleHit[], ctx: MatchCont
 }
 
 function queryTokensFor(block: ActivityBlock): string[] {
-  const parts: string[] = [];
-  for (const p of block.paths) parts.push(p);
-  for (const t of block.titles) parts.push(t);
-  for (const u of block.urls) parts.push(u);
-  return uniq(parts.flatMap(tokenize));
+  const tokens: string[] = [];
+  // Paths get the stricter tokeniser so directory furniture is dropped, but
+  // the filename inside them is still treated as descriptive text.
+  for (const p of block.paths) tokens.push(...tokenize(p, 'path'));
+  for (const t of block.titles) tokens.push(...tokenize(t));
+  for (const u of block.urls) tokens.push(...tokenize(u, 'path'));
+  return uniq(tokens);
+}
+
+/** The phase words implied by whichever app the block was recorded in. */
+function phaseTokensFor(block: ActivityBlock, config: Config): Set<string> {
+  return new Set(config.appPhases[block.bundleId] ?? []);
 }
 
 function decideBillable(spaceName: string | null, hits: RuleHit[], config: Config): boolean {
@@ -453,6 +465,7 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
 
   // 4. Score tasks.
   const query = queryTokensFor(block);
+  const phaseWords = phaseTokensFor(block, ctx.config);
   const candidateTasks = listWeight.size > 0
     ? [...listWeight.keys()].flatMap((listId) => ctx.tasksByListId.get(listId) ?? [])
     : ctx.catalog.tasks;
@@ -482,10 +495,19 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
       reasons.push(learnHit.reason);
     }
 
-    const overlap = overlapScore(query, ctx.taskTokens.get(task.taskId) ?? [], ctx.idf);
+    const taskTokens = ctx.taskTokens.get(task.taskId) ?? [];
+    const overlap = overlapScore(query, taskTokens, ctx.idf);
     if (overlap > 0) {
       score += overlap * WEIGHT.taskNameOverlap;
       reasons.push(`task name matches the file (${Math.round(overlap * 100)}%)`);
+    }
+
+    if (phaseWords.size > 0) {
+      const matchedPhase = taskTokens.find((token) => phaseWords.has(token));
+      if (matchedPhase) {
+        score += WEIGHT.appPhase;
+        reasons.push(`${block.app} is ${matchedPhase} work`);
+      }
     }
 
     if (score > 0) scored.push({ task, score, reasons });

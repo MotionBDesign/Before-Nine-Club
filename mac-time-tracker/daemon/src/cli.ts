@@ -1,3 +1,6 @@
+import { installNetworkGuard } from './netguard.ts';
+installNetworkGuard();
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +9,9 @@ import { loadDay, localDate, listDays, rebuildDay, saveDay } from './store.ts';
 import { pushApproved } from './sync.ts';
 import { loadToken } from './config.ts';
 import { paths, ensureDirs } from './paths.ts';
+import { validateConfig, validateRules } from './validate.ts';
+import { allowedHosts } from './netguard.ts';
+import { loadRules } from './config.ts';
 import { openUrl } from './notify.ts';
 import { LOW_CONFIDENCE } from './matcher.ts';
 
@@ -56,6 +62,7 @@ async function doctor(): Promise<void> {
   const results: Array<[boolean, string]> = [];
   ensureDirs();
   results.push([true, `Data directory: ${paths.data()}`]);
+  results.push([true, `Outbound network: restricted to ${allowedHosts().join(', ')} (enforced in-process; verify with Little Snitch or \`lsof -i -p <pid>\`)`]);
 
   const configExists = fs.existsSync(paths.config());
   results.push([configExists, configExists
@@ -123,7 +130,20 @@ async function doctor(): Promise<void> {
 
   console.log('');
   for (const [ok, message] of results) console.log(`  ${ok ? green('OK') : amber(' !')} ${message}`);
+
+  const problems = [
+    ...validateConfig(runtime.config),
+    ...validateRules(loadRules()),
+  ];
+  if (problems.length > 0) {
+    console.log('');
+    for (const problem of problems) {
+      const tag = problem.severity === 'error' ? amber('ERR') : dim('wrn');
+      console.log(`  ${tag} ${problem.message}`);
+    }
+  }
   console.log('');
+  if (problems.some((p) => p.severity === 'error')) process.exitCode = 1;
 }
 
 function init(): void {

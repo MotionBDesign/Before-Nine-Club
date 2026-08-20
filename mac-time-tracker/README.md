@@ -180,6 +180,36 @@ Weights are on a scale where 100 means certain; the ordering in the example file
 is a reasonable starting point. A leading `(?i)` works even though JavaScript
 regexes don't support it — it's translated for you.
 
+## Network guarantee
+
+This tool reaches exactly one external host: `api.clickup.com`. That is a
+design constraint, enforced three ways:
+
+1. **The Swift observer has no networking code at all** — no URLSession, no
+   sockets. It reads the screen state and appends to a local file.
+2. **The daemon installs a process-wide allowlist before anything else runs**
+   (`src/netguard.ts`): global `fetch` is replaced with one that refuses any
+   host other than `api.clickup.com`. A bug, a bad rules file, or a compromised
+   config cannot exfiltrate through it.
+3. **The test suite trips on new network surface** (`test/netguard.test.ts`):
+   it fails the build if a second fetch call site, a low-level socket import,
+   or a non-ClickUp URL literal ever appears in `src/`. The review page ships
+   with `default-src 'none'; connect-src 'self'`, so the browser side is pinned
+   to loopback too.
+
+There is no telemetry, no update check, no crash reporting, and no runtime npm
+dependency (nothing else's code runs in the daemon). The Swift package has zero
+SPM dependencies, so even `swift build` fetches nothing. The review server
+binds loopback only, and config validation refuses any other `server.host`.
+
+One nuance to be precise about: "one-way" here means *time entries only flow
+out after your approval*. The daemon does read from ClickUp — the task list
+(to make suggestions) and, after a failed push, existing time entries (to avoid
+creating a duplicate). Both reads are against the same single host. If you want
+to see it for yourself: run `node daemon/src/cli.ts doctor`, or watch the
+process with Little Snitch — the only connection you will ever see is
+`api.clickup.com:443`.
+
 ## Privacy
 
 Everything stays on your Mac apart from the time entries you approve.

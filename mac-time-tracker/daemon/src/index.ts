@@ -1,3 +1,6 @@
+import { installNetworkGuard } from './netguard.ts';
+installNetworkGuard();
+
 import { Runtime, defaultObserverPath } from './runtime.ts';
 import { startObserver, type ActivitySource } from './observer.ts';
 import { startSpoolReader } from './spool.ts';
@@ -5,6 +8,8 @@ import { createServer } from './server.ts';
 import { appendSnapshot, loadDay, localDate, pruneSnapshots, rebuildDay } from './store.ts';
 import { paths } from './paths.ts';
 import { notify } from './notify.ts';
+import { InstanceLock } from './lock.ts';
+import { validateConfig, validateRules } from './validate.ts';
 import { log } from './log.ts';
 
 const MINUTE = 60_000;
@@ -18,7 +23,25 @@ function pendingMinutes(date: string): number {
 }
 
 async function main(): Promise<void> {
+  const lock = new InstanceLock();
+  const conflict = lock.acquire();
+  if (conflict) {
+    log.error(`Refusing to start: ${conflict}.`);
+    log.error('Two trackers sharing a data directory overwrite each other\'s approvals.');
+    process.exit(1);
+  }
+
   const runtime = new Runtime();
+
+  // Bad config should be loud at startup, not discovered days later. Errors
+  // are logged but do not stop tracking — recording activity is still useful
+  // while the config is being fixed.
+  const problems = [...validateConfig(runtime.config), ...validateRules(runtime.rules)];
+  for (const problem of problems) {
+    if (problem.severity === 'error') log.error(`Config: ${problem.message}`);
+    else log.warn(`Config: ${problem.message}`);
+  }
+
   await runtime.refreshCatalogIfStale();
 
   const { config } = runtime;
@@ -87,7 +110,16 @@ async function main(): Promise<void> {
     log.info(`Review UI on ${reviewUrl}`);
     if (!runtime.hasToken()) log.warn('Running without a ClickUp token; push will be disabled.');
   });
-  server.on('error', (error) => {
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      // Tracking still works; only the review UI is unavailable, so say what
+      // to do rather than dying with a stack trace.
+      log.error(
+        `Port ${config.server.port} is already in use. Tracking continues, but the review UI is not available. ` +
+        'Change server.port in config.json, or stop whatever is on that port.',
+      );
+      return;
+    }
     log.error('Review server failed to start', error.message);
   });
 
@@ -97,10 +129,22 @@ async function main(): Promise<void> {
     clearInterval(tickTimer);
     source.stop();
     rebuildToday();
+    lock.release();
     server.close(() => process.exit(0));
     // Don't hang forever on a keep-alive connection.
     setTimeout(() => process.exit(0), 3000).unref();
   }
+
+  // A crash must not leave a lock behind that blocks the next start.
+  process.on('uncaughtException', (error) => {
+    log.error('Unhandled error; shutting down', error.stack ?? String(error));
+    lock.release();
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    // Log and keep running: one failed ClickUp call should not stop tracking.
+    log.error('Unhandled promise rejection', String(reason));
+  });
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));

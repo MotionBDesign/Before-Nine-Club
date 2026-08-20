@@ -10,12 +10,31 @@ describe('tokenize', () => {
   });
 
   it('strips folder furniture and years from a server path', () => {
-    const tokens = tokenize('/Volumes/Projects/Clients/Maptek/2026/Artwork/drilling_explainer.aep');
+    const tokens = tokenize('/Volumes/Projects/Clients/Maptek/2026/Artwork/drilling_explainer.aep', 'path');
     assert.ok(!tokens.includes('clients'));
-    assert.ok(!tokens.includes('artwork'));
+    assert.ok(!tokens.includes('volumes'));
     assert.ok(!tokens.includes('2026'));
     assert.ok(tokens.includes('maptek'));
     assert.ok(tokens.includes('drilling'));
+  });
+
+  it('keeps furniture words when they appear in the filename itself', () => {
+    // "Assets" as a directory is noise; "assets" in a filename is the job.
+    const tokens = tokenize('/Volumes/Projects/Clients/SAPN/Assets/apprentice_recruitment_assets.psd', 'path');
+    assert.equal(tokens.filter((t) => t === 'assets').length, 1);
+  });
+
+  it('keeps agency phase words that name a kind of work', () => {
+    // Tasks here split into "... COPY" / "... DESIGN" / "... ANIMATION"
+    // siblings, so these have to survive tokenising to tell them apart.
+    for (const word of ['copy', 'content', 'design', 'concepts', 'storyboard', 'animation']) {
+      assert.ok(tokenize(`Aurizn GPTW posters ${word}`).includes(word), `dropped "${word}"`);
+    }
+  });
+
+  it('still strips version and status noise', () => {
+    const tokens = tokenize('poster_final_v3_WIP_draft.psd');
+    assert.deepEqual(tokens, ['poster']);
   });
 
   it('splits camelCase', () => {
@@ -35,6 +54,27 @@ describe('overlapScore', () => {
     const query = tokenize('SAPN_PowerlineSafety_Poster_A2.psd');
     const scores = corpus.map((doc) => overlapScore(query, doc, idf));
     assert.equal(scores.indexOf(Math.max(...scores)), 0);
+  });
+
+  it('prefers the more specific task over a parent whose name is a prefix', () => {
+    // The real failure this guards against: "Symons - Onboarding Visitors
+    // video" used to score identically to "... video - STORYBOARD" and win the
+    // alphabetical tie-break, so every phase child was unreachable.
+    const parent = tokenize('Symons - Onboarding Visitors video');
+    const child = tokenize('Symons - Onboarding Visitors video - STORYBOARD');
+    const localIdf = buildIdf([parent, child]);
+    const query = tokenize('/Clients/Symons Clark/Onboarding Visitors video/Onboarding_Visitors_storyboard.ai', 'path');
+    assert.ok(
+      overlapScore(query, child, localIdf) > overlapScore(query, parent, localIdf),
+      'the storyboard task should outscore its parent',
+    );
+  });
+
+  it('is symmetric: unmatched query tokens count against the score', () => {
+    const idfLocal = buildIdf([['poster'], ['poster', 'series', 'powerline', 'safety']]);
+    const exact = overlapScore(['poster'], ['poster'], idfLocal);
+    const partial = overlapScore(['poster', 'powerline', 'safety'], ['poster'], idfLocal);
+    assert.ok(exact > partial);
   });
 
   it('returns zero when nothing overlaps', () => {
