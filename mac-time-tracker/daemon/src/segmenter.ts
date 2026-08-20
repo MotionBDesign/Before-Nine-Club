@@ -13,9 +13,22 @@ function compileIgnorePatterns(patterns: string[]): RegExp[] {
   return compileAll(patterns, (pattern) => log.warn('Ignoring unparseable ignore pattern', pattern));
 }
 
-/** Screen locked, idle past the threshold, or explicitly ignored. */
+/**
+ * Inside the configured working window. Hours wrap sensibly if someone sets an
+ * overnight window (22 to 06); a start equal to the end means "no bound".
+ */
+export function withinWorkingHours(ts: number, startHour: number, endHour: number): boolean {
+  if (startHour === endHour) return true;
+  const hour = new Date(ts).getHours() + new Date(ts).getMinutes() / 60;
+  return startHour < endHour
+    ? hour >= startHour && hour < endHour
+    : hour >= startHour || hour < endHour;
+}
+
+/** Screen locked, idle past the threshold, outside hours, or explicitly ignored. */
 function isCountable(snapshot: Snapshot, config: Config, ignoreTitles: RegExp[], ignorePaths: RegExp[]): boolean {
   if (snapshot.locked) return false;
+  if (!withinWorkingHours(snapshot.ts, config.capture.dayStartHour, config.capture.dayEndHour)) return false;
   if (snapshot.idleSeconds >= config.capture.idleThresholdSeconds) return false;
   if (config.ignore.bundleIds.includes(snapshot.bundleId)) return false;
   if (snapshot.title && ignoreTitles.some((r) => r.test(snapshot.title!))) return false;

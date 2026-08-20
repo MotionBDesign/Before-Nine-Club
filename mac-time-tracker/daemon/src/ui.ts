@@ -205,6 +205,7 @@ const HTML = `<!doctype html>
     font-size: 10px; display: flex; align-items: center; justify-content: center;
   }
   .tl-empty { color: var(--muted); font-size: 12px; padding: 20px 4px; text-align: center; }
+  .tl-note { margin-top: 9px; font-size: 11px; color: var(--warn); }
 
   /* ------------------------------------------------------------ entries -- */
   .ent-list { display: flex; flex-direction: column; gap: 10px; }
@@ -353,7 +354,11 @@ const HTML = `<!doctype html>
 <div id="toast"></div>
 <script>
 (function () {
-  var state = { date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null };
+  var state = {
+    date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null,
+    display: { timezone: '', dayStartHour: 7, dayEndHour: 19 },
+    window: { from: 7, to: 19, stretched: false }
+  };
 
   var ICON_TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>';
   var ICON_X = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
@@ -365,10 +370,31 @@ const HTML = `<!doctype html>
     return h > 0 ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm';
   }
   function hoursOnly(ms) { return (ms / 3600000).toFixed(1) + 'h'; }
-  function clock(ts) {
-    var d = new Date(ts);
-    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  /**
+   * All times render in one explicit zone. On an installed tracker that is the
+   * Mac's own zone; setting display.timezone pins it, so a shared preview shows
+   * studio time rather than whatever zone the viewer's browser happens to be in.
+   */
+  var TZ;
+  var fmtClock, fmtParts;
+  function setTimezone(tz) {
+    TZ = tz || undefined;
+    fmtClock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
+    fmtParts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TZ });
   }
+  setTimezone('');
+
+  function clock(ts) { return fmtClock.format(new Date(ts)); }
+
+  /** Minutes since midnight in the display zone — the timeline's coordinate space. */
+  function minutesOfDay(ts) {
+    var hm = clock(ts).split(':');
+    return Number(hm[0]) * 60 + Number(hm[1]);
+  }
+
+  /** Today's date in the display zone. Never toISOString(), which is UTC and
+      lands on yesterday all morning anywhere east of Greenwich. */
+  function todayInZone() { return fmtParts.format(new Date()); }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -458,7 +484,7 @@ const HTML = `<!doctype html>
   function renderWeekStrip() {
     var el = document.getElementById('weekstrip');
     if (!state.week) { el.innerHTML = ''; return; }
-    var todayIso = new Date().toISOString().slice(0, 10);
+    var todayIso = todayInZone();
     el.innerHTML = state.week.days.slice(0, 5).map(function (d) {
       var target = (state.targets && state.targets.dailyMinutes * 60000) || 1;
       var pct = Math.min(100, (d.summary.loggedMs / target) * 100);
@@ -476,17 +502,22 @@ const HTML = `<!doctype html>
   var PX_PER_HOUR = 58;
   var SNAP_MIN = 5;
 
+  /**
+   * The working window, from config. It is expanded only if an entry genuinely
+   * falls outside it — hiding recorded time would be worse than a longer axis —
+   * and the page says so when that happens.
+   */
   function timelineWindow(entries) {
-    if (!entries.length) return { from: 9, to: 18 };
-    var starts = entries.map(function (e) { return new Date(e.start).getHours(); });
-    var ends = entries.map(function (e) { return new Date(e.end).getHours() + (new Date(e.end).getMinutes() ? 1 : 0); });
-    return { from: Math.min.apply(null, starts), to: Math.max.apply(null, ends) };
-  }
-
-  function dayStartMs() {
-    var d = new Date(state.day.entries.length ? state.day.entries[0].start : Date.now());
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
+    var from = state.display.dayStartHour;
+    var to = state.display.dayEndHour;
+    var stretched = false;
+    entries.forEach(function (e) {
+      var startH = minutesOfDay(e.start) / 60;
+      var endH = startH + e.durationMs / 3600000;
+      if (startH < from) { from = Math.floor(startH); stretched = true; }
+      if (endH > to) { to = Math.ceil(endH); stretched = true; }
+    });
+    return { from: from, to: Math.max(to, from + 1), stretched: stretched };
   }
 
   function renderTimeline() {
@@ -499,7 +530,6 @@ const HTML = `<!doctype html>
     }
     var win = timelineWindow(entries);
     var height = (win.to - win.from) * PX_PER_HOUR;
-    var base = dayStartMs() + win.from * 3600000;
 
     var hours = '';
     for (var h = win.from; h <= win.to; h++) {
@@ -508,7 +538,7 @@ const HTML = `<!doctype html>
     }
 
     var blocks = entries.map(function (entry) {
-      var top = ((entry.start - base) / 3600000) * PX_PER_HOUR;
+      var top = ((minutesOfDay(entry.start) - win.from * 60) / 60) * PX_PER_HOUR;
       var h = Math.max(20, (entry.durationMs / 3600000) * PX_PER_HOUR);
       var label = entry.suggestion.taskName || entry.description || 'Unmatched';
       var client = clientOf(entry) || 'No client';
@@ -526,8 +556,13 @@ const HTML = `<!doctype html>
     el.innerHTML =
       '<div class="tl-head"><span class="tl-title">Timeline</span>' +
       '<span class="tl-hint">drag to move · edge to resize</span></div>' +
-      '<div class="tl-grid" style="height:' + height + 'px">' + hours + blocks + '</div>';
-    el.dataset.base = String(base);
+      '<div class="tl-grid" style="height:' + height + 'px">' + hours + blocks + '</div>' +
+      (win.stretched
+        ? '<div class="tl-note">Some time falls outside ' +
+          String(state.display.dayStartHour).padStart(2, '0') + ':00–' +
+          String(state.display.dayEndHour).padStart(2, '0') + ':00.</div>'
+        : '');
+    state.window = win;
   }
 
   /* Dragging a block moves its start; dragging the grip changes its length. */
@@ -555,15 +590,26 @@ const HTML = `<!doctype html>
     if (Math.abs(snapped) < SNAP_MIN && !drag.moved) return;
     drag.moved = true;
 
-    var base = Number(document.getElementById('timeline').dataset.base);
+    // Everything is clamped to the visible window, so a block can never be
+    // dragged off the axis and lose its relationship to the hour labels.
+    var win = state.window;
+    var lo = win.from * 60;
+    var hi = win.to * 60;
+    var startMin0 = minutesOfDay(drag.start0);
+    var durMin0 = drag.dur0 / 60000;
+
     if (drag.mode === 'move') {
-      drag.newStart = drag.start0 + snapped * 60000;
+      var wanted = startMin0 + snapped;
+      var placed = Math.min(Math.max(wanted, lo), hi - durMin0);
+      drag.newStart = drag.start0 + (placed - startMin0) * 60000;
       drag.newDur = drag.dur0;
-      drag.el.style.top = (((drag.newStart - base) / 3600000) * PX_PER_HOUR) + 'px';
+      drag.el.style.top = (((placed - lo) / 60) * PX_PER_HOUR) + 'px';
     } else {
-      drag.newDur = Math.max(SNAP_MIN * 60000, drag.dur0 + snapped * 60000);
+      var maxMin = hi - startMin0;
+      var durMin = Math.min(Math.max(durMin0 + snapped, SNAP_MIN), maxMin);
+      drag.newDur = durMin * 60000;
       drag.newStart = drag.start0;
-      drag.el.style.height = Math.max(20, (drag.newDur / 3600000) * PX_PER_HOUR) + 'px';
+      drag.el.style.height = Math.max(20, (durMin / 60) * PX_PER_HOUR) + 'px';
     }
     var len = drag.el.querySelector('.len');
     if (len) len.textContent = clock(drag.newStart) + ' · ' + fmt(drag.newDur);
@@ -680,7 +726,7 @@ const HTML = `<!doctype html>
     if (!state.week) { el.innerHTML = '<div class="empty">Loading…</div>'; return; }
     var days = state.week.days.slice(0, 5);
     var dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    var todayIso = new Date().toISOString().slice(0, 10);
+    var todayIso = todayInZone();
     var targetMs = state.targets.dailyMinutes * 60000;
 
     var totalLogged = days.reduce(function (s, d) { return s + d.summary.loggedMs; }, 0);
@@ -741,6 +787,7 @@ const HTML = `<!doctype html>
     state.day = data.day;
     state.targets = data.targets || null;
     state.quickLog = data.quickLog || [];
+    if (data.display) { state.display = data.display; setTimezone(data.display.timezone); }
 
     var quick = document.getElementById('quick');
     quick.innerHTML = state.quickLog.length

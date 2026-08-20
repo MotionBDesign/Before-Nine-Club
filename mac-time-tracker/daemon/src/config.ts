@@ -22,7 +22,10 @@ export const defaultConfig: Config = {
     mergeGapSeconds: 300,
     roundToMinutes: 5,
     minEntryMinutes: 5,
+    dayStartHour: 7,
+    dayEndHour: 19,
   },
+  display: { timezone: '' },
   observer: { mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5, browserUrls: 'accessibility' },
   server: { port: 7878, host: '127.0.0.1' },
   review: { notifyHours: [13, 17], rebuildEveryMinutes: 10 },
@@ -80,6 +83,7 @@ export function loadConfig(): Config {
   return {
     clickup: { ...base.clickup, ...user.clickup },
     capture: { ...base.capture, ...user.capture },
+    display: { ...base.display, ...user.display },
     observer: { ...base.observer, ...user.observer },
     server: { ...base.server, ...user.server },
     review: { ...base.review, ...user.review },

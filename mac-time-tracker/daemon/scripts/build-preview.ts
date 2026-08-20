@@ -11,6 +11,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Run this with TZ set to the studio zone (npm run build-preview does), so the
+// sample timestamps and the segmenter's working-hours filter agree with what
+// the page will render. Generated in a different zone, a "9am" day comes out
+// shifted and the blocks no longer sit on their hour lines.
+if (!process.env.TZ) {
+  console.warn('  TZ is not set; run via `npm run build-preview` so sample times match the display zone.');
+}
 import { renderPage } from '../src/ui.ts';
 import { buildContext } from '../src/matcher.ts';
 import { segment, buildEntries } from '../src/segmenter.ts';
@@ -29,6 +37,7 @@ const minutes = (n: number) => n * 60_000;
 const T0 = new Date(2026, 7, 20, 9, 0, 0).getTime();
 
 const config = structuredClone(evalConfig);
+config.display.timezone = 'Australia/Adelaide';
 const context = buildContext(config, evalRules, realCatalog());
 
 function build(timeline: Snapshot[]): ProposedEntry[] {
@@ -134,6 +143,11 @@ const previewData = {
     taskId: t.taskId, taskName: t.taskName, listName: t.listName, folderName: t.folderName,
   })),
   targets: config.targets,
+  display: {
+    timezone: config.display.timezone,
+    dayStartHour: config.capture.dayStartHour,
+    dayEndHour: config.capture.dayEndHour,
+  },
   quickLog: config.quickLog.map((button, index) => {
     const task = realCatalog().tasks.find((t) => t.taskId === button.taskId);
     return { index, label: button.label, minutes: button.minutes, billable: button.billable, taskName: task?.taskName ?? button.label };
@@ -181,6 +195,7 @@ var PREVIEW = (function () {
       catalogFetchedAt: Date.now(),
       taskCount: DATA.tasks.length,
       targets: DATA.targets,
+      display: DATA.display,
       quickLog: DATA.quickLog
     };
   }

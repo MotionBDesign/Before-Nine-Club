@@ -189,6 +189,21 @@ export interface Config {
     mergeGapSeconds: number;
     roundToMinutes: number;
     minEntryMinutes: number;
+    /**
+     * The working window, in local hours. Activity outside it is not counted
+     * at all — a late render session or a Sunday-night tidy-up stays off the
+     * timesheet. Widen these if that is not what you want.
+     */
+    dayStartHour: number;
+    dayEndHour: number;
+  };
+  display: {
+    /**
+     * IANA zone used to render and bound the day, e.g. "Australia/Adelaide".
+     * Empty means the Mac's own zone, which is right for a local install; set
+     * it explicitly so shared previews and screenshots agree with the studio.
+     */
+    timezone: string;
   };
   observer: {
     /**

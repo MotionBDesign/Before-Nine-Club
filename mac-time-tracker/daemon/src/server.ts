@@ -144,6 +144,11 @@ export function createServer(runtime: Runtime): http.Server {
         catalogFetchedAt: catalog.fetchedAt,
         taskCount: catalog.tasks.length,
         targets: runtime.config.targets,
+        display: {
+          timezone: runtime.config.display.timezone,
+          dayStartHour: runtime.config.capture.dayStartHour,
+          dayEndHour: runtime.config.capture.dayEndHour,
+        },
         quickLog: runtime.config.quickLog.map((button, index) => ({
           index,
           label: button.label,
