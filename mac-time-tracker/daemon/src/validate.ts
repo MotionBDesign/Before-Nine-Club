@@ -108,6 +108,29 @@ export function validateConfig(config: Config): Problem[] {
     });
   }
 
+  const { dailyMinutes, billableMinutes } = config.targets;
+  if (!Number.isFinite(dailyMinutes) || dailyMinutes < 0 || dailyMinutes > 1440) {
+    problems.push({ severity: 'error', message: `targets.dailyMinutes (${dailyMinutes}) must be between 0 and 1440.` });
+  }
+  if (!Number.isFinite(billableMinutes) || billableMinutes < 0 || billableMinutes > 1440) {
+    problems.push({ severity: 'error', message: `targets.billableMinutes (${billableMinutes}) must be between 0 and 1440.` });
+  }
+  if (billableMinutes > dailyMinutes) {
+    problems.push({ severity: 'warning', message: 'targets.billableMinutes is above dailyMinutes; the billable goal alone will drive the display.' });
+  }
+
+  config.quickLog.forEach((button, index) => {
+    const where = `quickLog[${index}]${button?.label ? ` ("${button.label}")` : ''}`;
+    if (!button?.label) problems.push({ severity: 'error', message: `${where} needs a label.` });
+    if (!button?.taskId) problems.push({ severity: 'error', message: `${where} needs a taskId.` });
+    if (!Number.isFinite(button?.minutes) || button.minutes <= 0 || button.minutes > 480) {
+      problems.push({ severity: 'error', message: `${where} needs minutes between 1 and 480.` });
+    }
+    if (typeof button?.billable !== 'boolean') {
+      problems.push({ severity: 'error', message: `${where} needs billable: true or false.` });
+    }
+  });
+
   for (const hour of config.review.notifyHours) {
     if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
       problems.push({ severity: 'error', message: `review.notifyHours contains "${hour}"; hours must be 0-23.` });

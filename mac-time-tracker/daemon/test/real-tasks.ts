@@ -24,6 +24,15 @@ const LISTS: Array<[string, string, string]> = [
   ['901614104724', 'MBD - Billable Projects 2026', 'MBD Billable'],
 ];
 
+/** The MBD Non billable space's Active list — quick-log targets live here. */
+const NON_BILLABLE_LIST: [string, string] = ['901614104585', 'Active list'];
+const NON_BILLABLE_TASKS: Array<[string, string]> = [
+  ['86d2c5302', 'MBD - Non billable - Meetings, catch ups'],
+  ['86d2c55nd', 'MBD - Non billable - Admin, shops'],
+  ['86d2c54d1', 'MBD - Non billable - Training, Trials'],
+  ['86d2c5581', 'MBD - Non billable - Clean, tidy up'],
+];
+
 const TASKS: Array<[string, string, string]> = [
   // [taskId, taskName, listId]
   ['86d42w42h', 'SAPN - Apprentice recruitment SM videos', '901614105218'],
@@ -181,6 +190,20 @@ export function realCatalog(): Catalog {
       status: 'in progress',
     };
   });
+
+  lists.push({
+    id: NON_BILLABLE_LIST[0], name: NON_BILLABLE_LIST[1],
+    folderId: null as string | null, folderName: null as string | null,
+    spaceId: 'sp2', spaceName: 'MBD Non billable',
+  } as (typeof lists)[number]);
+  for (const [taskId, taskName] of NON_BILLABLE_TASKS) {
+    tasks.push({
+      taskId, taskName,
+      listId: NON_BILLABLE_LIST[0], listName: NON_BILLABLE_LIST[1],
+      folderName: null as string | null, spaceName: 'MBD Non billable',
+      url: `https://app.clickup.com/t/${taskId}`, status: 'ongoing',
+    } as (typeof tasks)[number]);
+  }
 
   return { fetchedAt: Date.now(), workspaceId: '9003163669', userId: 1, spaces, folders, lists, tasks };
 }

@@ -144,6 +144,12 @@ export const evalConfig: Config = {
   ...structuredClone(defaultConfig),
   projectRoots: [{ path: ROOT, clientSegment: 0 }],
   clientAliases: { Symons: 'Symons Clark', Cole: 'Cole School Experts', Ilim: 'Ilim College' },
+  targets: { dailyMinutes: 390, billableMinutes: 390 },
+  quickLog: [
+    { label: 'MBD Meeting', taskId: '86d2c5302', minutes: 30, billable: false },
+    { label: 'Admin', taskId: '86d2c55nd', minutes: 15, billable: false },
+    { label: 'Training', taskId: '86d2c54d1', minutes: 30, billable: false },
+  ],
 };
 
 export { ROOT, rules as evalRules, CASES };

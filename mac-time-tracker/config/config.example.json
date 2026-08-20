@@ -34,6 +34,17 @@
     "rebuildEveryMinutes": 10
   },
 
+  "targets": {
+    "dailyMinutes": 390,
+    "billableMinutes": 390
+  },
+
+  "quickLog": [
+    { "label": "MBD Meeting", "taskId": "86d2c5302", "minutes": 30, "billable": false },
+    { "label": "Admin", "taskId": "86d2c55nd", "minutes": 15, "billable": false },
+    { "label": "Training", "taskId": "86d2c54d1", "minutes": 30, "billable": false }
+  ],
+
   "projectRoots": [
     { "path": "/Volumes/Projects/Clients", "clientSegment": 0 },
     { "path": "~/Dropbox/MBD/Clients", "clientSegment": 0 }

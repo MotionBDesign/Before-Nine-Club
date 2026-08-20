@@ -127,6 +127,46 @@ different task, toggle billable, then **Approve**. **Push approved to ClickUp**
 writes them. Approved and pushed entries are frozen — later rebuilds cannot
 undo them.
 
+## The 6.5-hour day
+
+The studio rule is built in: **6.5 hours logged every day, billable-first**.
+A progress bar at the top of the review page tracks it live:
+
+- **Red/amber** — short of 6.5h logged. Shows exactly how far, and how much of
+  what's there is billable.
+- **Amber** — 6.5h logged, but under 6.5h billable. The nudge: swap in billable
+  work if any is available.
+- **Green** — 6.5h billable met. Everything past that is bonus.
+
+The bar shows billable time in green and non-billable in grey against the
+target line, so a day padded with admin is visibly different from a billable
+day at a glance. The afternoon notifications use the same logic: a shortfall
+at 1pm or 5pm notifies with the gap ("5h 10m logged of 6h 30m"), and if
+yesterday closed short, the morning notice says so before anything is pushed.
+
+Targets are per-Mac config (`targets.dailyMinutes` / `targets.billableMinutes`,
+both 390 by default) so part-timers can differ.
+
+### Quick log — meetings without looking
+
+Header buttons log a block of time in one click, no task search:
+
+```json
+"quickLog": [
+  { "label": "MBD Meeting", "taskId": "86d2c5302", "minutes": 30, "billable": false },
+  { "label": "Admin",       "taskId": "86d2c55nd", "minutes": 15, "billable": false },
+  { "label": "Training",    "taskId": "86d2c54d1", "minutes": 30, "billable": false }
+]
+```
+
+The ids above are the real `MBD - Non billable - Meetings, catch ups` /
+`Admin, shops` / `Training, Trials` tasks in the MBD Non billable space.
+Clicking **+ MBD Meeting 30m** creates an entry ending now, pre-approved
+(the click is the review), pinned to that task. If the meeting ran longer,
+edit the minutes on the card like any other entry. Quick-logged entries
+survive rebuilds untouched, and their time range carves any overlapping
+ambient activity out of the day so nothing double-counts.
+
 ## Configuration
 
 `~/Library/Application Support/MBDTimeTracker/config.json`, seeded from

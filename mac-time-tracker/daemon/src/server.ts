@@ -2,7 +2,7 @@ import http from 'node:http';
 import type { Config, DayFile, ProposedEntry } from './types.ts';
 import type { MatchContext } from './matcher.ts';
 import type { ClickUpClient } from './clickup.ts';
-import { loadDay, localDate, listDays, rebuildDay, recordCorrection, saveDay } from './store.ts';
+import { addManualEntry, loadDay, localDate, listDays, rebuildDay, recordCorrection, saveDay } from './store.ts';
 import { pushApproved } from './sync.ts';
 import { renderPage } from './ui.ts';
 import { log } from './log.ts';
@@ -79,6 +79,8 @@ function summarise(day: DayFile) {
     approvedMs: total((e) => e.status === 'approved'),
     syncedMs: total((e) => e.status === 'synced'),
     billableMs: total((e) => e.billable && e.status !== 'rejected'),
+    /** Everything that will end up on the timesheet — what counts toward the day. */
+    loggedMs: total((e) => e.status !== 'rejected'),
   };
 }
 
@@ -112,13 +114,50 @@ export function createServer(runtime: Runtime): http.Server {
       const date = url.searchParams.get('date')?.trim() || localDate();
       const day = loadDay(date);
       const catalog = runtime.getContext().catalog;
+      const tasksById = new Map(catalog.tasks.map((t) => [t.taskId, t]));
       json(res, 200, {
         day,
         summary: summarise(day),
         days: listDays(),
         catalogFetchedAt: catalog.fetchedAt,
         taskCount: catalog.tasks.length,
+        targets: runtime.config.targets,
+        quickLog: runtime.config.quickLog.map((button, index) => ({
+          index,
+          label: button.label,
+          minutes: button.minutes,
+          billable: button.billable,
+          taskName: tasksById.get(button.taskId)?.taskName ?? null,
+        })),
       });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/quick-log') {
+      const body = await readBody(req);
+      const index = Number(body.index);
+      const button = runtime.config.quickLog[index];
+      if (!button) {
+        json(res, 400, { error: 'No such quick-log button.' });
+        return;
+      }
+      const date = String(body.date ?? '').trim() || localDate();
+      const minutes = Number.isFinite(Number(body.minutes)) && Number(body.minutes) > 0
+        ? Number(body.minutes)
+        : button.minutes;
+      const task = runtime.getContext().tasksById.get(button.taskId) ?? null;
+      const entry = addManualEntry(date, {
+        taskId: button.taskId,
+        taskName: task?.taskName ?? button.label,
+        listName: task?.listName ?? null,
+        folderName: task?.folderName ?? null,
+        spaceName: task?.spaceName ?? null,
+        label: button.label,
+        minutes,
+        billable: button.billable,
+      });
+      const day = loadDay(date);
+      json(res, 200, { entry, day, summary: summarise(day) });
       return;
     }
 

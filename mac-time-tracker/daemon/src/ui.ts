@@ -39,6 +39,29 @@ const HTML = `<!doctype html>
   button:disabled { opacity: 0.45; cursor: default; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .spacer { flex: 1; }
+  .quick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .quick .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 2px; }
+  .quick button { border-style: dashed; }
+  .progress { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .progress .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .progress .headline { font-weight: 650; }
+  .progress .headline.ok { color: var(--ok); }
+  .progress .headline.warn { color: var(--warn); }
+  .progress .headline.bad { color: var(--bad); }
+  .progress .detail { font-size: 12px; color: var(--muted); }
+  .bar { position: relative; height: 14px; border-radius: 99px; background: var(--chip); overflow: hidden; }
+  .bar .fill { position: absolute; top: 0; bottom: 0; left: 0; }
+  .bar .fill.billable { background: var(--ok); border-radius: 99px 0 0 99px; }
+  .bar .fill.nonbillable { background: var(--muted); opacity: 0.55; }
+  .bar .marker { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); opacity: 0.6; }
+  .bar .marker::after {
+    content: attr(data-label); position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; color: var(--muted); white-space: nowrap;
+  }
+  .legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .legend .l-billable::before { background: var(--ok); }
+  .legend .l-nonbillable::before { background: var(--muted); opacity: 0.55; }
   .summary { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 18px; }
   .summary div { display: flex; flex-direction: column; }
   .summary .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
@@ -95,18 +118,20 @@ const HTML = `<!doctype html>
   <button id="rebuild">Rebuild from activity</button>
   <button id="refresh">Refresh ClickUp tasks</button>
   <span class="spacer"></span>
+  <span id="quick" class="quick"></span>
   <span id="catalog" class="chip"></span>
   <button id="approveAll">Approve all matched</button>
   <button id="push" class="primary">Push approved to ClickUp</button>
 </header>
 <main>
+  <div class="progress" id="progress" style="display:none"></div>
   <div class="summary" id="summary"></div>
   <div id="entries"></div>
 </main>
 <div id="toast"></div>
 <script>
 (function () {
-  var state = { date: null, day: null };
+  var state = { date: null, day: null, targets: null, quickLog: [] };
 
   function fmt(ms) {
     var mins = Math.round(ms / 60000);
@@ -144,7 +169,58 @@ const HTML = `<!doctype html>
     return '<span class="chip ' + cls + '">' + pct + '% · ' + label + '</span>';
   }
 
+  function renderProgress(summary) {
+    var el = document.getElementById('progress');
+    if (!state.targets) { el.style.display = 'none'; return; }
+    var dailyMs = state.targets.dailyMinutes * 60000;
+    var billableTargetMs = state.targets.billableMinutes * 60000;
+    var logged = summary.loggedMs || 0;
+    var billable = Math.min(summary.billableMs || 0, logged);
+    var nonBillable = logged - billable;
+    var scale = Math.max(dailyMs, billableTargetMs, logged, 1);
+
+    var headline, cls, detail;
+    if (billable >= billableTargetMs) {
+      cls = 'ok';
+      headline = 'Billable target met — ' + fmt(billable) + ' billable of ' + fmt(logged) + ' logged';
+      detail = 'Nice. Anything else today is a bonus.';
+    } else if (logged >= dailyMs) {
+      cls = 'warn';
+      headline = fmt(logged) + ' logged, but only ' + fmt(billable) + ' billable';
+      detail = 'Day minimum met. If billable work is available, swap some in — target is ' + fmt(billableTargetMs) + ' billable.';
+    } else {
+      cls = logged >= dailyMs * 0.6 ? 'warn' : 'bad';
+      headline = fmt(dailyMs - logged) + ' short of the ' + fmt(dailyMs) + ' day';
+      detail = fmt(billable) + ' billable · ' + fmt(nonBillable) + ' non-billable so far. Untracked meeting or call? Use the quick-log buttons above.';
+    }
+
+    var billablePct = Math.min(100, (billable / scale) * 100);
+    var nonBillablePct = Math.min(100 - billablePct, (nonBillable / scale) * 100);
+    var markerPct = Math.min(100, (dailyMs / scale) * 100);
+
+    el.style.display = '';
+    el.innerHTML =
+      '<div class="row"><span class="headline ' + cls + '">' + headline + '</span>' +
+      '<span class="detail">' + detail + '</span></div>' +
+      '<div class="bar">' +
+        '<div class="fill billable" style="width:' + billablePct + '%"></div>' +
+        '<div class="fill nonbillable" style="left:' + billablePct + '%;width:' + nonBillablePct + '%"></div>' +
+        (markerPct < 100 ? '<div class="marker" style="left:' + markerPct + '%" data-label="' + fmt(dailyMs) + '"></div>' : '') +
+      '</div>' +
+      '<div class="legend"><span class="l-billable">billable</span><span class="l-nonbillable">non-billable</span></div>';
+  }
+
+  function renderQuickLog() {
+    var el = document.getElementById('quick');
+    if (!state.quickLog.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<span class="lbl">Quick log</span>' + state.quickLog.map(function (q) {
+      return '<button data-quick="' + q.index + '" title="' + esc(q.taskName || q.label) + '">+ ' +
+        esc(q.label) + ' ' + q.minutes + 'm</button>';
+    }).join('');
+  }
+
   function renderSummary(summary) {
+    renderProgress(summary);
     var rows = [
       ['Tracked', summary.trackedMs], ['Needs review', summary.pendingMs],
       ['Approved', summary.approvedMs], ['In ClickUp', summary.syncedMs],
@@ -220,6 +296,9 @@ const HTML = `<!doctype html>
     select.innerHTML = days.map(function (d) {
       return '<option value="' + d + '"' + (d === state.date ? ' selected' : '') + '>' + d + '</option>';
     }).join('');
+    state.targets = data.targets || null;
+    state.quickLog = data.quickLog || [];
+    renderQuickLog();
     document.getElementById('catalog').textContent = data.taskCount + ' tasks cached' +
       (data.catalogFetchedAt ? ' · ' + new Date(data.catalogFetchedAt).toLocaleTimeString() : ' · never synced');
     renderSummary(data.summary);
@@ -239,6 +318,22 @@ const HTML = `<!doctype html>
 
   document.addEventListener('click', async function (event) {
     var target = event.target;
+
+    if (target.dataset && target.dataset.quick !== undefined) {
+      try {
+        var q = state.quickLog[Number(target.dataset.quick)];
+        var data = await api('/api/quick-log', {
+          method: 'POST',
+          body: JSON.stringify({ index: Number(target.dataset.quick), date: state.date }),
+        });
+        state.day = data.day;
+        renderSummary(data.summary);
+        render();
+        toast('Logged ' + q.minutes + 'm — ' + q.label + '. Adjust the minutes on the entry if it ran longer.');
+      } catch (e) { toast(e.message, true); }
+      return;
+    }
+
     var card = target.closest ? target.closest('.entry') : null;
 
     if (target.dataset && target.dataset.taskId !== undefined && target.closest('.results')) {

@@ -71,6 +71,15 @@ export interface Suggestion {
 
 export type EntryStatus = 'pending' | 'approved' | 'rejected' | 'synced';
 
+/** A one-click header button that logs a block of time to a fixed task. */
+export interface QuickLogButton {
+  label: string;
+  taskId: string;
+  /** Duration logged per click; editable afterwards like any entry. */
+  minutes: number;
+  billable: boolean;
+}
+
 /** A proposed line on the day's timesheet. */
 export interface ProposedEntry {
   id: string;
@@ -90,6 +99,8 @@ export interface ProposedEntry {
   };
   suggestion: Suggestion;
   status: EntryStatus;
+  /** Entered by hand (quick-log); never regenerated or carved up by a rebuild. */
+  manual?: boolean;
   /** User's final choice; defaults to suggestion.taskId. */
   taskId: string | null;
   description: string;
@@ -206,6 +217,14 @@ export interface Config {
     /** Rebuild the running day's proposal this often. */
     rebuildEveryMinutes: number;
   };
+  targets: {
+    /** Minimum minutes that must be logged each day, billable or not. */
+    dailyMinutes: number;
+    /** Minutes of billable work expected when billable work exists. */
+    billableMinutes: number;
+  };
+  /** One-click logging buttons shown in the review header. */
+  quickLog: QuickLogButton[];
   projectRoots: ProjectRoot[];
   /** Maps a folder name found on disk to a ClickUp folder name. */
   clientAliases: Record<string, string>;

@@ -26,6 +26,9 @@ export const defaultConfig: Config = {
   observer: { mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5, browserUrls: 'accessibility' },
   server: { port: 7878, host: '127.0.0.1' },
   review: { notifyHours: [13, 17], rebuildEveryMinutes: 10 },
+  // 6.5 hours: the studio's daily minimum, billable-first.
+  targets: { dailyMinutes: 390, billableMinutes: 390 },
+  quickLog: [],
   projectRoots: [],
   clientAliases: {},
   appPhases: {
@@ -78,6 +81,8 @@ export function loadConfig(): Config {
     observer: { ...base.observer, ...user.observer },
     server: { ...base.server, ...user.server },
     review: { ...base.review, ...user.review },
+    targets: { ...base.targets, ...user.targets },
+    quickLog: user.quickLog ?? base.quickLog,
     projectRoots: user.projectRoots ?? base.projectRoots,
     clientAliases: { ...base.clientAliases, ...user.clientAliases },
     appPhases: { ...base.appPhases, ...user.appPhases },

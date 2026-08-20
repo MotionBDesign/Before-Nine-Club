@@ -22,6 +22,17 @@ function pendingMinutes(date: string): number {
   );
 }
 
+function loggedMinutes(date: string): { logged: number; billable: number } {
+  const entries = loadDay(date).entries.filter((e) => e.status !== 'rejected');
+  const logged = entries.reduce((sum, e) => sum + e.durationMs, 0) / MINUTE;
+  const billable = entries.filter((e) => e.billable).reduce((sum, e) => sum + e.durationMs, 0) / MINUTE;
+  return { logged: Math.round(logged), billable: Math.round(billable) };
+}
+
+function hours(minutes: number): string {
+  return `${(minutes / 60).toFixed(1)}h`;
+}
+
 async function main(): Promise<void> {
   const lock = new InstanceLock();
   const conflict = lock.acquire();
@@ -80,7 +91,13 @@ async function main(): Promise<void> {
       // Close out yesterday before anything else touches it.
       rebuildToday();
       const minutes = pendingMinutes(currentDate);
-      if (minutes > 0) {
+      const closing = loggedMinutes(currentDate);
+      if (closing.logged < config.targets.dailyMinutes) {
+        notify(
+          'Yesterday came up short',
+          `${currentDate}: ${hours(closing.logged)} logged of ${hours(config.targets.dailyMinutes)}. Top it up before pushing.`,
+        );
+      } else if (minutes > 0) {
         notify('Timesheet ready', `${(minutes / 60).toFixed(1)}h from ${currentDate} is waiting for review.`);
       }
       currentDate = today;
@@ -98,9 +115,24 @@ async function main(): Promise<void> {
     if (config.review.notifyHours.includes(hour) && !notifiedHours.has(hour)) {
       notifiedHours.add(hour);
       rebuildToday();
-      const minutes = pendingMinutes(currentDate);
-      if (minutes >= 15) {
-        notify('Time to confirm', `${(minutes / 60).toFixed(1)}h unreviewed. Open ${reviewUrl}`);
+      const pending = pendingMinutes(currentDate);
+      const { logged, billable } = loggedMinutes(currentDate);
+      const { dailyMinutes, billableMinutes } = config.targets;
+
+      // The afternoon nudges are about the day target first, review second —
+      // a shortfall discovered at 5pm is still fixable; at 9am tomorrow it isn't.
+      if (logged < dailyMinutes) {
+        notify(
+          'Timesheet is short',
+          `${hours(logged)} logged of the ${hours(dailyMinutes)} day (${hours(billable)} billable). Meetings not logged yet? ${reviewUrl}`,
+        );
+      } else if (billable < billableMinutes) {
+        notify(
+          'Day logged, billable short',
+          `${hours(logged)} logged but only ${hours(billable)} billable of the ${hours(billableMinutes)} target.`,
+        );
+      } else if (pending >= 15) {
+        notify('Time to confirm', `${hours(pending)} unreviewed. Open ${reviewUrl}`);
       }
     }
   }, MINUTE);

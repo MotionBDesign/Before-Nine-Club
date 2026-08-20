@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { DayFile, ProposedEntry, Snapshot } from './types.ts';
@@ -55,7 +56,7 @@ export function saveDay(day: DayFile): void {
  * hand-picked task.
  */
 function isLocked(entry: ProposedEntry): boolean {
-  return entry.status !== 'pending' || entry.corrected === true;
+  return entry.status !== 'pending' || entry.corrected === true || entry.manual === true;
 }
 
 export function rebuildDay(date: string, ctx: MatchContext): DayFile {
@@ -78,6 +79,66 @@ export function rebuildDay(date: string, ctx: MatchContext): DayFile {
   const day: DayFile = { date, updatedAt: Date.now(), entries };
   saveDay(day);
   return day;
+}
+
+/* --------------------------------------------------------- manual entries -- */
+
+/**
+ * A quick-log entry: a block of time entered by a button press rather than
+ * observed activity. It arrives pre-approved (the click *is* the review) and
+ * ends now, on the theory that people log a meeting right after standing up
+ * from it. Its time range carves the underlying snapshots out of rebuilds, so
+ * a meeting logged over ambient activity never double-counts.
+ */
+export function addManualEntry(
+  date: string,
+  options: {
+    taskId: string;
+    taskName: string | null;
+    listName: string | null;
+    folderName: string | null;
+    spaceName: string | null;
+    label: string;
+    minutes: number;
+    billable: boolean;
+    /** Injectable for tests. */
+    now?: number;
+  },
+): ProposedEntry {
+  const now = options.now ?? Date.now();
+  const durationMs = Math.max(1, Math.round(options.minutes)) * 60_000;
+  const entry: ProposedEntry = {
+    id: crypto.createHash('sha1').update(`manual:${date}:${now}:${options.taskId}`).digest('hex').slice(0, 12),
+    date,
+    start: now - durationMs,
+    end: now,
+    activeMs: durationMs,
+    durationMs,
+    blockIds: [],
+    evidence: { apps: ['Quick log'], paths: [], titles: [options.label], urls: [] },
+    suggestion: {
+      taskId: options.taskId,
+      taskName: options.taskName,
+      listId: null,
+      listName: options.listName,
+      folderName: options.folderName,
+      spaceName: options.spaceName,
+      confidence: 1,
+      reasons: [`logged with the "${options.label}" button`],
+      alternatives: [],
+      billable: options.billable,
+    },
+    status: 'approved',
+    taskId: options.taskId,
+    description: options.label,
+    billable: options.billable,
+    manual: true,
+  };
+
+  const day = loadDay(date);
+  day.entries = [...day.entries, entry].sort((a, b) => a.start - b.start);
+  saveDay(day);
+  return entry;
 }
 
 /* ----------------------------------------------------------- corrections -- */
