@@ -80,7 +80,9 @@ async function doctor(): Promise<void> {
   const observerExists = fs.existsSync(observer);
   results.push([observerExists, observerExists
     ? `Observer binary: ${observer}`
-    : `Observer not built. Run: (cd ${path.join(repoRoot, 'observer')} && swift build -c release)`]);
+    : fs.existsSync(path.join(repoRoot, 'BUNDLE'))
+      ? `Observer missing from this bundle at ${observer}. Re-run scripts/install.sh from the server folder.`
+      : `Observer not built. Run: (cd ${path.join(repoRoot, 'observer')} && swift build -c release)`]);
 
   if (runtime.config.observer.mode === 'spool') {
     const spool = runtime.config.observer.spoolPath || paths.spool();

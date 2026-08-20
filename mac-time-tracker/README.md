@@ -73,7 +73,69 @@ npm run demo         # seeds a fake day, opens the review UI on :7879
 That runs entirely offline against fixture data in a temp directory. Ctrl-C
 removes it.
 
-## Install
+## Installing across the studio
+
+The tracker is distributed from the file server. One person stages a build;
+everyone else installs from it with no Xcode, no GitHub account, and no
+compile step.
+
+### Once per release, on the Mac that has Xcode tools
+
+```bash
+./scripts/stage-release.sh "/Volumes/MBD Server/Software/TimeTracker"
+```
+
+That builds the observer, assembles a self-contained bundle (~400 KB — source
+plus the prebuilt binary, no dependencies), stamps it with a date-and-commit
+version, and writes a `LATEST` file naming the current one.
+
+### Once per person
+
+Mount the share, then:
+
+```bash
+cd "/Volumes/MBD Server/Software/TimeTracker/MBDTimeTracker-<version>"
+./scripts/install.sh
+```
+
+Roughly three minutes, and the only thing they have to supply is their own
+ClickUp token.
+
+### Why it installs from the server but never runs from it
+
+`install.sh` copies the bundle to `~/Library/Application Support/MBDTimeTracker/app`
+and points the launch agents at that local copy. Nothing references the share
+afterwards. Running directly off a network volume would break in three ways:
+
+- **Accessibility permission is tied to the binary.** Replacing the file on
+  the share when you publish a new version silently revokes the grant, and the
+  tracker quietly stops seeing window titles and file paths.
+- **launchd starts agents at login, often before the share mounts.** Tracking
+  would fail to start on exactly the mornings someone connects late or works
+  off-site.
+- **Shared state corrupts.** Two Macs writing one data directory would
+  overwrite each other's day files, and the single-instance lock cannot tell a
+  live process on another Mac from a dead one.
+
+Per-machine state also keeps the raw activity log — window titles, file paths,
+sampled every few seconds — owner-readable on local disk instead of sitting on
+a share the whole studio can browse.
+
+### Updating
+
+Re-run `stage-release.sh` to publish, and each person re-runs `install.sh` from
+the new folder. Upgrades stop the running agents before replacing anything,
+keep config, rules, tokens, corrections and history, and clear out stale files
+from the previous version.
+
+### Everyone needs their own ClickUp token
+
+Time entries belong to whoever owns the token that created them. If the team
+shared one token, the whole studio's hours would log against that person. The
+installer prompts for a personal token and stores it in that Mac's login
+keychain.
+
+## Install (from a source checkout)
 
 ```bash
 ./scripts/install.sh

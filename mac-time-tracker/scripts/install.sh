@@ -7,13 +7,20 @@
 #
 set -euo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LABEL="com.motionbydesign.timetracker"
 OBSERVER_LABEL="$LABEL.observer"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 OBSERVER_PLIST="$HOME/Library/LaunchAgents/$OBSERVER_LABEL.plist"
 DATA_DIR="$HOME/Library/Application Support/MBDTimeTracker"
 SPOOL="$DATA_DIR/observer.ndjson"
+
+# The tracker always *runs* from local disk, even when installed from the file
+# server. A network volume is not safe to run from: macOS ties the
+# Accessibility grant to the binary (so a share update silently revokes it),
+# and launchd starts the agents at login, often before the share is mounted.
+APP_DIR="$DATA_DIR/app"
+REPO="$APP_DIR"
 
 say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 note() { printf '  %s\n' "$*"; }
@@ -28,7 +35,8 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   say "Removing the time tracker agents"
   unload_agents
   rm -f "$PLIST" "$OBSERVER_PLIST"
-  note "Agent removed. Your data is untouched in:"
+  rm -rf "$APP_DIR"
+  note "Agents and the installed program are removed. Your data is untouched in:"
   note "$DATA_DIR"
   note "Delete it by hand if you want it gone."
   exit 0
@@ -47,44 +55,92 @@ if (( NODE_MAJOR < 22 || (NODE_MAJOR == 22 && NODE_MINOR < 18) )); then
 fi
 note "Node $(node -v) at $NODE_BIN"
 
-command -v swift >/dev/null || die "Swift is not available. Install the Xcode command line tools: xcode-select --install"
-note "Swift $(swift --version 2>/dev/null | head -1)"
+# A staged bundle from the file server carries a prebuilt observer, so most
+# people never need Xcode. Only a source checkout has to compile.
+BUNDLED=0
+[[ -f "$SOURCE/BUNDLE" ]] && BUNDLED=1
 
-say "2. Building the observer"
-( cd "$REPO/observer" && swift build -c release )
-OBSERVER="$REPO/observer/.build/release/BNObserver"
-[[ -x "$OBSERVER" ]] || die "Build finished but $OBSERVER is missing."
-note "Built $OBSERVER"
+if (( BUNDLED )); then
+  note "Installing bundle $(cat "$SOURCE/BUNDLE") from $SOURCE"
+else
+  command -v swift >/dev/null || die "Swift is not available. Install the Xcode command line tools: xcode-select --install"
+  note "Swift $(swift --version 2>/dev/null | head -1)"
+fi
 
-say "3. Setting up the data directory"
+say "2. Copying the program to this Mac"
+# Stop anything already running before its own source is replaced underneath
+# it. Also releases the daemon's instance lock cleanly.
+unload_agents
+# Copy first, then work only from the local copy — nothing below touches the
+# share again, so the tracker keeps running when the server is unmounted.
+mkdir -p "$APP_DIR"
+rm -rf "$APP_DIR.new"
+mkdir -p "$APP_DIR.new"
+for item in daemon config scripts observer README.md BUNDLE; do
+  [[ -e "$SOURCE/$item" ]] && cp -R "$SOURCE/$item" "$APP_DIR.new/"
+done
+# Never carry a stale build or dev dependencies across.
+rm -rf "$APP_DIR.new/observer/.build" "$APP_DIR.new/daemon/node_modules"
+rm -rf "$APP_DIR.old"
+[[ -d "$APP_DIR" ]] && mv "$APP_DIR" "$APP_DIR.old"
+mv "$APP_DIR.new" "$APP_DIR"
+rm -rf "$APP_DIR.old"
+chmod -R u+rwX "$APP_DIR"
+note "Installed to $APP_DIR"
+
+say "3. Preparing the observer"
+if (( BUNDLED )); then
+  OBSERVER="$APP_DIR/observer/BNObserver"
+  [[ -f "$OBSERVER" ]] || die "The bundle is missing $OBSERVER"
+  chmod +x "$OBSERVER"
+  # Files copied from a network share can carry a quarantine flag; clearing it
+  # avoids a Gatekeeper prompt the first time launchd starts the observer.
+  xattr -d com.apple.quarantine "$OBSERVER" 2>/dev/null || true
+  note "Using the prebuilt observer (no Xcode needed)"
+else
+  ( cd "$APP_DIR/observer" && swift build -c release )
+  OBSERVER="$APP_DIR/observer/.build/release/BNObserver"
+  [[ -x "$OBSERVER" ]] || die "Build finished but $OBSERVER is missing."
+  note "Built $OBSERVER"
+fi
+
+say "4. Setting up the data directory"
 mkdir -p "$DATA_DIR"
 chmod 700 "$DATA_DIR"
 node "$REPO/daemon/src/cli.ts" init
 
-say "4. ClickUp token"
+say "5. ClickUp token"
 if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/dev/null 2>&1; then
   note "A token is already in your keychain; leaving it alone."
 else
   note "Create a personal token at ClickUp > Settings > Apps > API Token."
-  printf '  Paste it here (input hidden, blank to skip): '
-  read -rs TOKEN
-  printf '\n'
+  TOKEN=""
+  if [[ -t 0 ]]; then
+    printf '  Paste it here (input hidden, blank to skip): '
+    # `read` returns non-zero at EOF, which would abort the whole install
+    # under `set -e` — never let a blank answer kill the run.
+    read -rs TOKEN || true
+    printf '\n'
+  else
+    note "Not running interactively; skipping the prompt."
+  fi
   if [[ -n "$TOKEN" ]]; then
     security add-generic-password -s mbd-time-tracker -a clickup-api-token -w "$TOKEN" -U
     note "Stored in your login keychain."
   else
-    note "Skipped. Matching will work offline, but nothing can be pushed until you add one."
+    note "Skipped. Matching works offline, but nothing can be pushed until you add one:"
+    note "  security add-generic-password -s mbd-time-tracker -a clickup-api-token -w '<token>' -U"
   fi
 fi
 
-say "5. Caching your ClickUp workspace"
+say "6. Caching your ClickUp workspace"
 if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/dev/null 2>&1; then
   node "$REPO/daemon/src/cli.ts" catalog || note "Catalog refresh failed; run it again after editing config.json."
 else
   note "No token, skipping."
 fi
 
-say "6. Installing the launch agents"
+say "7. Installing the launch agents"
 mkdir -p "$HOME/Library/LaunchAgents"
 
 # Two agents on purpose. The observer must be started by launchd directly, or

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Config, Rule } from './types.ts';
@@ -13,13 +14,23 @@ import { log } from './log.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-/** Where `swift build -c release` leaves the observer binary. */
+/**
+ * Where to find the observer binary.
+ *
+ * Two layouts are valid: a bundle staged from the file server keeps it at
+ * `observer/BNObserver`, while a source checkout has it under
+ * `observer/.build/release/` after `swift build`. Prefer whichever exists so
+ * `doctor` doesn't report a bundle install as unbuilt.
+ */
 export function defaultObserverPath(configured = ''): string {
-  return (
-    configured ||
-    process.env.MBD_TT_OBSERVER ||
-    path.resolve(here, '..', '..', 'observer', '.build', 'release', 'BNObserver')
-  );
+  if (configured) return configured;
+  if (process.env.MBD_TT_OBSERVER) return process.env.MBD_TT_OBSERVER;
+
+  const root = path.resolve(here, '..', '..', 'observer');
+  const bundled = path.join(root, 'BNObserver');
+  const built = path.join(root, '.build', 'release', 'BNObserver');
+  if (fs.existsSync(bundled)) return bundled;
+  return built;
 }
 
 /**
