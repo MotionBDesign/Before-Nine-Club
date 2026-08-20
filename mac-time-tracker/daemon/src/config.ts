@@ -23,7 +23,7 @@ export const defaultConfig: Config = {
     roundToMinutes: 5,
     minEntryMinutes: 5,
   },
-  observer: { mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5 },
+  observer: { mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5, browserUrls: 'accessibility' },
   server: { port: 7878, host: '127.0.0.1' },
   review: { notifyHours: [13, 17], rebuildEveryMinutes: 10 },
   projectRoots: [],

@@ -144,6 +144,19 @@ The settings worth revisiting:
 | `ignore` | Apps, window titles and paths to never record at all. |
 | `privacy.retainRawSnapshotDays` | How long raw activity is kept (default 30 days). |
 
+### Browser URLs
+
+`observer.browserUrls` decides how the address of the current tab is read:
+
+| Mode | Reliability | Prompts | Private windows |
+| --- | --- | --- | --- |
+| `accessibility` (default) | Good in Safari, patchy in Chromium | None beyond Accessibility | Not detected |
+| `appleScript` | Reliable across Chrome, Edge, Brave, Arc, Vivaldi, Opera, Safari | One macOS Automation prompt per browser | Incognito windows are recorded as nothing at all |
+| `off` | — | None | n/a |
+
+Switch to `appleScript` if ClickUp tabs aren't being picked up, or if you want
+the incognito guarantee. Firefox exposes its URL to neither mechanism.
+
 ### Rules
 
 `rules.json` (from `config/rules.example.json`) narrows or pins the match.
@@ -212,11 +225,61 @@ config/     Example config and rules
 scripts/    Installer and launch agent templates
 ```
 
+## Prior art
+
+Worth knowing what already exists before extending this.
+
+**Commercial, and closer to this than anything open source:**
+
+- [Rize](https://rize.io) — automatic tracking with a native ClickUp
+  integration that suggests client/project/task per entry and learns from
+  keywords you teach it. The nearest thing to what this does. Activity data
+  goes to their cloud. From $23.99/user/month (Pro, annual); $29.99/seat/month
+  for teams.
+- [Memtime](https://www.memtime.com) — captures apps, documents and file names
+  entirely offline, mirrors your ClickUp projects and tasks, and you assemble
+  entries from a timeline. Local-first like this tool, but the mapping is
+  manual rather than inferred. From about $12/user/month.
+- [Timing](https://timingapp.com) — strong Mac-native automatic tracking, local
+  data, no ClickUp push.
+
+If a subscription is acceptable, Rize covers most of this today. This tool
+exists because of the parts it doesn't: matching against your own server folder
+structure, rules you control, and nothing leaving the machine.
+
+**Open source, all of it manual:** `gwleuverink/clickup-time-tracker` (archived,
+Electron calendar UI), `delta-proc/clickup-time-tracker`,
+`SferaDev/clickup-time-tracking`. All are hand-entry front ends over the
+ClickUp API — none observe activity, so none help with the hard part.
+
+**Techniques borrowed:**
+
+- [ActivityWatch](https://github.com/ActivityWatch/aw-watcher-window) (MPL-2.0)
+  reads titles via `kAXTitleAttribute`, same as here — which confirms
+  Screen Recording permission is not needed. Its incognito check is the basis
+  for the private-window guard in `BrowserURL.swift`. Its watcher records app
+  and title only, with no document path, and has no ClickUp integration.
+- [sindresorhus/get-windows](https://github.com/sindresorhus/get-windows) (MIT)
+  supplied the browser bundle-identifier coverage in `BrowserURL.swift`. Note
+  it reads titles from `CGWindowListCopyWindowInfo`, which *does* require
+  Screen Recording permission — a second, scarier prompt this tool avoids.
+
+Neither exposes the open document's file path, which is the signal most of the
+matching here depends on.
+
 ## Known limitations
 
 - Apps that don't publish `AXDocument` (some Electron apps, Figma desktop) give
-  a window title but no file path, so matching leans on the title.
-- Firefox does not expose its URL over the Accessibility API reliably.
+  a window title but no file path, so matching leans on the title. `AXDocument`
+  is also unreliable for tabbed or hidden full-screen windows.
+- Firefox exposes its URL to neither the Accessibility API nor AppleScript, so
+  browser matching there falls back to the window title.
+- Safari offers no way to detect a private window, so the incognito guard
+  covers Chromium browsers only. Exclude Safari private browsing with an
+  `ignore.titlePatterns` entry if that matters.
+- Sampling is a fixed 5-second poll. ActivityWatch additionally subscribes to
+  `AXObserver` focus-change notifications for instant boundaries; at 5-minute
+  rounding that difference is not worth the extra moving parts here.
 - The Swift observer has not been run on a Mac yet — it was written and reviewed
   but not compiled, since the machine it was built on is Linux. Expect the first
   `swift build` to be where any typos surface.

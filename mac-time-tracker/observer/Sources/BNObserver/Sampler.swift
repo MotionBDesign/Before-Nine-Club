@@ -4,19 +4,11 @@ import Foundation
 
 /// Builds one `Snapshot` from whatever the frontmost app is willing to tell us.
 struct Sampler {
-    /// Bundle identifiers whose `AXDocument` is a web address rather than a file.
-    private static let browsers: Set<String> = [
-        "com.apple.Safari",
-        "com.apple.SafariTechnologyPreview",
-        "com.google.Chrome",
-        "com.google.Chrome.canary",
-        "com.microsoft.edgemac",
-        "company.thebrowser.Browser",
-        "org.mozilla.firefox",
-        "com.brave.Browser",
-        "com.vivaldi.Vivaldi",
-        "com.operasoftware.Opera",
-    ]
+    let browserMode: BrowserQueryMode
+
+    init(browserMode: BrowserQueryMode) {
+        self.browserMode = browserMode
+    }
 
     func sample() -> Snapshot? {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
@@ -41,7 +33,8 @@ struct Sampler {
         var documentPath: String?
         var url: String?
 
-        if let window = AX.element(appElement, kAXFocusedWindowAttribute as String) {
+        let window = AX.element(appElement, kAXFocusedWindowAttribute as String)
+        if let window {
             title = AX.string(window, kAXTitleAttribute as String)
 
             if let document = AX.string(window, kAXDocumentAttribute as String) {
@@ -54,10 +47,17 @@ struct Sampler {
                     documentPath = document
                 }
             }
+        }
 
-            if url == nil, Self.browsers.contains(bundleId) {
-                url = AX.webAreaURL(window)
+        if BrowserURL.isBrowser(bundleId) {
+            let reading = BrowserURL.read(bundleId: bundleId, window: window, mode: browserMode)
+            if reading.isPrivate {
+                // Private browsing is never recorded — not the address, not the
+                // page title, which usually names the page just as clearly.
+                return Snapshot(ts: now, app: appName, bundleId: bundleId, title: nil,
+                                documentPath: nil, url: nil, idleSeconds: idle, locked: false)
             }
+            if let found = reading.url { url = found }
         }
 
         return Snapshot(ts: now, app: appName, bundleId: bundleId, title: title,

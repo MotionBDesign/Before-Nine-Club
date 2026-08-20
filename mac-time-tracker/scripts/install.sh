@@ -89,8 +89,19 @@ mkdir -p "$HOME/Library/LaunchAgents"
 
 # Two agents on purpose. The observer must be started by launchd directly, or
 # macOS attributes its Accessibility permission to whatever spawned it.
+# Keep the agent's flags in step with config.json rather than duplicating the
+# default here; fall back if the file is missing or malformed.
+BROWSER_URLS="$(node -e '
+  try {
+    const c = require(process.argv[1]);
+    process.stdout.write(c?.observer?.browserUrls ?? "accessibility");
+  } catch { process.stdout.write("accessibility"); }
+' "$DATA_DIR/config.json" 2>/dev/null || echo accessibility)"
+note "Browser URL mode: $BROWSER_URLS"
+
 sed -e "s|__OBSERVER__|$OBSERVER|g" \
     -e "s|__SPOOL__|$SPOOL|g" \
+    -e "s|__BROWSER_URLS__|$BROWSER_URLS|g" \
     -e "s|__HOME__|$HOME|g" \
     "$REPO/scripts/$OBSERVER_LABEL.plist.template" > "$OBSERVER_PLIST"
 

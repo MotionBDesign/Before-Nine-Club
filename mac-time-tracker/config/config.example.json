@@ -23,7 +23,8 @@
     "mode": "spool",
     "spoolPath": "",
     "binaryPath": "",
-    "pollSeconds": 5
+    "pollSeconds": 5,
+    "browserUrls": "accessibility"
   },
 
   "server": { "port": 7878, "host": "127.0.0.1" },

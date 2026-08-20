@@ -188,6 +188,16 @@ export interface Config {
     /** Empty means observer/.build/release/BNObserver next to the daemon. */
     binaryPath: string;
     pollSeconds: number;
+    /**
+     * How the observer reads browser addresses.
+     * 'accessibility' — no extra permission prompts, but Chromium exposes the
+     *   URL inconsistently and private windows cannot be detected.
+     * 'appleScript' — reliable, and the only mode that recognises an incognito
+     *   window (which is then recorded as nothing at all). Costs one macOS
+     *   Automation prompt per browser.
+     * 'off' — never read browser URLs.
+     */
+    browserUrls: 'accessibility' | 'appleScript' | 'off';
   };
   server: { port: number; host: string };
   review: {

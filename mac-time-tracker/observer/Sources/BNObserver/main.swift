@@ -8,7 +8,12 @@ import Foundation
 /// stdout. It makes no network calls and writes nothing to disk; deciding what
 /// any of it means is the daemon's job.
 ///
-/// Usage: BNObserver [--interval SECONDS] [--out PATH] [--menubar] [--review-url URL]
+/// Usage: BNObserver [--interval SECONDS] [--out PATH] [--browser-urls MODE]
+///                   [--menubar] [--review-url URL]
+///
+/// --browser-urls is one of `accessibility` (default, no extra prompts),
+/// `appleScript` (more reliable, detects incognito, prompts for Automation)
+/// or `off`.
 ///
 /// With `--out` it appends to a spool file, which is how the installed agent
 /// runs: launchd starts it directly so macOS attributes the Accessibility
@@ -19,6 +24,10 @@ struct Options {
     var menuBar = false
     var reviewURL = "http://127.0.0.1:7878/"
     var outputPath: String?
+    /// How to read browser addresses. AppleScript is more reliable and is the
+    /// only mode that can spot an incognito window, but it prompts for
+    /// Automation permission the first time it queries each browser.
+    var browserMode: BrowserQueryMode = .accessibility
 
     static func parse(_ arguments: [String]) -> Options {
         var options = Options()
@@ -38,6 +47,11 @@ struct Options {
             case "--out":
                 index += 1
                 if index < arguments.count { options.outputPath = arguments[index] }
+            case "--browser-urls":
+                index += 1
+                if index < arguments.count, let mode = BrowserQueryMode(rawValue: arguments[index]) {
+                    options.browserMode = mode
+                }
             default:
                 break
             }
@@ -49,7 +63,7 @@ struct Options {
 
 final class Observer: NSObject {
     private let options: Options
-    private let sampler = Sampler()
+    private let sampler: Sampler
     private var timer: Timer?
     private var statusItem: NSStatusItem?
     private var pausedUntil: Date?
@@ -57,6 +71,7 @@ final class Observer: NSObject {
 
     init(options: Options) {
         self.options = options
+        self.sampler = Sampler(browserMode: options.browserMode)
     }
 
     func start() {

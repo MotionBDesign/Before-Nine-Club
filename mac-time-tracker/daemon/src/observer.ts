@@ -60,7 +60,11 @@ export function startObserver(
     }
 
     log.info(`Starting observer: ${binaryPath}`);
-    const proc = spawn(binaryPath, ['--interval', String(config.capture.sampleIntervalSeconds)], {
+    const args = [
+      '--interval', String(config.capture.sampleIntervalSeconds),
+      '--browser-urls', config.observer.browserUrls,
+    ];
+    const proc = spawn(binaryPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     child = proc;

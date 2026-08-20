@@ -17,6 +17,8 @@
     <string>5</string>
     <string>--out</string>
     <string>__SPOOL__</string>
+    <string>--browser-urls</string>
+    <string>__BROWSER_URLS__</string>
   </array>
 
   <key>RunAtLoad</key>
