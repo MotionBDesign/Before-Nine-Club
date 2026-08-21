@@ -119,25 +119,20 @@ fi
 # people never need Xcode. Only a source checkout has to compile.
 BUNDLED=0
 [[ -f "$SOURCE/BUNDLE" ]] && BUNDLED=1
-OBSERVER_KIND="prebuilt"
+SWIFT_AVAILABLE=0
 
 if (( BUNDLED )); then
   note "Installing bundle $(cat "$SOURCE/BUNDLE") from $SOURCE"
 else
-  # /usr/bin/swift always exists on macOS, even with no developer tools: it is
-  # a stub that pops Apple's installer when you invoke it. So `command -v swift`
-  # proves nothing — ask whether the tools are really selected and whether the
-  # compiler genuinely answers.
+  # Swift is an optional upgrade now, never a gate. The compiler produces a
+  # better observer, but the script one works everywhere and needs nothing, so
+  # a Mac without developer tools installs just the same.
   if { xcode-select -p >/dev/null 2>&1 && swift --version >/dev/null 2>&1; }; then
-    OBSERVER_KIND="swift"
-    note "Using $(swift --version 2>/dev/null | head -1)"
+    SWIFT_AVAILABLE=1
+    note "Swift is available: $(swift --version 2>/dev/null | head -1)"
   else
-    # No compiler, no problem: there is a script observer that uses only what
-    # macOS already ships. Slightly less reliable at reading file paths out of
-    # a few apps, but it needs nothing installed and works everywhere.
-    OBSERVER_KIND="script"
-    note "No developer tools here — using the script observer instead."
-    note "Nothing else is needed; file-path matching is a little weaker in some apps."
+    SWIFT_AVAILABLE=0
+    note "No Swift compiler here — the script observer will be used."
   fi
 fi
 
@@ -163,35 +158,55 @@ chmod -R u+rwX "$APP_DIR"
 note "Installed to $APP_DIR"
 
 say "3. Preparing the observer"
+
+# Three routes, best first, and *none* of them fatal. Whatever happens there is
+# always a working observer at the end, because the script one needs no build.
+OBSERVER=""
+OBSERVER_NAME=""
+
+use_script_observer() {
+  local bundle="$APP_DIR/observer-script/MBDObserver.app"
+  [[ -f "$bundle/Contents/MacOS/MBDObserver" ]] || return 1
+  chmod +x "$bundle/Contents/MacOS/MBDObserver"
+  xattr -dr com.apple.quarantine "$bundle" 2>/dev/null || true
+  # An ad-hoc signature gives the bundle a stable identity so the Accessibility
+  # grant survives updates. Best effort; it works unsigned too.
+  codesign --force --deep --sign - "$bundle" >/dev/null 2>&1 || true
+  OBSERVER="$bundle/Contents/MacOS/MBDObserver"
+  OBSERVER_NAME="MBD Observer"
+  return 0
+}
+
 if (( BUNDLED )) && [[ -f "$APP_DIR/observer/BNObserver" ]]; then
   OBSERVER="$APP_DIR/observer/BNObserver"
   chmod +x "$OBSERVER"
-  # Files copied from a network share can carry a quarantine flag; clearing it
-  # avoids a Gatekeeper prompt the first time launchd starts the observer.
   xattr -dr com.apple.quarantine "$OBSERVER" 2>/dev/null || true
   OBSERVER_NAME="BNObserver"
   note "Using the prebuilt observer (nothing to compile)"
-elif [[ "$OBSERVER_KIND" == "swift" ]]; then
-  ( cd "$APP_DIR/observer" && swift build -c release )
-  OBSERVER="$APP_DIR/observer/.build/release/BNObserver"
-  [[ -x "$OBSERVER" ]] || die "Build finished but $OBSERVER is missing."
-  OBSERVER_NAME="BNObserver"
-  note "Built $OBSERVER"
+
+elif (( SWIFT_AVAILABLE )) && [[ "${MBD_TT_BUILD_SWIFT:-}" == "1" ]]; then
+  # Opt-in only. The compiled observer reads file paths from a few more apps,
+  # but compiling is also the only step here that has ever failed, so it is not
+  # on the default path.
+  note "Compiling the observer (MBD_TT_BUILD_SWIFT=1)..."
+  if BUILT="$(bash "$APP_DIR/observer/build.sh" "$APP_DIR/observer/BNObserver" 2>&1 | tail -1)" \
+     && [[ -x "$APP_DIR/observer/BNObserver" ]]; then
+    OBSERVER="$APP_DIR/observer/BNObserver"
+    OBSERVER_NAME="BNObserver"
+    note "Built $OBSERVER"
+  else
+    note "The compile did not work, so the script observer is being used instead."
+    note "Nothing is lost: it does the same job with slightly weaker file-path"
+    note "detection in a few apps."
+    use_script_observer || die "No observer available at all — the package is incomplete."
+  fi
+
 else
-  APP_BUNDLE="$APP_DIR/observer-script/MBDObserver.app"
-  OBSERVER="$APP_BUNDLE/Contents/MacOS/MBDObserver"
-  [[ -f "$OBSERVER" ]] || die "The script observer is missing from this package."
-  chmod +x "$OBSERVER"
-  xattr -dr com.apple.quarantine "$APP_BUNDLE" 2>/dev/null || true
-  # An ad-hoc signature gives the bundle a stable identity, so the Accessibility
-  # grant survives an update instead of silently lapsing. Best effort only —
-  # codesign is not always present, and the grant still works without it.
-  codesign --force --deep --sign - "$APP_BUNDLE" >/dev/null 2>&1 \
-    && note "Signed the observer app locally" \
-    || note "Could not sign the observer app; it will still work."
-  OBSERVER_NAME="MBD Observer"
-  note "Using the script observer at $APP_BUNDLE"
+  use_script_observer || die "No observer available at all — the package is incomplete."
+  note "Using the script observer — no compiler involved."
 fi
+
+[[ -n "$OBSERVER" ]] || die "No observer was prepared."
 
 say "4. Setting up the data directory"
 mkdir -p "$DATA_DIR"

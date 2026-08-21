@@ -27,10 +27,20 @@ if [[ -z "$OBSERVER_BIN" ]]; then
   [[ "$(uname -s)" == "Darwin" ]] || die "The observer can only be built on macOS."
   command -v swift >/dev/null || die "Swift is not available. Install the Xcode command line tools: xcode-select --install"
   say "Building the observer"
-  ( cd "$REPO/observer" && swift build -c release )
+  # swiftc directly, not `swift build`: SwiftPM has to compile Package.swift
+  # against the toolchain's PackageDescription first, and that step fails on
+  # Macs with only the Command Line Tools. Nothing here needs a package manager.
   OBSERVER_BIN="$REPO/observer/.build/release/BNObserver"
+  if ! bash "$REPO/observer/build.sh" "$OBSERVER_BIN" >/dev/null; then
+    note "The observer would not compile on this Mac."
+    note "Staging without it — everyone will use the script observer, which"
+    note "needs no compiler and does the same job."
+    OBSERVER_BIN=""
+  fi
 fi
-[[ -f "$OBSERVER_BIN" ]] || die "Observer binary not found at $OBSERVER_BIN"
+if [[ -n "$OBSERVER_BIN" && ! -f "$OBSERVER_BIN" ]]; then
+  die "Observer binary not found at $OBSERVER_BIN"
+fi
 
 VERSION="$(date +%Y%m%d)-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
 STAGE="$DEST/MBDTimeTracker-$VERSION"
@@ -57,8 +67,14 @@ cp "$REPO/scripts/com.motionbydesign.timetracker.plist.template" "$STAGE/scripts
 cp "$REPO/scripts/com.motionbydesign.timetracker.observer.plist.template" "$STAGE/scripts/"
 cp "$REPO/README.md" "$STAGE/README.md"
 
-cp "$OBSERVER_BIN" "$STAGE/observer/BNObserver"
-chmod +x "$STAGE/observer/BNObserver" "$STAGE/scripts/install.sh"
+if [[ -n "$OBSERVER_BIN" ]]; then
+  cp "$OBSERVER_BIN" "$STAGE/observer/BNObserver"
+  chmod +x "$STAGE/observer/BNObserver"
+  note "Bundled the compiled observer"
+else
+  note "Bundled the script observer only"
+fi
+chmod +x "$STAGE/scripts/install.sh"
 
 # The marker file is what switches install.sh into bundle mode.
 echo "$VERSION" > "$STAGE/BUNDLE"
