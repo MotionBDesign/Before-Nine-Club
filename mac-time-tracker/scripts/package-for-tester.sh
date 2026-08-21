@@ -11,13 +11,26 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-$HOME/Desktop}"
+
+# --with-node embeds the Node runtime so the install needs no internet and no
+# prerequisites at all. Without it the installer fetches Node itself, which
+# keeps the zip about 50 MB smaller.
+WITH_NODE=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --with-node) WITH_NODE=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+OUT="${ARGS[0]:-$HOME/Desktop}"
 VERSION="$(date +%Y%m%d)-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
 NAME="MBD-TimeTracker-$VERSION"
 STAGE="$(mktemp -d)/$NAME"
 
 say()  { printf '\n\033[1m%s\033[0m\n' "$*"; }
 note() { printf '  %s\n' "$*"; }
+die()  { printf '\n\033[31mError:\033[0m %s\n\n' "$*" >&2; exit 1; }
 
 say "Packaging $VERSION"
 mkdir -p "$STAGE/app"
@@ -79,18 +92,14 @@ It never sends anything anywhere on its own.
 
 Before you start
 ----------------
-You need two things on this Mac. Check by opening Terminal
-(Applications > Utilities > Terminal) and pasting each line:
+Nothing. The installer sorts out what it needs.
 
-    node -v
+It downloads a small runtime the first time (about 50 MB) unless that was
+included in this package, so be on the internet when you run it.
 
-    Should print v22.18 or higher. If it says "command not found",
-    install Node from https://nodejs.org (the LTS button).
-
-    swift --version
-
-    Should print a version. If it offers to install developer tools,
-    say yes and wait for it to finish (it is a large download).
+One exception: if Dom has not yet built this for the studio, the installer
+will ask you to run a one-off Apple developer tools install and say so
+clearly. If that happens, tell him rather than working through it.
 
 
 Installing
@@ -150,6 +159,22 @@ That stops it and removes it from login. Your recorded time stays on disk
 until you delete it yourself.
 INNER
 
+if (( WITH_NODE )); then
+  NODE_VERSION="v22.23.2"
+  mkdir -p "$STAGE/app/runtime"
+  for arch in darwin-arm64 darwin-x64; do
+    tarball="node-$NODE_VERSION-$arch.tar.gz"
+    say "Fetching Node for $arch"
+    curl -fL --progress-bar -o "$STAGE/app/runtime/$tarball" \
+      "https://nodejs.org/dist/$NODE_VERSION/$tarball" || die "Could not download $tarball"
+    expected="$(curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/SHASUMS256.txt" | awk -v f="$tarball" '$2 == f { print $1 }')"
+    actual="$(shasum -a 256 "$STAGE/app/runtime/$tarball" | awk '{ print $1 }')"
+    [[ "$actual" == "$expected" ]] || die "$tarball did not match its published checksum"
+    note "$tarball verified"
+  done
+  note "Both Apple Silicon and Intel are covered; the installer picks the right one."
+fi
+
 say "Zipping"
 ( cd "$(dirname "$STAGE")" && zip -qr "$OUT/$NAME.zip" "$NAME" )
 rm -rf "$(dirname "$STAGE")"
@@ -157,3 +182,9 @@ rm -rf "$(dirname "$STAGE")"
 note "Wrote $OUT/$NAME.zip"
 note ""
 note "Send that to whoever is testing. They double-click Install.command."
+if (( WITH_NODE )); then
+  note "Node is included, so the install needs nothing else and works offline."
+else
+  note "Node is not included; the installer downloads it if the Mac lacks it."
+  note "Use --with-node for a package that needs no internet at all."
+fi

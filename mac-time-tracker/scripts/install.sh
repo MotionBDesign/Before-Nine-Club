@@ -43,17 +43,77 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 fi
 
 [[ "$(uname -s)" == "Darwin" ]] || die "This tracker only runs on macOS."
+mkdir -p "$DATA_DIR"
+chmod 700 "$DATA_DIR"
 
 say "1. Checking prerequisites"
 
-command -v node >/dev/null || die "Node is not installed. Install Node 22.18 or newer (brew install node)."
-NODE_BIN="$(command -v node)"
-NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-NODE_MINOR="$(node -p 'process.versions.node.split(".")[1]')"
-if (( NODE_MAJOR < 22 || (NODE_MAJOR == 22 && NODE_MINOR < 18) )); then
-  die "Node $(node -v) is too old. The daemon runs TypeScript directly, which needs 22.18 or newer."
+# Node is what runs the tracker itself. Rather than making every person
+# install it, fetch a private copy into our own data directory when the Mac
+# does not already have a new enough one. Nothing system-wide is touched, no
+# admin password is needed, and uninstalling is a matter of deleting a folder.
+NODE_VERSION="v22.23.2"
+NODE_HOME="$DATA_DIR/runtime/node-$NODE_VERSION"
+
+node_is_recent_enough() {
+  local candidate="$1"
+  [[ -x "$candidate" ]] || return 1
+  local major minor
+  major="$("$candidate" -p 'process.versions.node.split(".")[0]' 2>/dev/null)" || return 1
+  minor="$("$candidate" -p 'process.versions.node.split(".")[1]' 2>/dev/null)" || return 1
+  (( major > 22 || (major == 22 && minor >= 18) ))
+}
+
+install_private_node() {
+  local arch tarball url expected actual staging
+  case "$(uname -m)" in
+    arm64) arch="darwin-arm64" ;;
+    x86_64) arch="darwin-x64" ;;
+    *) die "Unsupported processor: $(uname -m)" ;;
+  esac
+  tarball="node-$NODE_VERSION-$arch.tar.gz"
+  staging="$(mktemp -d)"
+
+  # An offline copy shipped inside the package wins; otherwise fetch it.
+  if [[ -f "$REPO/runtime/$tarball" ]]; then
+    note "Using the copy of Node included in this package."
+    cp "$REPO/runtime/$tarball" "$staging/$tarball"
+  else
+    url="https://nodejs.org/dist/$NODE_VERSION/$tarball"
+    note "Downloading Node $NODE_VERSION (about 50 MB, one time)..."
+    curl -fL --progress-bar -o "$staging/$tarball" "$url" \
+      || die "Could not download Node. Check the internet connection and try again."
+
+    # Verify against the published checksum before running any of it.
+    expected="$(curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/SHASUMS256.txt" 2>/dev/null | awk -v f="$tarball" '$2 == f { print $1 }')"
+    if [[ -n "$expected" ]]; then
+      actual="$(shasum -a 256 "$staging/$tarball" | awk '{ print $1 }')"
+      [[ "$actual" == "$expected" ]] || die "The downloaded Node did not match its published checksum. Nothing was installed."
+      note "Checksum verified."
+    else
+      note "Could not fetch the checksum list; continuing without verification."
+    fi
+  fi
+
+  mkdir -p "$NODE_HOME"
+  tar -xzf "$staging/$tarball" -C "$NODE_HOME" --strip-components=1 \
+    || die "Could not unpack Node."
+  rm -rf "$staging"
+}
+
+NODE_BIN=""
+if node_is_recent_enough "$(command -v node 2>/dev/null || true)"; then
+  NODE_BIN="$(command -v node)"
+  note "Using the Node already on this Mac: $("$NODE_BIN" -v)"
+elif node_is_recent_enough "$NODE_HOME/bin/node"; then
+  NODE_BIN="$NODE_HOME/bin/node"
+  note "Using the private copy of Node from a previous install."
+else
+  install_private_node
+  NODE_BIN="$NODE_HOME/bin/node"
+  node_is_recent_enough "$NODE_BIN" || die "The Node install did not work. Tell Dom what this printed."
+  note "Installed Node $("$NODE_BIN" -v) just for the tracker."
 fi
-note "Node $(node -v) at $NODE_BIN"
 
 # A staged bundle from the file server carries a prebuilt observer, so most
 # people never need Xcode. Only a source checkout has to compile.
@@ -63,7 +123,20 @@ BUNDLED=0
 if (( BUNDLED )); then
   note "Installing bundle $(cat "$SOURCE/BUNDLE") from $SOURCE"
 else
-  command -v swift >/dev/null || die "Swift is not available. Install the Xcode command line tools: xcode-select --install"
+  if ! command -v swift >/dev/null; then
+    printf '\n'
+    note "This package has no prebuilt helper, so it has to be compiled here,"
+    note "which needs Apple's developer tools."
+    note ""
+    note "Run this, let it finish (it is a big download), then run the"
+    note "installer again:"
+    note ""
+    note "    xcode-select --install"
+    note ""
+    note "Only one Mac ever needs to do this — once Dom has built it, everyone"
+    note "else installs a ready-made copy with no developer tools at all."
+    die "Developer tools are not installed yet."
+  fi
   note "Swift $(swift --version 2>/dev/null | head -1)"
 fi
 
@@ -107,7 +180,7 @@ fi
 say "4. Setting up the data directory"
 mkdir -p "$DATA_DIR"
 chmod 700 "$DATA_DIR"
-node "$REPO/daemon/src/cli.ts" init
+"$NODE_BIN" "$REPO/daemon/src/cli.ts" init
 
 say "5. ClickUp token"
 if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/dev/null 2>&1; then
@@ -137,19 +210,29 @@ fi
 
 say "6. Caching your ClickUp workspace"
 if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/dev/null 2>&1; then
-  node "$REPO/daemon/src/cli.ts" catalog || note "Catalog refresh failed; run it again after editing config.json."
+  "$NODE_BIN" "$REPO/daemon/src/cli.ts" catalog || note "Catalog refresh failed; run it again after editing config.json."
 else
   note "No token, skipping."
 fi
 
-say "7. Installing the launch agents"
+say "7. Adding a launcher"
+cat > "$DATA_DIR/tracker" <<LAUNCHER
+#!/bin/bash
+# Runs the tracker's commands with whichever Node the installer settled on,
+# so none of them depend on Node being on the PATH.
+exec "$NODE_BIN" "$REPO/daemon/src/cli.ts" "\$@"
+LAUNCHER
+chmod +x "$DATA_DIR/tracker"
+note "Created $DATA_DIR/tracker"
+
+say "8. Installing the launch agents"
 mkdir -p "$HOME/Library/LaunchAgents"
 
 # Two agents on purpose. The observer must be started by launchd directly, or
 # macOS attributes its Accessibility permission to whatever spawned it.
 # Keep the agent's flags in step with config.json rather than duplicating the
 # default here; fall back if the file is missing or malformed.
-BROWSER_URLS="$(node -e '
+BROWSER_URLS="$("$NODE_BIN" -e '
   try {
     const c = require(process.argv[1]);
     process.stdout.write(c?.observer?.browserUrls ?? "accessibility");
@@ -192,8 +275,9 @@ cat <<NEXT
 
   Everyday commands:
     open http://127.0.0.1:7878/            review and approve the day
-    node daemon/src/cli.ts report          same thing in the terminal
-    node daemon/src/cli.ts doctor          check the setup
+    "$DATA_DIR/tracker" report             same thing in the terminal
+    "$DATA_DIR/tracker" doctor             check the setup
+    "$DATA_DIR/tracker" probe              see what each app reports
     ./scripts/install.sh --uninstall       stop tracking
 
   Until that permission is granted the tracker still records which app is in

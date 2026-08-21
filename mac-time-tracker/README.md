@@ -56,9 +56,20 @@ into the block around them rather than becoming their own line.
 ## Requirements
 
 - macOS 13 or newer
-- Node 22.18+ (`brew install node`) — the daemon runs TypeScript directly, no build step
-- Xcode command line tools (`xcode-select --install`) for the Swift observer
 - A ClickUp personal API token (ClickUp → Settings → Apps → API Token)
+
+That is the whole list for the people using it. The installer provisions its
+own Node runtime — a private copy under the data directory, checksum-verified
+against nodejs.org, touching nothing system-wide and needing no admin
+password. If the Mac already has Node 22.18 or newer, that one is used
+instead. `package-for-tester.sh --with-node` embeds the runtime for an install
+that needs no internet at all.
+
+**Xcode command line tools are needed on exactly one Mac** — whichever builds
+the Swift observer. Everyone else installs a staged bundle carrying the
+prebuilt binary and never sees a compiler. Build once with
+`stage-release.sh`, and the rest of the studio installs in a couple of
+minutes.
 
 No npm dependencies at runtime. `@types/node` and `typescript` are dev-only.
 
