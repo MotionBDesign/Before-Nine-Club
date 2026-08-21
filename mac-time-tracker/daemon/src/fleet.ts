@@ -6,6 +6,7 @@ import { expandHome, paths, writeJsonAtomic } from './paths.ts';
 import { installedVersion } from './update.ts';
 import { loadDay, localDate } from './store.ts';
 import { log } from './log.ts';
+import { readMemory, DAEMON_RSS_WARN_MB, OBSERVER_RSS_WARN_MB, type MemoryReading } from './health.ts';
 
 /**
  * A one-file-per-Mac health report on the file server, so whoever looks after
@@ -32,6 +33,14 @@ export interface FleetStatus {
   catalogTasks: number;
   today: { date: string; loggedMinutes: number; billableMinutes: number; pendingMinutes: number; syncedMinutes: number };
   targets: { dailyMinutes: number; billableMinutes: number };
+  /**
+   * Resident memory for both long-lived processes. One reading means little;
+   * a week of reports climbing on the same Mac is what would show a leak, and
+   * across the studio it separates "this software leaks" from "that Mac".
+   *
+   * Optional: a status file written by an older tracker will not have it.
+   */
+  memory?: MemoryReading;
   lastError: string | null;
 }
 
@@ -104,6 +113,7 @@ export function buildStatus(
       syncedMinutes: minutes((e) => e.status === 'synced'),
     },
     targets: { ...config.targets },
+    memory: readMemory(),
     lastError: context.lastError,
   };
 }
@@ -161,6 +171,17 @@ export function assess(status: FleetStatus, now = Date.now()): { verdict: FleetV
   }
   if (status.catalogTasks === 0) {
     return { verdict: 'attention', note: 'task catalog is empty' };
+  }
+  // Deliberately below lastError: a tracker eating memory still works, but
+  // left alone for a fortnight it will not.
+  const memory = status.memory;
+  if (memory) {
+    if (memory.daemonMB > DAEMON_RSS_WARN_MB) {
+      return { verdict: 'attention', note: `daemon is using ${memory.daemonMB}MB — restart it and tell whoever maintains this` };
+    }
+    if (memory.observerMB !== null && memory.observerMB > OBSERVER_RSS_WARN_MB) {
+      return { verdict: 'attention', note: `observer is using ${memory.observerMB}MB — restart it and tell whoever maintains this` };
+    }
   }
   if (status.lastError) {
     return { verdict: 'attention', note: status.lastError };

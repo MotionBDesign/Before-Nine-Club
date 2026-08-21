@@ -28,7 +28,10 @@ export const defaultConfig: Config = {
     dayEndHour: 19,
   },
   display: { timezone: '' },
-  observer: { mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5, browserUrls: 'accessibility' },
+  observer: {
+    mode: 'spool', spoolPath: '', binaryPath: '', pollSeconds: 5,
+    browserUrls: 'accessibility', recycleMinutes: 120,
+  },
   server: { port: 7878, host: '127.0.0.1' },
   review: { notifyHours: [13, 17], rebuildEveryMinutes: 10 },
   // 6.5 hours: the studio's daily minimum, billable-first.

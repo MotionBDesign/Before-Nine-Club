@@ -26,10 +26,16 @@ export function defaultObserverPath(configured = ''): string {
   if (configured) return configured;
   if (process.env.MBD_TT_OBSERVER) return process.env.MBD_TT_OBSERVER;
 
-  const root = path.resolve(here, '..', '..', 'observer');
+  const app = path.resolve(here, '..', '..');
+  const root = path.join(app, 'observer');
   const bundled = path.join(root, 'BNObserver');
+  // What install.sh builds on a Mac with no developer tools, which is most of
+  // them. It is the default observer, not a fallback, so it is looked for
+  // before the compiled one it would only rarely be replaced by.
+  const applet = path.join(app, 'MBD Time Tracker.app', 'Contents', 'MacOS', 'applet');
   const built = path.join(root, '.build', 'release', 'BNObserver');
   if (fs.existsSync(bundled)) return bundled;
+  if (fs.existsSync(applet)) return applet;
   return built;
 }
 

@@ -417,7 +417,11 @@ var PREVIEW = (function () {
           spoolPath: '~/Library/Application Support/MBDTimeTracker/observer.ndjson'
         },
         accessibility: 'granted',
-        apps: apps
+        apps: apps,
+        memory: {
+          daemonMB: 74.2, observerMB: 21.6, observerPid: 4210,
+          observerName: 'MBD Time Tracker.app', daemonWarnMB: 300, observerWarnMB: 250
+        }
       };
     }
 

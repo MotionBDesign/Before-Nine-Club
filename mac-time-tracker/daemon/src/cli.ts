@@ -16,6 +16,7 @@ import { openUrl } from './notify.ts';
 import { LOW_CONFIDENCE } from './matcher.ts';
 import { applyUpdate, checkForUpdate, installedVersion } from './update.ts';
 import { assess, readFleet } from './fleet.ts';
+import { readMemory, DAEMON_RSS_WARN_MB } from './health.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
@@ -89,7 +90,7 @@ async function doctor(): Promise<void> {
     ? `Observer binary: ${observer}`
     : fs.existsSync(path.join(repoRoot, 'BUNDLE'))
       ? `Observer missing from this bundle at ${observer}. Re-run scripts/install.sh from the server folder.`
-      : `Observer not built. Run: (cd ${path.join(repoRoot, 'observer')} && swift build -c release)`]);
+      : `No observer at ${observer}. Re-run scripts/install.sh, which builds "MBD Time Tracker.app" with osacompile.`]);
 
   if (runtime.config.observer.mode === 'spool') {
     const spool = runtime.config.observer.spoolPath || paths.spool();
@@ -125,6 +126,19 @@ async function doctor(): Promise<void> {
   results.push([catalog.tasks.length > 0, catalog.tasks.length > 0
     ? `Catalog: ${catalog.tasks.length} tasks, ${catalog.folders.length} client folders (fetched ${new Date(catalog.fetchedAt).toLocaleString()})`
     : 'Catalog empty - run `node src/cli.ts catalog`.']);
+
+  const memory = readMemory();
+  results.push([
+    memory.observerMB !== null,
+    memory.observerMB === null
+      ? 'Observer process not found — it is not running, so nothing is being recorded.'
+      : `Observer running as "${memory.observerName}" (pid ${memory.observerPid}), using ${memory.observerMB}MB.`,
+  ]);
+  results.push([
+    memory.daemonMB < DAEMON_RSS_WARN_MB,
+    `This process is using ${memory.daemonMB}MB` +
+      (memory.daemonMB < DAEMON_RSS_WARN_MB ? '' : ` — over the ${DAEMON_RSS_WARN_MB}MB it should ever need; please report it.`),
+  ]);
 
   const roots = runtime.config.projectRoots;
   if (roots.length === 0) {
@@ -206,7 +220,10 @@ function fleet(runtime: Runtime): void {
     const version = (status.version ?? 'unknown').padEnd(18);
     const today = `${(status.today.loggedMinutes / 60).toFixed(1)}h logged`;
     const target = `${(status.targets.dailyMinutes / 60).toFixed(1)}h`;
-    console.log(`  ${badge[verdict]}  ${who} ${dim(version)} ${today} / ${target}   ${dim(ago(status.reportedAt))}`);
+    const memory = status.memory
+      ? dim(`  ${status.memory.daemonMB}MB + ${status.memory.observerMB ?? '-'}MB`)
+      : '';
+    console.log(`  ${badge[verdict]}  ${who} ${dim(version)} ${today} / ${target}   ${dim(ago(status.reportedAt))}${memory}`);
     if (note) console.log(`            ${amber(note)}`);
   }
 

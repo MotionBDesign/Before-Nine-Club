@@ -47,6 +47,14 @@ function looksLikeSnapshot(value: unknown): value is Snapshot {
 /** Roughly a fortnight of samples; far past this the daemon is not running. */
 const DEFAULT_MAX_SPOOL_BYTES = 64 * 1024 * 1024;
 
+/**
+ * The most one poll will read. Catching up after an outage otherwise means
+ * allocating the whole backlog as a Buffer *and* as a string at once — tens of
+ * megabytes in a process that normally sits in single digits. Polling again in
+ * a few seconds costs nothing and keeps the ceiling flat.
+ */
+const MAX_READ_PER_DRAIN = 4 * 1024 * 1024;
+
 export function startSpoolReader(
   file: string,
   config: Config,
@@ -111,7 +119,7 @@ export function startSpoolReader(
     let handle: number | undefined;
     try {
       handle = fs.openSync(file, 'r');
-      const length = stat.size - offset;
+      const length = Math.min(stat.size - offset, MAX_READ_PER_DRAIN);
       const buffer = Buffer.alloc(length);
       const read = fs.readSync(handle, buffer, 0, length, offset);
       chunk = buffer.subarray(0, read).toString('utf8');
@@ -126,6 +134,14 @@ export function startSpoolReader(
     const text = partial + chunk;
     const lastBreak = text.lastIndexOf('\n');
     if (lastBreak === -1) {
+      // No newline in a whole read: either the observer is mid-line (a few
+      // hundred bytes, normal) or something is writing a line that will never
+      // end. Holding on to the latter would grow without limit.
+      if (text.length > MAX_READ_PER_DRAIN) {
+        log.error('Observer spool line exceeded the read limit; discarding it.');
+        partial = '';
+        return 0;
+      }
       partial = text;
       return 0;
     }

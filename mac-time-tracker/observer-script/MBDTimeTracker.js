@@ -10,6 +10,7 @@
 // must match Snapshot in daemon/src/types.ts exactly.
 
 ObjC.import('Foundation');
+ObjC.import('stdlib');
 
 var app = Application.currentApplication();
 app.includeStandardAdditions = true;
@@ -18,6 +19,20 @@ var HOME = ObjC.unwrap($.NSHomeDirectory());
 var DATA_DIR = HOME + '/Library/Application Support/MBDTimeTracker';
 var SPOOL = DATA_DIR + '/observer.ndjson';
 var INTERVAL = 5;
+/**
+ * Quit and let launchd start a fresh copy every so often.
+ *
+ * This process is meant to live for weeks. AppleScript's runtime was not
+ * written for that: every tick builds Apple Event descriptors and ObjC objects
+ * whose autorelease pool an applet's idle handler never reliably drains, so
+ * memory creeps rather than settles. Rather than chase that inside a runtime
+ * with no way to measure it, the process is simply short-lived. Restarting
+ * costs nothing -- KeepAlive brings it straight back, ThrottleInterval does
+ * not apply to a job that ran for hours, and the Accessibility grant belongs
+ * to the bundle, not the process, so nothing is re-prompted.
+ */
+var RECYCLE_MINUTES = 120;
+var startedAt = Date.now();
 
 /** Chromium and its rebadges all share one AppleScript dictionary. */
 var CHROMIUM = [
@@ -73,6 +88,9 @@ function loadSettings() {
     }
     if (config.observer && config.observer.spoolPath) {
       SPOOL = config.observer.spoolPath;
+    }
+    if (config.observer && config.observer.recycleMinutes > 0) {
+      RECYCLE_MINUTES = config.observer.recycleMinutes;
     }
   } catch (e) {
     // Defaults are fine; never let a malformed config stop tracking.
@@ -169,6 +187,7 @@ function sample() {
 function run() {
   loadSettings();
   ensureDataDir();
+  startedAt = Date.now();
 }
 
 /** Called by the applet runtime; the return value is seconds until next call. */
@@ -180,6 +199,13 @@ function idle() {
       appendLine(JSON.stringify({ error: String(e) }));
     } catch (ignored) {}
   }
+
+  if (RECYCLE_MINUTES > 0 && Date.now() - startedAt > RECYCLE_MINUTES * 60000) {
+    // Exit non-zero: KeepAlive is set to restart on any exit, but a failure
+    // code also means a launchd configured the old way still brings it back.
+    $.exit(1);
+  }
+
   return INTERVAL;
 }
 

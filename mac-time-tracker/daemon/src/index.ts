@@ -13,6 +13,7 @@ import { applyUpdate, checkForUpdate, confirmInstalled } from './update.ts';
 import { buildStatus, reportStatus } from './fleet.ts';
 import { validateConfig, validateRules } from './validate.ts';
 import { log } from './log.ts';
+import { readMemory, DAEMON_RSS_WARN_MB, OBSERVER_RSS_WARN_MB } from './health.ts';
 
 const MINUTE = 60_000;
 
@@ -181,6 +182,32 @@ async function main(): Promise<void> {
     }
   }
 
+  /**
+   * Both halves of the tracker are meant to run for weeks. Print a reading
+   * every hour so the log itself is the evidence for whether memory creeps,
+   * and say something once when either side goes past what it should ever
+   * need — nobody watches Activity Monitor for a background agent.
+   */
+  let memoryWarned = false;
+  function checkMemory(): void {
+    const memory = readMemory();
+    log.info(
+      `Memory: daemon ${memory.daemonMB}MB, observer ` +
+      (memory.observerMB === null ? 'not found' : `${memory.observerMB}MB (${memory.observerName})`),
+    );
+    const over = memory.daemonMB > DAEMON_RSS_WARN_MB ||
+      (memory.observerMB !== null && memory.observerMB > OBSERVER_RSS_WARN_MB);
+    if (over && !memoryWarned) {
+      memoryWarned = true;
+      lastError = `high memory: daemon ${memory.daemonMB}MB, observer ${memory.observerMB ?? '-'}MB`;
+      log.error(`${lastError} — please report this.`);
+    } else if (!over) {
+      memoryWarned = false;
+    }
+  }
+  const memoryTimer = setInterval(checkMemory, 60 * MINUTE);
+  checkMemory();
+
   const fleetTimer = setInterval(publishStatus, Math.max(5, config.fleet.reportEveryMinutes) * MINUTE);
   const updateTimer = setInterval(checkUpdates, Math.max(1, config.update.checkEveryHours) * 60 * MINUTE);
 
@@ -208,6 +235,7 @@ async function main(): Promise<void> {
     clearInterval(tickTimer);
     clearInterval(fleetTimer);
     clearInterval(updateTimer);
+    clearInterval(memoryTimer);
     source.stop();
     rebuildToday();
     lock.release();

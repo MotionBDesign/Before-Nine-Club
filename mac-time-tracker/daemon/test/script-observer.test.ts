@@ -39,6 +39,7 @@ interface Harness {
   shellCommands: string[];
   appsAsked: string[];
   spoolPath: () => string;
+  exits: number[];
 }
 
 function load(stubs: Stubs = {}): Harness {
@@ -64,7 +65,9 @@ function load(stubs: Stubs = {}): Harness {
     },
   };
 
+  const exits: number[] = [];
   const dollar: any = () => null;
+  dollar.exit = (code: number) => { exits.push(code); };
   dollar.NSUTF8StringEncoding = 4;
   dollar.NSHomeDirectory = () => objcString('/Users/tester');
   dollar.NSFileManager = { defaultManager: fileManager };
@@ -174,6 +177,7 @@ function load(stubs: Stubs = {}): Harness {
     lines,
     shellCommands,
     appsAsked,
+    exits,
     spoolPath: () => spool,
     snapshot: () => {
       handlers.run();
@@ -296,6 +300,38 @@ describe('script observer applet', () => {
     observer.run();
     assert.equal(observer.idle(), 5);
     assert.ok(observer.spoolPath().endsWith('/MBDTimeTracker/observer.ndjson'));
+  });
+
+  it('quits after its recycle window so launchd starts a fresh process', () => {
+    // The applet is meant to run for weeks; AppleScript's runtime is not. It
+    // is cheaper to be short-lived than to chase allocations inside a runtime
+    // that offers no way to measure them.
+    const observer = load({
+      front: { name: 'Finder', bundleId: 'com.apple.finder' },
+      config: { observer: { recycleMinutes: 0.0001 } },  // 6ms
+    });
+    observer.run();
+    observer.idle();
+    assert.deepEqual(observer.exits, [], 'it quit on the very first tick');
+
+    const slept = Date.now() + 15;
+    while (Date.now() < slept) { /* the window is milliseconds; just wait it out */ }
+    observer.idle();
+    // Non-zero, so a launch agent still configured with SuccessfulExit:false
+    // brings it back rather than treating the recycle as a clean stop.
+    assert.deepEqual(observer.exits, [1]);
+    // And the sample for that tick was written before quitting.
+    assert.equal(observer.lines.length, 2);
+  });
+
+  it('never recycles when the config turns it off', () => {
+    const observer = load({
+      front: { name: 'Finder', bundleId: 'com.apple.finder' },
+      config: { observer: { recycleMinutes: 0 } },
+    });
+    observer.run();
+    for (let i = 0; i < 5; i++) observer.idle();
+    assert.deepEqual(observer.exits, []);
   });
 
   it('produces snapshots the segmenter accepts', async () => {

@@ -229,6 +229,13 @@ export interface Config {
      * 'off' — never read browser URLs.
      */
     browserUrls: 'accessibility' | 'appleScript' | 'off';
+    /**
+     * How long the script observer runs before quitting so launchd starts a
+     * fresh copy. AppleScript's runtime was not built to live for weeks, and
+     * a short-lived process is a cheaper answer than chasing its allocations.
+     * 0 disables the recycle. Ignored by the compiled observer.
+     */
+    recycleMinutes: number;
   };
   server: { port: number; host: string };
   review: {

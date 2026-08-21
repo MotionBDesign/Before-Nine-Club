@@ -25,11 +25,15 @@
   <key>RunAtLoad</key>
   <true/>
 
+  <!--
+    Always restart. The applet observer deliberately quits every couple of
+    hours so a fresh process replaces it -- AppleScript's runtime is not built
+    to live for weeks -- and with SuccessfulExit:false a clean quit would have
+    ended tracking until the next login. ThrottleInterval below still bounds a
+    genuine crash loop.
+  -->
   <key>KeepAlive</key>
-  <dict>
-    <key>SuccessfulExit</key>
-    <false/>
-  </dict>
+  <true/>
 
   <key>ThrottleInterval</key>
   <integer>30</integer>

@@ -928,6 +928,20 @@ const HTML = `<!doctype html>
     return '<span class="tk-pill no">never</span>';
   }
 
+  /**
+   * Both halves of the tracker run for weeks between logins, so the number
+   * worth watching is whether this creeps up day after day — not what it says
+   * on any one afternoon.
+   */
+  function memoryStat(m) {
+    if (!m) return '';
+    var over = m.daemonMB > m.daemonWarnMB || (m.observerMB !== null && m.observerMB > m.observerWarnMB);
+    var observer = m.observerMB === null ? 'not running' : m.observerMB + ' MB';
+    return '<div><span class="k">Memory</span><span class="v"' +
+      (over ? ' style="color:var(--bad)"' : '') + '>' + m.daemonMB + ' MB</span>' +
+      '<span class="k" style="text-transform:none;letter-spacing:0">observer ' + esc(observer) + '</span></div>';
+  }
+
   function renderTracking() {
     var el = document.getElementById('trackview');
     var t = state.tracking;
@@ -965,6 +979,7 @@ const HTML = `<!doctype html>
         '<div><span class="k">Samples</span><span class="v">' + t.observer.totalSamples + '</span></div>' +
         '<div><span class="k">Apps seen</span><span class="v">' + t.apps.length + '</span></div>' +
         '<div><span class="k">Sampling every</span><span class="v">' + t.sampleIntervalSeconds + 's</span></div>' +
+        memoryStat(t.memory) +
       '</div>';
 
     var rows = t.apps.map(function (a) {

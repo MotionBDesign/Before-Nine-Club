@@ -7,6 +7,7 @@ import { pushApproved } from './sync.ts';
 import { renderPage } from './ui.ts';
 import { log } from './log.ts';
 import { paths } from './paths.ts';
+import { readMemory, DAEMON_RSS_WARN_MB, OBSERVER_RSS_WARN_MB } from './health.ts';
 
 export interface Runtime {
   config: Config;
@@ -190,6 +191,7 @@ function tracking(date: string, config: Config) {
     },
     accessibility,
     apps,
+    memory: { ...readMemory(), daemonWarnMB: DAEMON_RSS_WARN_MB, observerWarnMB: OBSERVER_RSS_WARN_MB },
   };
 }
 
