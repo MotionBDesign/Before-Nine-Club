@@ -263,6 +263,57 @@ async function main(): Promise<void> {
       if (result.failures.length > 0) process.exitCode = 1;
       return;
     }
+    case 'probe': {
+      // The honest answer to "does it work in <app>?" is to look. Switch
+      // between apps while this runs and watch what each one gives up.
+      const runtime = new Runtime();
+      const spool = runtime.config.observer.spoolPath || paths.spool();
+      const seconds = Number(arg) > 0 ? Number(arg) : 60;
+      console.log(`\n  Watching ${spool} for ${seconds}s.`);
+      console.log('  Switch between apps and open a document in each.\n');
+      console.log(`  ${'APP'.padEnd(22)}${'FILE PATH'.padEnd(30)}TITLE`);
+      console.log(`  ${'-'.repeat(72)}`);
+
+      const seen = new Set<string>();
+      const started = Date.now();
+      let offset = 0;
+      try {
+        offset = fs.statSync(spool).size;
+      } catch {
+        console.error('  No spool yet — is the observer agent running?\n');
+        return;
+      }
+
+      while (Date.now() - started < seconds * 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        let chunk = '';
+        try {
+          const stat = fs.statSync(spool);
+          if (stat.size <= offset) continue;
+          const handle = fs.openSync(spool, 'r');
+          const buffer = Buffer.alloc(stat.size - offset);
+          fs.readSync(handle, buffer, 0, buffer.length, offset);
+          fs.closeSync(handle);
+          offset = stat.size;
+          chunk = buffer.toString('utf8');
+        } catch {
+          continue;
+        }
+        for (const line of chunk.split('\n')) {
+          if (!line.trim()) continue;
+          let snap: { app?: string; documentPath?: string | null; url?: string | null; title?: string | null };
+          try { snap = JSON.parse(line); } catch { continue; }
+          const key = `${snap.app}|${snap.documentPath ?? snap.url ?? ''}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const where = snap.documentPath ?? snap.url ?? dim('(none)');
+          const title = snap.title ?? dim('(none)');
+          console.log(`  ${String(snap.app ?? '?').slice(0, 21).padEnd(22)}${String(where).slice(0, 29).padEnd(30)}${String(title).slice(0, 40)}`);
+        }
+      }
+      console.log(`\n  Apps with a file path or URL will match best. Title-only still works\n  via the filename; app-only needs a rule or a manual entry.\n`);
+      return;
+    }
     case 'fleet': {
       fleet(new Runtime());
       return;
@@ -307,6 +358,8 @@ async function main(): Promise<void> {
     version       Show which bundle is installed
     update        Check the server for a newer bundle (--apply to install)
     fleet         Show every Mac's tracker health from the shared status folder
+    probe [secs]  Watch what each app actually reports — the way to check
+                  whether Resolve, Photoshop or Figma give up a file path
 `);
   }
 }

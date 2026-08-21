@@ -206,6 +206,13 @@ const HTML = `<!doctype html>
   }
   .tl-empty { color: var(--muted); font-size: 12px; padding: 20px 4px; text-align: center; }
   .tl-note { margin-top: 9px; font-size: 11px; color: var(--warn); }
+  /* Dragging on empty grid draws a new block; the grid says so on hover. */
+  .tl-grid { cursor: crosshair; }
+  .tl-draft {
+    position: absolute; left: 6px; right: 4px; border-radius: 7px; pointer-events: none;
+    background: var(--accent); opacity: 0.55; border: 1px dashed #fff;
+    color: #fff; font-size: 11px; padding: 3px 7px;
+  }
 
   /* ------------------------------------------------------------ entries -- */
   .ent-list { display: flex; flex-direction: column; gap: 10px; }
@@ -335,6 +342,7 @@ const HTML = `<!doctype html>
       <button data-view="week" aria-pressed="false">Week</button>
     </span>
     <span id="catalog" class="chip"></span>
+    <button class="btn" id="addEntry">+ Add entry</button>
     <button class="btn" id="rebuild">Rebuild</button>
     <button class="btn" id="approveAll">Approve all matched</button>
     <button class="btn primary" id="push">Push to ClickUp</button>
@@ -356,7 +364,7 @@ const HTML = `<!doctype html>
 (function () {
   var state = {
     date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null,
-    display: { timezone: '', dayStartHour: 7, dayEndHour: 19 },
+    display: { timezone: '', dayStartHour: 7, dayEndHour: 19, snapMinutes: 15, minEntryMinutes: 15 },
     window: { from: 7, to: 19, stretched: false }
   };
 
@@ -500,7 +508,10 @@ const HTML = `<!doctype html>
 
   /* ----------------------------------------------------------- timeline -- */
   var PX_PER_HOUR = 58;
-  var SNAP_MIN = 5;
+  /** Grain of the whole interface — set by capture.roundToMinutes. */
+  function snapMin() { return state.display.snapMinutes || 15; }
+  function minMin() { return state.display.minEntryMinutes || snapMin(); }
+  function snapTo(minutes) { return Math.round(minutes / snapMin()) * snapMin(); }
 
   /**
    * The working window, from config. It is expanded only if an entry genuinely
@@ -566,6 +577,93 @@ const HTML = `<!doctype html>
   }
 
   /* Dragging a block moves its start; dragging the grip changes its length. */
+  /**
+   * Drawing a new entry on empty timeline space. Deliberately the same gesture
+   * as a calendar: press, drag down, release. Everything snaps to the block
+   * grain, and a release shorter than one block still yields one block.
+   */
+  var draw = null;
+  document.addEventListener('pointerdown', function (event) {
+    if (event.target.closest && event.target.closest('.tl-block')) return;
+    var grid = event.target.closest ? event.target.closest('.tl-grid') : null;
+    if (!grid || state.view !== 'day') return;
+
+    var rect = grid.getBoundingClientRect();
+    var minutesFromTop = snapTo(((event.clientY - rect.top) / PX_PER_HOUR) * 60);
+    draw = { grid: grid, startMin: state.window.from * 60 + minutesFromTop, y0: event.clientY, el: null };
+    event.preventDefault();
+  });
+
+  document.addEventListener('pointermove', function (event) {
+    if (!draw) return;
+    var rect = draw.grid.getBoundingClientRect();
+    var endMin = state.window.from * 60 + snapTo(((event.clientY - rect.top) / PX_PER_HOUR) * 60);
+    var from = Math.min(draw.startMin, endMin);
+    var to = Math.max(draw.startMin, endMin);
+    var length = Math.max(minMin(), to - from);
+    draw.from = Math.min(from, state.window.to * 60 - length);
+    draw.length = length;
+
+    if (!draw.el) {
+      draw.el = document.createElement('div');
+      draw.el.className = 'tl-draft';
+      draw.grid.appendChild(draw.el);
+    }
+    draw.el.style.top = (((draw.from - state.window.from * 60) / 60) * PX_PER_HOUR) + 'px';
+    draw.el.style.height = ((draw.length / 60) * PX_PER_HOUR) + 'px';
+    draw.el.textContent = minutesToClock(draw.from) + ' · ' + fmt(draw.length * 60000);
+  });
+
+  document.addEventListener('pointerup', async function () {
+    if (!draw) return;
+    var finished = draw;
+    draw = null;
+    if (finished.el) finished.el.remove();
+    if (!finished.length) return;
+    await createEntry(finished.from, finished.length);
+  });
+
+  /** Minutes-since-midnight back to a clock label. */
+  function minutesToClock(minutes) {
+    var h = Math.floor(minutes / 60) % 24, m = Math.round(minutes % 60);
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  /**
+   * Turn a minutes-of-day position back into a real timestamp for the day on
+   * screen, going through the display zone so it lands on the right instant.
+   */
+  function timestampFor(minutes) {
+    var anchor = state.day.entries.length ? state.day.entries[0].start : Date.now();
+    var anchorMin = minutesOfDay(anchor);
+    return anchor + (minutes - anchorMin) * 60000;
+  }
+
+  async function createEntry(minutesOfDayStart, lengthMinutes) {
+    try {
+      var data = await api('/api/entry', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: state.date,
+          start: timestampFor(minutesOfDayStart),
+          minutes: lengthMinutes
+        })
+      });
+      state.day = data.day;
+      renderGoal(data.summary);
+      render();
+      loadWeek(state.date);
+      // Land the person straight in the task box — the entry is useless without one.
+      var card = document.querySelector('.ent[data-id="' + data.entry.id + '"]');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var box = card.querySelector('input[data-act="search"]');
+        if (box) box.focus();
+      }
+      toast('Added ' + fmt(lengthMinutes * 60000) + ' at ' + minutesToClock(minutesOfDayStart) + '. Now pick its task.');
+    } catch (e) { toast(e.message, true); }
+  }
+
   var drag = null;
   document.addEventListener('pointerdown', function (event) {
     var grip = event.target.closest ? event.target.closest('.grip') : null;
@@ -586,8 +684,8 @@ const HTML = `<!doctype html>
   document.addEventListener('pointermove', function (event) {
     if (!drag) return;
     var deltaMin = ((event.clientY - drag.y0) / PX_PER_HOUR) * 60;
-    var snapped = Math.round(deltaMin / SNAP_MIN) * SNAP_MIN;
-    if (Math.abs(snapped) < SNAP_MIN && !drag.moved) return;
+    var snapped = snapTo(deltaMin);
+    if (Math.abs(snapped) < snapMin() && !drag.moved) return;
     drag.moved = true;
 
     // Everything is clamped to the visible window, so a block can never be
@@ -606,7 +704,7 @@ const HTML = `<!doctype html>
       drag.el.style.top = (((placed - lo) / 60) * PX_PER_HOUR) + 'px';
     } else {
       var maxMin = hi - startMin0;
-      var durMin = Math.min(Math.max(durMin0 + snapped, SNAP_MIN), maxMin);
+      var durMin = Math.min(Math.max(durMin0 + snapped, minMin()), maxMin);
       drag.newDur = durMin * 60000;
       drag.newStart = drag.start0;
       drag.el.style.height = Math.max(20, (durMin / 60) * PX_PER_HOUR) + 'px';
@@ -669,7 +767,7 @@ const HTML = `<!doctype html>
 
       '<div class="ent-when">' +
         '<div class="range">' + clock(entry.start) + '–' + clock(entry.end) + '</div>' +
-        '<div class="dur"><input type="number" min="0" step="5" value="' + Math.round(entry.durationMs / 60000) + '"' +
+        '<div class="dur"><input type="number" min="' + minMin() + '" step="' + snapMin() + '" value="' + Math.round(entry.durationMs / 60000) + '"' +
           (synced ? ' disabled' : '') + ' data-act="duration"><span class="unit">min</span></div>' +
         '<div class="measured">measured ' + fmt(entry.activeMs) + '</div>' +
       '</div>' +
@@ -867,7 +965,11 @@ const HTML = `<!doctype html>
     var card = t.closest ? t.closest('.ent') : null;
     if (!card || !t.dataset || !t.dataset.act) return;
     try {
-      if (t.dataset.act === 'duration') { await patch(card.dataset.id, { durationMinutes: Number(t.value) }); render(); loadWeek(state.date); }
+      if (t.dataset.act === 'duration') {
+        var wanted = Math.max(minMin(), snapTo(Number(t.value) || 0));
+        await patch(card.dataset.id, { durationMinutes: wanted });
+        render(); loadWeek(state.date);
+      }
       if (t.dataset.act === 'description') await patch(card.dataset.id, { description: t.value });
       if (t.dataset.act === 'billable') { await patch(card.dataset.id, { billable: t.checked }); loadWeek(state.date); }
     } catch (e) { toast(e.message, true); }
@@ -891,6 +993,17 @@ const HTML = `<!doctype html>
       }).join('') || '<div><small>No matches</small></div>';
       t.parentElement.appendChild(box);
     }, 220);
+  });
+
+  document.getElementById('addEntry').addEventListener('click', function () {
+    // Start it after whatever is already logged, so a day builds forwards.
+    var entries = live(state.day.entries);
+    var after = entries.length
+      ? Math.max.apply(null, entries.map(function (e) { return minutesOfDay(e.start) + e.durationMs / 60000; }))
+      : state.window.from * 60;
+    var length = Math.max(minMin(), snapMin() * 2);
+    var startMin = Math.min(snapTo(after), state.window.to * 60 - length);
+    createEntry(Math.max(state.window.from * 60, startMin), length);
   });
 
   document.getElementById('rebuild').addEventListener('click', async function () {

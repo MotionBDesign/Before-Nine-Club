@@ -118,7 +118,8 @@ export function rebuildDay(date: string, ctx: MatchContext): DayFile {
 export function addManualEntry(
   date: string,
   options: {
-    taskId: string;
+    /** Null for a blank entry the person will pick a task for. */
+    taskId: string | null;
     taskName: string | null;
     listName: string | null;
     folderName: string | null;
@@ -126,17 +127,24 @@ export function addManualEntry(
     label: string;
     minutes: number;
     billable: boolean;
+    /** Explicit block start. Omitted means "ending now", as quick-log does. */
+    start?: number;
+    /** Pre-approved (a quick-log click is its own review) or left pending. */
+    approved?: boolean;
     /** Injectable for tests. */
     now?: number;
   },
 ): ProposedEntry {
   const now = options.now ?? Date.now();
   const durationMs = Math.max(1, Math.round(options.minutes)) * 60_000;
+  const start = options.start ?? now - durationMs;
   const entry: ProposedEntry = {
-    id: crypto.createHash('sha1').update(`manual:${date}:${now}:${options.taskId}`).digest('hex').slice(0, 12),
+    id: crypto.createHash('sha1')
+      .update(`manual:${date}:${now}:${start}:${options.taskId ?? 'blank'}`)
+      .digest('hex').slice(0, 12),
     date,
-    start: now - durationMs,
-    end: now,
+    start,
+    end: start + durationMs,
     activeMs: durationMs,
     durationMs,
     blockIds: [],
@@ -148,12 +156,15 @@ export function addManualEntry(
       listName: options.listName,
       folderName: options.folderName,
       spaceName: options.spaceName,
-      confidence: 1,
-      reasons: [`logged with the "${options.label}" button`],
+      confidence: options.taskId ? 1 : 0,
+      reasons: options.taskId
+        ? [`logged with the "${options.label}" button`]
+        : ['added by hand — pick the task'],
       alternatives: [],
       billable: options.billable,
     },
-    status: 'approved',
+    // A blank entry cannot be approved until a task is chosen.
+    status: options.approved && options.taskId ? 'approved' : 'pending',
     taskId: options.taskId,
     description: options.label,
     billable: options.billable,

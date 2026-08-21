@@ -20,8 +20,10 @@ export const defaultConfig: Config = {
     idleThresholdSeconds: 180,
     minBlockSeconds: 60,
     mergeGapSeconds: 300,
-    roundToMinutes: 5,
-    minEntryMinutes: 5,
+    // The studio bills in quarter hours: nothing rounds, snaps or is created
+    // finer than this, and no entry can be shorter than one block.
+    roundToMinutes: 15,
+    minEntryMinutes: 15,
     dayStartHour: 7,
     dayEndHour: 19,
   },

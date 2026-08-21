@@ -148,6 +148,8 @@ export function createServer(runtime: Runtime): http.Server {
           timezone: runtime.config.display.timezone,
           dayStartHour: runtime.config.capture.dayStartHour,
           dayEndHour: runtime.config.capture.dayEndHour,
+          snapMinutes: runtime.config.capture.roundToMinutes,
+          minEntryMinutes: runtime.config.capture.minEntryMinutes,
         },
         quickLog: runtime.config.quickLog.map((button, index) => ({
           index,
@@ -182,6 +184,7 @@ export function createServer(runtime: Runtime): http.Server {
         label: button.label,
         minutes,
         billable: button.billable,
+        approved: true,
       });
       const day = loadDay(date);
       json(res, 200, { entry, day, summary: summarise(day) });
@@ -268,6 +271,31 @@ export function createServer(runtime: Runtime): http.Server {
       }
       saveDay(day);
       json(res, 200, { entry, summary: summarise(day) });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/entry') {
+      const body = await readBody(req);
+      const date = String(body.date ?? '').trim() || localDate();
+      const grain = runtime.config.capture.roundToMinutes || 1;
+      const floor = runtime.config.capture.minEntryMinutes;
+      const asked = Number(body.minutes);
+      if (!Number.isFinite(asked) || asked <= 0 || asked > 24 * 60) {
+        json(res, 400, { error: 'A new entry needs a length between 1 minute and 24 hours.' });
+        return;
+      }
+      // Snap to the studio's grain rather than rejecting an odd length.
+      const minutes = Math.max(floor, Math.round(asked / grain) * grain);
+      const start = Number(body.start);
+      const entry = addManualEntry(date, {
+        taskId: null, taskName: null, listName: null, folderName: null, spaceName: null,
+        label: typeof body.label === 'string' && body.label.trim() ? body.label.trim() : 'Added by hand',
+        minutes,
+        billable: runtime.config.clickup.defaultBillable,
+        start: Number.isFinite(start) ? start : undefined,
+      });
+      const day = loadDay(date);
+      json(res, 200, { entry, day, summary: summarise(day) });
       return;
     }
 

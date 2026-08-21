@@ -147,6 +147,8 @@ const previewData = {
     timezone: config.display.timezone,
     dayStartHour: config.capture.dayStartHour,
     dayEndHour: config.capture.dayEndHour,
+    snapMinutes: config.capture.roundToMinutes,
+    minEntryMinutes: config.capture.minEntryMinutes,
   },
   quickLog: config.quickLog.map((button, index) => {
     const task = realCatalog().tasks.find((t) => t.taskId === button.taskId);
@@ -286,6 +288,30 @@ var PREVIEW = (function () {
         entry.status = body.status;
       }
       return { entry: entry, summary: summarise(d) };
+    }
+
+    if (path === '/api/entry') {
+      var into = day(date);
+      var grain = DATA.display.snapMinutes || 15;
+      var mins = Math.max(DATA.display.minEntryMinutes || grain, Math.round((body.minutes || grain) / grain) * grain);
+      var start = Number(body.start);
+      if (!isFinite(start)) start = into.entries.length ? into.entries[0].start : Date.now();
+      var blank = {
+        id: 'manual-' + Math.round(start) + '-' + mins,
+        date: into.date,
+        start: start, end: start + mins * 60000,
+        activeMs: mins * 60000, durationMs: mins * 60000,
+        blockIds: [],
+        evidence: { apps: ['Added by hand'], paths: [], titles: ['Added by hand'], urls: [] },
+        suggestion: {
+          taskId: null, taskName: null, listId: null, listName: null, folderName: null, spaceName: null,
+          confidence: 0, reasons: ['added by hand — pick the task'], alternatives: [], billable: true
+        },
+        status: 'pending', taskId: null,
+        description: 'Added by hand', billable: true, manual: true
+      };
+      into.entries = into.entries.concat([blank]).sort(function (a, b) { return a.start - b.start; });
+      return { entry: blank, day: payload(date).day, summary: summarise(into) };
     }
 
     if (path === '/api/day/rebuild') {
