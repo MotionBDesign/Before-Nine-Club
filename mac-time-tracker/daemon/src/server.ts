@@ -2,10 +2,11 @@ import http from 'node:http';
 import type { Config, DayFile, ProposedEntry } from './types.ts';
 import type { MatchContext } from './matcher.ts';
 import type { ClickUpClient } from './clickup.ts';
-import { addManualEntry, loadDay, localDate, listDays, rebuildDay, recordCorrection, saveDay } from './store.ts';
+import { addManualEntry, loadDay, localDate, listDays, rebuildDay, readSnapshots, recordCorrection, resolveTask, saveDay } from './store.ts';
 import { pushApproved } from './sync.ts';
 import { renderPage } from './ui.ts';
 import { log } from './log.ts';
+import { paths } from './paths.ts';
 
 export interface Runtime {
   config: Config;
@@ -88,6 +89,110 @@ function summarise(day: DayFile) {
   };
 }
 
+/**
+ * What the observer can actually see, per app.
+ *
+ * "Is it even tracking Photoshop?" is not a question anyone should have to
+ * answer by reading a log, and a blank timesheet looks identical whether the
+ * observer is dead, the Accessibility grant is missing, or the day was quiet.
+ * This separates those three: how recently a sample arrived, which apps were
+ * in front and for how long, and — the part that matters — how often each one
+ * gave up a window title and a file path. An app at 0% file paths is being
+ * tracked; it just will not say which document, which is a different problem
+ * with a different fix.
+ */
+function tracking(date: string, config: Config) {
+  const snapshots = readSnapshots(date);
+  const intervalMs = config.capture.sampleIntervalSeconds * 1000;
+  const idleThreshold = config.capture.idleThresholdSeconds;
+
+  interface AppRow {
+    app: string;
+    bundleId: string;
+    samples: number;
+    activeSamples: number;
+    withTitle: number;
+    withPath: number;
+    withUrl: number;
+    lastSeen: number;
+    exampleTitle: string | null;
+    examplePath: string | null;
+    exampleUrl: string | null;
+  }
+  const byApp = new Map<string, AppRow>();
+  let lastSampleAt: number | null = null;
+  let activeSamples = 0;
+  let lockedSamples = 0;
+  let idleSamples = 0;
+
+  for (const snapshot of snapshots) {
+    lastSampleAt = Math.max(lastSampleAt ?? 0, snapshot.ts);
+    if (snapshot.locked) { lockedSamples++; continue; }
+    const idle = snapshot.idleSeconds >= idleThreshold;
+    if (idle) idleSamples++;
+
+    const key = snapshot.bundleId || snapshot.app;
+    let row = byApp.get(key);
+    if (!row) {
+      row = {
+        app: snapshot.app, bundleId: snapshot.bundleId,
+        samples: 0, activeSamples: 0, withTitle: 0, withPath: 0, withUrl: 0,
+        lastSeen: snapshot.ts, exampleTitle: null, examplePath: null, exampleUrl: null,
+      };
+      byApp.set(key, row);
+    }
+    row.samples++;
+    row.lastSeen = Math.max(row.lastSeen, snapshot.ts);
+    if (!idle) { row.activeSamples++; activeSamples++; }
+    if (snapshot.title) { row.withTitle++; row.exampleTitle ??= snapshot.title; }
+    if (snapshot.documentPath) { row.withPath++; row.examplePath ??= snapshot.documentPath; }
+    if (snapshot.url) { row.withUrl++; row.exampleUrl ??= snapshot.url; }
+  }
+
+  const apps = [...byApp.values()]
+    .sort((a, b) => b.activeSamples - a.activeSamples)
+    .map((row) => ({
+      app: row.app,
+      bundleId: row.bundleId,
+      activeMs: row.activeSamples * intervalMs,
+      samples: row.samples,
+      lastSeen: row.lastSeen,
+      titleRate: row.samples === 0 ? 0 : row.withTitle / row.samples,
+      pathRate: row.samples === 0 ? 0 : row.withPath / row.samples,
+      urlRate: row.samples === 0 ? 0 : row.withUrl / row.samples,
+      exampleTitle: row.exampleTitle,
+      examplePath: row.examplePath,
+      exampleUrl: row.exampleUrl,
+    }));
+
+  // The grant is invisible from here, so infer it: with Accessibility denied
+  // the app name still arrives but the window title and AXDocument both come
+  // back empty, every time, for every app. One of either showing up anywhere
+  // is proof the grant is in place. Browser URLs are deliberately not counted
+  // — those come over Apple Events, which is a separate permission.
+  const answering = apps.filter((a) => a.samples >= 3);
+  const anythingReadable = answering.some((a) => a.titleRate > 0 || a.pathRate > 0);
+  const accessibility = answering.length === 0
+    ? 'unknown'
+    : anythingReadable ? 'granted' : 'missing';
+
+  return {
+    date,
+    sampleIntervalSeconds: config.capture.sampleIntervalSeconds,
+    observer: {
+      lastSampleAt,
+      ageSeconds: lastSampleAt === null ? null : Math.round((Date.now() - lastSampleAt) / 1000),
+      totalSamples: snapshots.length,
+      activeMs: activeSamples * intervalMs,
+      idleSamples,
+      lockedSamples,
+      spoolPath: config.observer.spoolPath || paths.spool(),
+    },
+    accessibility,
+    apps,
+  };
+}
+
 /** Monday of the week containing `date`, as YYYY-MM-DD. */
 export function weekStart(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
@@ -107,6 +212,18 @@ function addDays(date: string, days: number): string {
 }
 
 export function createServer(runtime: Runtime): http.Server {
+  /**
+   * Nothing leaves this server naming a task off the suggestion. `resolved` is
+   * the task the time will actually be logged against, looked up fresh in the
+   * catalog, so a corrected entry shows the name the person picked and a
+   * renamed task shows its new name rather than the one cached at match time.
+   */
+  const dress = (entry: ProposedEntry) => ({
+    ...entry,
+    resolved: resolveTask(entry, runtime.getContext().tasksById),
+  });
+  const dressDay = (day: DayFile) => ({ ...day, entries: day.entries.map(dress) });
+
   return http.createServer((req, res) => {
     void handle(req, res).catch((error: unknown) => {
       log.error('Review server error', error instanceof Error ? error.message : String(error));
@@ -138,7 +255,7 @@ export function createServer(runtime: Runtime): http.Server {
       const catalog = runtime.getContext().catalog;
       const tasksById = new Map(catalog.tasks.map((t) => [t.taskId, t]));
       json(res, 200, {
-        day,
+        day: dressDay(day),
         summary: summarise(day),
         days: listDays(),
         catalogFetchedAt: catalog.fetchedAt,
@@ -187,25 +304,33 @@ export function createServer(runtime: Runtime): http.Server {
         approved: true,
       });
       const day = loadDay(date);
-      json(res, 200, { entry, day, summary: summarise(day) });
+      json(res, 200, { entry: dress(entry), day: dressDay(day), summary: summarise(day) });
       return;
     }
 
     if (method === 'GET' && url.pathname === '/api/week') {
       const anchor = url.searchParams.get('date')?.trim() || localDate();
       const monday = weekStart(anchor);
+      const tasksById = runtime.getContext().tasksById;
       const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i)).map((date) => {
         const day = loadDay(date);
         const summary = summarise(day);
         const byClient: Record<string, number> = {};
         for (const entry of day.entries) {
           if (!countsTowardDay(entry)) continue;
-          const client = entry.suggestion.folderName ?? entry.suggestion.spaceName ?? 'Unassigned';
+          const resolved = resolveTask(entry, tasksById);
+          const client = resolved.folderName ?? resolved.spaceName ?? 'Unassigned';
           byClient[client] = (byClient[client] ?? 0) + entry.durationMs;
         }
         return { date, summary, byClient, entryCount: day.entries.filter(isLive).length };
       });
       json(res, 200, { weekStart: monday, days, targets: runtime.config.targets });
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/tracking') {
+      const date = url.searchParams.get('date')?.trim() || localDate();
+      json(res, 200, tracking(date, runtime.config));
       return;
     }
 
@@ -270,7 +395,7 @@ export function createServer(runtime: Runtime): http.Server {
         entry.status = patch.status;
       }
       saveDay(day);
-      json(res, 200, { entry, summary: summarise(day) });
+      json(res, 200, { entry: dress(entry), summary: summarise(day) });
       return;
     }
 
@@ -295,14 +420,14 @@ export function createServer(runtime: Runtime): http.Server {
         start: Number.isFinite(start) ? start : undefined,
       });
       const day = loadDay(date);
-      json(res, 200, { entry, day, summary: summarise(day) });
+      json(res, 200, { entry: dress(entry), day: dressDay(day), summary: summarise(day) });
       return;
     }
 
     if (method === 'POST' && url.pathname === '/api/day/rebuild') {
       const date = ((await readBody(req)) as { date?: string }).date?.trim() || localDate();
       const day = rebuildDay(date, runtime.getContext());
-      json(res, 200, { day, summary: summarise(day) });
+      json(res, 200, { day: dressDay(day), summary: summarise(day) });
       return;
     }
 
@@ -317,7 +442,7 @@ export function createServer(runtime: Runtime): http.Server {
         }
       }
       saveDay(day);
-      json(res, 200, { day, approved, summary: summarise(day) });
+      json(res, 200, { day: dressDay(day), approved, summary: summarise(day) });
       return;
     }
 
@@ -330,7 +455,7 @@ export function createServer(runtime: Runtime): http.Server {
       }
       const day = loadDay(date);
       const result = await pushApproved(client, runtime.config, day);
-      json(res, 200, { result, day: loadDay(date), summary: summarise(loadDay(date)) });
+      json(res, 200, { result, day: dressDay(loadDay(date)), summary: summarise(loadDay(date)) });
       return;
     }
 

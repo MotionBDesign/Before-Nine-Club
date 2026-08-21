@@ -1,0 +1,1527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timesheet Review Preview</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    /* Neutrals carry a slight indigo bias so they sit with the accent rather
+       than reading as unconsidered greys. */
+    --ground: #f6f6fa;
+    --panel: #ffffff;
+    --panel-2: #f1f1f7;
+    --line: #e2e2ec;
+    --line-strong: #cfcfdd;
+    --text: #16161f;
+    --muted: #64647a;
+    --accent: #4f46e5;
+    --accent-soft: #ecebfd;
+    --ok: #0f7a52;
+    --ok-soft: #e2f3ec;
+    --warn: #8a5a00;
+    --warn-soft: #fbf0da;
+    --bad: #b0202c;
+    --bad-soft: #fbe6e8;
+    --shadow: 0 1px 2px rgba(20, 20, 40, 0.05), 0 8px 24px rgba(20, 20, 40, 0.06);
+    /* Client hues resolve through these so both themes stay harmonious. */
+    --cl-s: 62%;
+    --cl-l: 52%;
+    --cl-soft-l: 94%;
+    --cl-ink-l: 30%;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101019;
+      --panel: #191922;
+      --panel-2: #20202b;
+      --line: #2b2b38;
+      --line-strong: #3a3a4a;
+      --text: #e8e8f0;
+      --muted: #9a9ab2;
+      --accent: #8b8cf7;
+      --accent-soft: #262649;
+      --ok: #4ed6a1;
+      --ok-soft: #10352a;
+      --warn: #e5b45c;
+      --warn-soft: #3a2e12;
+      --bad: #ff8b91;
+      --bad-soft: #3d1a1f;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+      --cl-s: 52%;
+      --cl-l: 60%;
+      --cl-soft-l: 20%;
+      --cl-ink-l: 78%;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101019; --panel: #191922; --panel-2: #20202b; --line: #2b2b38;
+    --line-strong: #3a3a4a; --text: #e8e8f0; --muted: #9a9ab2;
+    --accent: #8b8cf7; --accent-soft: #262649;
+    --ok: #4ed6a1; --ok-soft: #10352a; --warn: #e5b45c; --warn-soft: #3a2e12;
+    --bad: #ff8b91; --bad-soft: #3d1a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+    --cl-s: 52%; --cl-l: 60%; --cl-soft-l: 20%; --cl-ink-l: 78%;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  /* ------------------------------------------------------------ header -- */
+  header {
+    position: sticky; top: 0; z-index: 20; background: var(--panel);
+    border-bottom: 1px solid var(--line); padding: 10px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .hrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 15px; font-weight: 650; margin: 0 6px 0 0; letter-spacing: -0.01em; white-space: nowrap; }
+  .spacer { flex: 1 1 auto; }
+  .btn {
+    background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px;
+    padding: 6px 11px; transition: border-color 120ms, background 120ms;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 550; }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn.ghost { border-style: dashed; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px;
+    border-radius: 99px; background: var(--panel-2); color: var(--muted); white-space: nowrap;
+  }
+
+  /* Week strip — the day pills, and the way back to any day in this week. */
+  .week-strip { display: flex; gap: 6px; align-items: stretch; }
+  .daypill {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 52px; padding: 6px 8px 7px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+    transition: border-color 120ms, background 120ms;
+  }
+  .daypill:hover { border-color: var(--accent); }
+  .daypill .dow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .daypill .num { font-size: 15px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+  .daypill .met { width: 100%; height: 3px; border-radius: 99px; background: var(--line); }
+  .daypill .met i { display: block; height: 100%; border-radius: 99px; background: var(--ok); }
+  .daypill[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  .daypill.future { opacity: 0.45; }
+
+  .quicklog { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .quicklog .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+
+  /* -------------------------------------------------------------- shell -- */
+  main { padding: 16px 18px 60px; max-width: 1500px; margin: 0 auto; }
+  .panes { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 1080px) { .panes { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+
+  /* ----------------------------------------------------------- progress -- */
+  .goal { padding: 14px 16px; margin-bottom: 14px; }
+  .goal .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 9px; }
+  .goal .headline { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
+  .goal .headline.ok { color: var(--ok); }
+  .goal .headline.warn { color: var(--warn); }
+  .goal .headline.bad { color: var(--bad); }
+  .goal .aside { font-size: 12px; color: var(--muted); }
+  .meter { position: relative; height: 12px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+  .meter .seg { position: absolute; top: 0; bottom: 0; }
+  .meter .seg.billable { background: var(--ok); }
+  .meter .seg.other { background: var(--muted); opacity: 0.5; }
+  .goal .mark { position: relative; height: 14px; margin-top: 3px; }
+  .goal .mark i {
+    position: absolute; top: -17px; width: 2px; height: 18px; background: var(--text); opacity: 0.45;
+  }
+  .goal .mark span {
+    position: absolute; top: 0; transform: translateX(-50%); font-size: 10px; color: var(--muted);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .goal .key { display: flex; gap: 14px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+  .goal .key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  /* ---------------------------------------------------------- timeline -- */
+  .tl { padding: 12px 12px 14px; position: sticky; top: 128px; }
+  .tl-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .tl-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .tl-hint { font-size: 11px; color: var(--muted); }
+  .tl-grid { position: relative; margin-left: 44px; border-left: 1px solid var(--line); }
+  .tl-hour { position: absolute; left: -44px; right: 0; border-top: 1px dashed var(--line); }
+  .tl-hour span {
+    position: absolute; left: 0; top: -7px; width: 38px; text-align: right;
+    font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .tl-block {
+    position: absolute; left: 6px; right: 4px; border-radius: 7px; padding: 4px 7px; overflow: hidden;
+    background: hsl(var(--h) var(--cl-s) var(--cl-l)); color: #fff;
+    border: 1px solid hsl(var(--h) var(--cl-s) calc(var(--cl-l) - 10%));
+    cursor: grab; touch-action: none; user-select: none;
+    font-size: 11px; line-height: 1.25;
+  }
+  .tl-block:active { cursor: grabbing; }
+  .tl-block.dragging { z-index: 5; box-shadow: 0 8px 20px rgba(0,0,0,0.28); }
+  .tl-block.selected { outline: 2px solid var(--text); outline-offset: 1px; }
+  .tl-block.rejected { opacity: 0.35; }
+  .tl-block .who { font-weight: 600; }
+  .tl-block .len { opacity: 0.85; font-variant-numeric: tabular-nums; }
+  .tl-block .grip {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize;
+  }
+  .tl-block .grip::after {
+    content: ''; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+    width: 18px; height: 2px; border-radius: 2px; background: rgba(255,255,255,0.65);
+  }
+  .tl-gap {
+    position: absolute; left: 6px; right: 4px; border-radius: 6px;
+    border: 1px dashed var(--line-strong); color: var(--muted);
+    font-size: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .tl-empty { color: var(--muted); font-size: 12px; padding: 20px 4px; text-align: center; }
+  .tl-note { margin-top: 9px; font-size: 11px; color: var(--warn); }
+  /* Dragging on empty grid draws a new block; the grid says so on hover. */
+  .tl-grid { cursor: crosshair; }
+  .tl-draft {
+    position: absolute; left: 6px; right: 4px; border-radius: 7px; pointer-events: none;
+    background: var(--accent); opacity: 0.55; border: 1px dashed #fff;
+    color: #fff; font-size: 11px; padding: 3px 7px;
+  }
+
+  /* ------------------------------------------------------------ entries -- */
+  .ent-list { display: flex; flex-direction: column; gap: 10px; }
+  .ent {
+    display: grid; grid-template-columns: 34px 128px minmax(0, 1fr) 300px;
+    gap: 14px; align-items: start; padding: 13px 15px 13px 0;
+    border-left: 4px solid hsl(var(--h) var(--cl-s) var(--cl-l));
+    scroll-margin-top: 150px; transition: border-color 120ms;
+  }
+  .ent.none { border-left-color: var(--line-strong); }
+  .ent[data-status="synced"] { opacity: 0.72; }
+  .ent[data-status="rejected"] { opacity: 0.45; }
+  .ent.flash { animation: flash 1.1s ease-out; }
+  @keyframes flash { from { background: var(--accent-soft); } to { background: var(--panel); } }
+
+  /* State column: a tick that is unmistakable across the room. */
+  .ent-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 2px; padding-left: 11px; }
+  .tick {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    border: 1.5px solid var(--line-strong); background: var(--panel); color: transparent;
+    transition: background 120ms, border-color 120ms, color 120ms;
+  }
+  .tick svg { width: 13px; height: 13px; }
+  .tick:hover { border-color: var(--ok); color: var(--ok); }
+  .ent[data-status="approved"] .tick { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .ent[data-status="synced"] .tick { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ent-kill {
+    width: 22px; height: 22px; border-radius: 6px; border: 1px solid transparent;
+    background: none; color: var(--muted); display: grid; place-items: center; padding: 0;
+  }
+  .ent-kill svg { width: 12px; height: 12px; }
+  .ent-kill:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
+
+  .ent-when { font-variant-numeric: tabular-nums; }
+  .ent-when .range { font-size: 12px; color: var(--muted); }
+  .ent-when .dur { display: flex; align-items: baseline; gap: 4px; margin-top: 3px; }
+  .ent-when input {
+    width: 66px; text-align: right; font-size: 17px; font-weight: 650; padding: 3px 6px;
+    border: 1px solid transparent; border-radius: 6px; background: var(--panel-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .ent-when input:hover:not(:disabled) { border-color: var(--line-strong); }
+  .ent-when .unit { font-size: 12px; color: var(--muted); }
+  .ent-when .measured { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .ent-what .desc {
+    width: 100%; border: 1px solid transparent; background: none; border-radius: 6px;
+    padding: 3px 6px; margin: -3px 0 0 -6px; font-size: 14px;
+  }
+  .ent-what .desc:hover:not(:disabled) { border-color: var(--line); background: var(--panel-2); }
+  .ent-what .meta { margin-top: 5px; font-size: 12px; color: var(--muted); }
+  .ent-what .paths {
+    margin-top: 4px; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted); word-break: break-all;
+  }
+  .ent-what .why { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+  .ent-what .why li { padding-left: 13px; position: relative; }
+  .ent-what .why li::before { content: '·'; position: absolute; left: 4px; }
+
+  .ent-task { position: relative; }
+  .ent-task .conf { font-size: 11px; padding: 2px 8px; border-radius: 99px; display: inline-block; margin-bottom: 5px; }
+  .conf.high { background: var(--ok-soft); color: var(--ok); }
+  .conf.mid { background: var(--warn-soft); color: var(--warn); }
+  .conf.low { background: var(--bad-soft); color: var(--bad); }
+  .ent-task .name { font-weight: 600; line-height: 1.35; }
+  .ent-task .name.empty { color: var(--muted); font-weight: 500; }
+  .ent-task .scope.stale { color: var(--bad); }
+  .ent-task .scope {
+    display: inline-block; margin-top: 4px; font-size: 11px; padding: 2px 8px; border-radius: 99px;
+    background: hsl(var(--h) var(--cl-s) var(--cl-soft-l)); color: hsl(var(--h) var(--cl-s) var(--cl-ink-l));
+  }
+  .ent-task .search {
+    width: 100%; margin-top: 7px; padding: 6px 9px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--panel);
+  }
+  .results {
+    position: absolute; z-index: 12; left: 0; right: 0; top: 100%; margin-top: 3px;
+    background: var(--panel); border: 1px solid var(--line-strong); border-radius: 9px;
+    max-height: 280px; overflow: auto; box-shadow: var(--shadow);
+  }
+  .results div { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+  .results div:last-child { border-bottom: 0; }
+  .results div:hover { background: var(--accent-soft); }
+  .results small { display: block; color: var(--muted); }
+  .ent-actions { display: flex; gap: 8px; align-items: center; margin-top: 9px; flex-wrap: wrap; font-size: 12px; }
+  .ent-actions label { color: var(--muted); display: flex; gap: 5px; align-items: center; cursor: pointer; }
+
+  /* --------------------------------------------------------------- week -- */
+  .wk { padding: 16px; }
+  .wk-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 900px) { .wk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .wk-day { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; background: var(--panel); }
+  .wk-day.today { border-color: var(--accent); }
+  .wk-day .d { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .wk-day .h { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 2px 0 8px; }
+  .wk-day .h.short { color: var(--warn); }
+  .wk-day .h.none { color: var(--muted); }
+  .wk-stack { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--panel-2); }
+  .wk-stack i { display: block; height: 100%; }
+  .wk-clients { margin-top: 9px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+  .wk-clients div { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); }
+  .wk-clients .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .wk-total { display: flex; gap: 26px; flex-wrap: wrap; margin-bottom: 14px; }
+  .wk-total div { display: flex; flex-direction: column; }
+  .wk-total .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .wk-total .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .seg-ctl { display: inline-flex; background: var(--panel-2); border-radius: 8px; padding: 2px; gap: 2px; }
+  .seg-ctl button { background: none; border: 0; border-radius: 6px; padding: 5px 12px; color: var(--muted); font-size: 13px; }
+  .seg-ctl button[aria-pressed="true"] { background: var(--panel); color: var(--text); font-weight: 550; box-shadow: var(--shadow); }
+
+  .empty { color: var(--muted); text-align: center; padding: 50px 0; }
+  /* ------------------------------------------------------------ tracking -- */
+  .tk-banner {
+    border-radius: 12px; padding: 13px 16px; margin-bottom: 14px;
+    border: 1px solid var(--line-strong); background: var(--panel); font-size: 13px;
+  }
+  .tk-banner.good { border-color: var(--ok); background: var(--ok-soft); }
+  .tk-banner.bad { border-color: var(--bad); background: var(--bad-soft); }
+  .tk-banner b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .tk-banner code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .tk-stats { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 14px; padding: 14px 16px; }
+  .tk-stats div { display: flex; flex-direction: column; gap: 3px; }
+  .tk-stats .k { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .tk-stats .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tk-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--line);
+  }
+  .tk-table th.num, .tk-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tk-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tk-table tr:last-child td { border-bottom: 0; }
+  .tk-app { font-weight: 600; }
+  .tk-bundle { font-size: 11px; color: var(--muted); }
+  .tk-sees { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .tk-pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .tk-pill.yes { background: var(--ok-soft); color: var(--ok); }
+  .tk-pill.part { background: var(--warn-soft); color: var(--warn); }
+  .tk-pill.no { background: var(--bad-soft); color: var(--bad); }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40;
+    background: var(--panel); border: 1px solid var(--line-strong); border-radius: 9px;
+    padding: 10px 16px; box-shadow: var(--shadow); display: none; max-width: 80vw;
+  }
+</style>
+</head>
+<body>
+
+<script>
+// Preview backend: in-memory, seeded with real ClickUp task names and days
+// produced by the actual segmenter and matcher.
+var PREVIEW = (function () {
+  var DATA = {"scenarios":{"typical":{"label":"Matched day","date":"2026-08-20","entries":[{"id":"72d028b9dbba","date":"2026-08-20","start":1787182200000,"end":1787187600000,"activeMs":5430000,"durationMs":5400000,"blockIds":["b6149b3cb440","86069aa4876b"],"evidence":{"apps":["Photoshop"],"paths":["/Volumes/Projects/Clients/SAPN/2026/Smarter Homes Solar Curtailment/Curtailment_styleframes_01.psd"],"titles":["Curtailment_styleframes_01.psd @ 100%"],"urls":[]},"suggestion":{"taskId":"86d3bn9ya","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test DESIGN STYLEFRAMES + STORYBOARD","listId":"901614105218","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client SAPN","task name matches the file (72%)","Photoshop is design work"],"alternatives":[{"taskId":"86d31k2ag","taskName":"SAPN - Educational series - Solar and electricity DESIGN","listName":"SAPN - Retainer Projects 2026","score":0.973},{"taskId":"86d3bn9np","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test","listName":"SAPN - Retainer Projects 2026","score":0.923},{"taskId":"86d17w0yp","taskName":"SAPN - RAP Artwork EPS file","listName":"SAPN - Retainer Projects 2026","score":0.913},{"taskId":"86d2w4864","taskName":"SAPN - Evergreen campaign - Get prepared COPY + DESIGN","listName":"SAPN - Retainer Projects 2026","score":0.904}],"billable":true},"status":"pending","taskId":"86d3bn9ya","description":"Curtailment_styleframes_01.psd","billable":true,"resolved":{"taskId":"86d3bn9ya","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test DESIGN STYLEFRAMES + STORYBOARD","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9ya","stale":false}},{"id":"a321ed39b0ac","date":"2026-08-20","start":1787187600000,"end":1787194800000,"activeMs":7200000,"durationMs":7200000,"blockIds":["96c2bf1f503e","fa2bc74f04c1"],"evidence":{"apps":["Google Chrome","Photoshop"],"paths":["/Volumes/Projects/Clients/Resmed/2026/CPAP Trial EDM/CPAP_trial_EDM_header.psd"],"titles":["Resmed - CPAP Trial EDM - ClickUp","CPAP_trial_EDM_header.psd"],"urls":["https://app.clickup.com/t/86d42ff8d"]},"suggestion":{"taskId":"86d42ff8d","taskName":"Resmed - CPAP Trial EDM","listId":"901614107571","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","confidence":0.97,"reasons":["rule \"ClickUp task open in the browser\" identified task 86d42ff8d"],"alternatives":[],"billable":true},"status":"pending","taskId":"86d42ff8d","description":"CPAP_trial_EDM_header.psd","billable":true,"resolved":{"taskId":"86d42ff8d","taskName":"Resmed - CPAP Trial EDM","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42ff8d","stale":false}},{"id":"29b3c5f03d2f","date":"2026-08-20","start":1787198400000,"end":1787205600000,"activeMs":7200000,"durationMs":7200000,"blockIds":["6848c079ec26"],"evidence":{"apps":["Adobe Premiere Pro"],"paths":["/Volumes/Projects/Clients/Symons Clark/2026/Onboarding Visitors video/Onboarding_Visitors_edit.prproj"],"titles":["Onboarding_Visitors_edit.prproj"],"urls":[]},"suggestion":{"taskId":"86d06ep1p","taskName":"Symons - Onboarding Visitors video - POSTPRODUCTION","listId":"901614107539","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client Symons Clark","task name matches the file (81%)","Adobe Premiere Pro is postproduction work"],"alternatives":[{"taskId":"86d06ennj","taskName":"Symons - Onboarding Visitors video","listName":"Symons Clark - Retainer List 2026","score":1.024},{"taskId":"86d0pfv7r","taskName":"Symons - Fitness for work video ANIMATION/POST","listName":"Symons Clark - Retainer List 2026","score":0.979},{"taskId":"86d06envy","taskName":"Symons - Onboarding Visitors video - STORYBOARD","listName":"Symons Clark - Retainer List 2026","score":0.973},{"taskId":"86d06ep2v","taskName":"Symons - Onboarding Visitors video - VO","listName":"Symons Clark - Retainer List 2026","score":0.973}],"billable":true},"status":"pending","taskId":"86d06ep1p","description":"Onboarding_Visitors_edit.prproj","billable":true,"resolved":{"taskId":"86d06ep1p","taskName":"Symons - Onboarding Visitors video - POSTPRODUCTION","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06ep1p","stale":false}},{"id":"6d31173f972d","date":"2026-08-20","start":1787205600000,"end":1787210100000,"activeMs":4500000,"durationMs":4500000,"blockIds":["93024a8fa14c"],"evidence":{"apps":["Microsoft Word"],"paths":["/Volumes/Projects/Clients/Aurizn/2026/GPTW/GPTW_wallpapers_banners_posters_copy.docx"],"titles":["GPTW_wallpapers_banners_posters_copy.docx"],"urls":[]},"suggestion":{"taskId":"86d4187pk","taskName":"Aurizn - GPTW wallpapaers, email banners, posters COPY","listId":"901614107575","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client Aurizn","task name matches the file (80%)","Microsoft Word is copy work"],"alternatives":[{"taskId":"86d22gdr0","taskName":"Aurizn - Sales Deck DESIGN + CONTENT","listName":"Aurizn - Retainer List 2026","score":0.938},{"taskId":"86d4186py","taskName":"Aurizn - GPTW wallpapaers, email banners, posters","listName":"Aurizn - Retainer List 2026","score":0.936},{"taskId":"86d4187kj","taskName":"Aurizn - GPTW wallpapaers, email banners, posters CONCEPTS","listName":"Aurizn - Retainer List 2026","score":0.907},{"taskId":"86d42bd8q","taskName":"Aurizn GPTW Leader Toolkit","listName":"Aurizn - Retainer List 2026","score":0.8}],"billable":true},"status":"pending","taskId":"86d4187pk","description":"GPTW_wallpapers_banners_posters_copy.docx","billable":true,"resolved":{"taskId":"86d4187pk","taskName":"Aurizn - GPTW wallpapaers, email banners, posters COPY","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4187pk","stale":false}}]},"needsWork":{"label":"Needs decisions","date":"2026-08-19","entries":[{"id":"e309052937c4","date":"2026-08-20","start":1787182200000,"end":1787185800000,"activeMs":3600000,"durationMs":3600000,"blockIds":["f01acfc0467d"],"evidence":{"apps":["Photoshop"],"paths":["/Volumes/Projects/Clients/Resmed/2026/Promos/promo.psd"],"titles":["promo.psd"],"urls":[]},"suggestion":{"taskId":"86d288ap3","taskName":"Resmed - April Promos Rollout DESIGN AND PRODUCTION","listId":"901614107571","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","confidence":0.665,"reasons":["rule \"Client folder on the server\" → client Resmed","task name matches the file (52%)","Photoshop is design work"],"alternatives":[{"taskId":"86d2mct2v","taskName":"Resmed - May promo KV DESIGN","listName":"Resmed - Retainer List 2026","score":1.075},{"taskId":"86d411aa4","taskName":"Resmed - comorbidity artwork -ads","listName":"Resmed - Retainer List 2026","score":0.943},{"taskId":"86d2mct22","taskName":"Resmed - May promo","listName":"Resmed - Retainer List 2026","score":0.937},{"taskId":"86d3ke9z4","taskName":"Resmed - Agnostic Landing page banner","listName":"Resmed - Retainer List 2026","score":0.929}],"billable":true},"status":"pending","taskId":"86d288ap3","description":"promo.psd","billable":true,"resolved":{"taskId":"86d288ap3","taskName":"Resmed - April Promos Rollout DESIGN AND PRODUCTION","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d288ap3","stale":false}},{"id":"03ef24c1ac7f","date":"2026-08-20","start":1787186700000,"end":1787191200000,"activeMs":4500000,"durationMs":4500000,"blockIds":["5756558cda2f"],"evidence":{"apps":["After Effects"],"paths":["/Volumes/Projects/Clients/Maptek/2026/Vulcan Explainer/vulcan_explainer_v3.aep"],"titles":["vulcan_explainer_v3.aep"],"urls":[]},"suggestion":{"taskId":"86d3nybhu","taskName":"Maptek - Vulcan Explainer","listId":"901614107547","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","confidence":0.665,"reasons":["rule \"Client folder on the server\" → client Maptek","task name matches the file (100%)"],"alternatives":[{"taskId":"86d2aw6pn","taskName":"Maptek - Recruitment Video POSTPRODUCTION","listName":"Maptek - Retainer List 2026","score":0.96},{"taskId":"86d24yv9q","taskName":"Maptek - Corporate Video POST PRODUCTION","listName":"Maptek - Retainer List 2026","score":0.95},{"taskId":"86d39f3h5","taskName":"Maptek - How to videos DESIGN and POSTPRODUCTION","listName":"Maptek - Retainer List 2026","score":0.942},{"taskId":"86d3nybh8","taskName":"maptek - vestrex explainer","listName":"Maptek - Retainer List 2026","score":0.857}],"billable":true},"status":"pending","taskId":"86d3nybhu","description":"vulcan_explainer_v3.aep","billable":true,"resolved":{"taskId":"86d3nybhu","taskName":"Maptek - Vulcan Explainer","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3nybhu","stale":false}},{"id":"b3f5a07aa0a0","date":"2026-08-20","start":1787194800000,"end":1787197200000,"activeMs":2400000,"durationMs":2700000,"blockIds":["e5c52a8fe0e1"],"evidence":{"apps":["Terminal"],"paths":[],"titles":["dom@studio: ~"],"urls":[]},"suggestion":{"taskId":null,"taskName":null,"listId":null,"listName":null,"folderName":null,"spaceName":null,"confidence":0,"reasons":["no rule, path or task name matched this activity"],"alternatives":[],"billable":null},"status":"pending","taskId":null,"description":"Terminal","billable":true,"resolved":{"taskId":null,"taskName":null,"listName":null,"folderName":null,"spaceName":null,"url":null,"stale":false}},{"id":"d68cc5a0a092","date":"2026-08-20","start":1787199000000,"end":1787202000000,"activeMs":3000000,"durationMs":2700000,"blockIds":["18c9f98cf7c3"],"evidence":{"apps":["Figma"],"paths":[],"titles":["Cole - Website – Figma"],"urls":[]},"suggestion":{"taskId":"86d3arx0e","taskName":"Cole - Website","listId":"901614107531","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","confidence":0.6,"reasons":["task name matches the file (95%)","Figma is website work"],"alternatives":[{"taskId":"86d3850d3","taskName":"MBD - Website SEO Pages 2026","listName":"MBD - Billable Projects 2026","score":0.396},{"taskId":"86d0ah5b7","taskName":"Cole - Social Media Oct 2025 DESIGN / POST PRODUCTION","listName":"Cole School Experts Retainer List 2026","score":0.306},{"taskId":"86d1a96mq","taskName":"Cole - School payroll health selfdiagnosis DESIGN","listName":"Cole School Experts Retainer List 2026","score":0.289},{"taskId":"86d3h1evk","taskName":"Cole - All services Prospectus brochure COPY + DESIGN","listName":"Cole School Experts Retainer List 2026","score":0.283}],"billable":true},"status":"pending","taskId":"86d3arx0e","description":"Figma","billable":true,"resolved":{"taskId":"86d3arx0e","taskName":"Cole - Website","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3arx0e","stale":false}}]},"inProgress":{"label":"Part-way through","date":"2026-08-18","entries":[{"id":"72d028b9dbba","date":"2026-08-20","start":1787182200000,"end":1787187600000,"activeMs":5430000,"durationMs":5400000,"blockIds":["b6149b3cb440","86069aa4876b"],"evidence":{"apps":["Photoshop"],"paths":["/Volumes/Projects/Clients/SAPN/2026/Smarter Homes Solar Curtailment/Curtailment_styleframes_01.psd"],"titles":["Curtailment_styleframes_01.psd @ 100%"],"urls":[]},"suggestion":{"taskId":"86d3bn9ya","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test DESIGN STYLEFRAMES + STORYBOARD","listId":"901614105218","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client SAPN","task name matches the file (72%)","Photoshop is design work"],"alternatives":[{"taskId":"86d31k2ag","taskName":"SAPN - Educational series - Solar and electricity DESIGN","listName":"SAPN - Retainer Projects 2026","score":0.973},{"taskId":"86d3bn9np","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test","listName":"SAPN - Retainer Projects 2026","score":0.923},{"taskId":"86d17w0yp","taskName":"SAPN - RAP Artwork EPS file","listName":"SAPN - Retainer Projects 2026","score":0.913},{"taskId":"86d2w4864","taskName":"SAPN - Evergreen campaign - Get prepared COPY + DESIGN","listName":"SAPN - Retainer Projects 2026","score":0.904}],"billable":true},"status":"synced","taskId":"86d3bn9ya","description":"Curtailment_styleframes_01.psd","billable":true,"resolved":{"taskId":"86d3bn9ya","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test DESIGN STYLEFRAMES + STORYBOARD","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9ya","stale":false},"clickupEntryId":"te-demo","syncedAt":1787295547211},{"id":"a321ed39b0ac","date":"2026-08-20","start":1787187600000,"end":1787194800000,"activeMs":7200000,"durationMs":7200000,"blockIds":["96c2bf1f503e","fa2bc74f04c1"],"evidence":{"apps":["Google Chrome","Photoshop"],"paths":["/Volumes/Projects/Clients/Resmed/2026/CPAP Trial EDM/CPAP_trial_EDM_header.psd"],"titles":["Resmed - CPAP Trial EDM - ClickUp","CPAP_trial_EDM_header.psd"],"urls":["https://app.clickup.com/t/86d42ff8d"]},"suggestion":{"taskId":"86d42ff8d","taskName":"Resmed - CPAP Trial EDM","listId":"901614107571","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","confidence":0.97,"reasons":["rule \"ClickUp task open in the browser\" identified task 86d42ff8d"],"alternatives":[],"billable":true},"status":"approved","taskId":"86d42ff8d","description":"CPAP_trial_EDM_header.psd","billable":true,"resolved":{"taskId":"86d42ff8d","taskName":"Resmed - CPAP Trial EDM","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42ff8d","stale":false}},{"id":"29b3c5f03d2f","date":"2026-08-20","start":1787198400000,"end":1787205600000,"activeMs":7200000,"durationMs":7200000,"blockIds":["6848c079ec26"],"evidence":{"apps":["Adobe Premiere Pro"],"paths":["/Volumes/Projects/Clients/Symons Clark/2026/Onboarding Visitors video/Onboarding_Visitors_edit.prproj"],"titles":["Onboarding_Visitors_edit.prproj"],"urls":[]},"suggestion":{"taskId":"86d06ep1p","taskName":"Symons - Onboarding Visitors video - POSTPRODUCTION","listId":"901614107539","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client Symons Clark","task name matches the file (81%)","Adobe Premiere Pro is postproduction work"],"alternatives":[{"taskId":"86d06ennj","taskName":"Symons - Onboarding Visitors video","listName":"Symons Clark - Retainer List 2026","score":1.024},{"taskId":"86d0pfv7r","taskName":"Symons - Fitness for work video ANIMATION/POST","listName":"Symons Clark - Retainer List 2026","score":0.979},{"taskId":"86d06envy","taskName":"Symons - Onboarding Visitors video - STORYBOARD","listName":"Symons Clark - Retainer List 2026","score":0.973},{"taskId":"86d06ep2v","taskName":"Symons - Onboarding Visitors video - VO","listName":"Symons Clark - Retainer List 2026","score":0.973}],"billable":true},"status":"pending","taskId":"86d06ep1p","description":"Onboarding_Visitors_edit.prproj","billable":true,"resolved":{"taskId":"86d06ep1p","taskName":"Symons - Onboarding Visitors video - POSTPRODUCTION","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06ep1p","stale":false}},{"id":"6d31173f972d","date":"2026-08-20","start":1787205600000,"end":1787210100000,"activeMs":4500000,"durationMs":4500000,"blockIds":["93024a8fa14c"],"evidence":{"apps":["Microsoft Word"],"paths":["/Volumes/Projects/Clients/Aurizn/2026/GPTW/GPTW_wallpapers_banners_posters_copy.docx"],"titles":["GPTW_wallpapers_banners_posters_copy.docx"],"urls":[]},"suggestion":{"taskId":"86d4187pk","taskName":"Aurizn - GPTW wallpapaers, email banners, posters COPY","listId":"901614107575","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","confidence":0.95,"reasons":["rule \"Client folder on the server\" → client Aurizn","task name matches the file (80%)","Microsoft Word is copy work"],"alternatives":[{"taskId":"86d22gdr0","taskName":"Aurizn - Sales Deck DESIGN + CONTENT","listName":"Aurizn - Retainer List 2026","score":0.938},{"taskId":"86d4186py","taskName":"Aurizn - GPTW wallpapaers, email banners, posters","listName":"Aurizn - Retainer List 2026","score":0.936},{"taskId":"86d4187kj","taskName":"Aurizn - GPTW wallpapaers, email banners, posters CONCEPTS","listName":"Aurizn - Retainer List 2026","score":0.907},{"taskId":"86d42bd8q","taskName":"Aurizn GPTW Leader Toolkit","listName":"Aurizn - Retainer List 2026","score":0.8}],"billable":true},"status":"pending","taskId":"86d4187pk","description":"GPTW_wallpapers_banners_posters_copy.docx","billable":true,"resolved":{"taskId":"86d4187pk","taskName":"Aurizn - GPTW wallpapaers, email banners, posters COPY","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4187pk","stale":false}}]}},"tasks":[{"taskId":"86d42w42h","taskName":"SAPN - Apprentice recruitment SM videos","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42w42h"},{"taskId":"86d41cdvc","taskName":"SAPN Prostate Cancer Awareness month","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d41cdvc"},{"taskId":"86d411aqa","taskName":"SAPN - new brand guidelines - Feedback and variations","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d411aqa"},{"taskId":"86d3yjw8z","taskName":"SAPN - Electricity at home illustration","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3yjw8z"},{"taskId":"86d3w34qt","taskName":"SAPN- Naidoc week video","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3w34qt"},{"taskId":"86d3mfjmu","taskName":"SAPN - EWIT 2026 shoot and post production","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3mfjmu"},{"taskId":"86d34c10e","taskName":"SAPN - New animation 2026 Helicopter inspections","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d34c10e"},{"taskId":"86d19y584","taskName":"SAPN - Customer Response Vehicle comms DESIGN + POSTPRODUCTION","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d19y584"},{"taskId":"86d17w0yp","taskName":"SAPN - RAP Artwork EPS file","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d17w0yp"},{"taskId":"86d0qafwg","taskName":"SAPN - Day in the life - CADET Video","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0qafwg"},{"taskId":"86d04tan4","taskName":"SAPN - Before you dig / digging near by powerlines poles DESIGN + POST","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d04tan4"},{"taskId":"86d2w4864","taskName":"SAPN - Evergreen campaign - Get prepared COPY + DESIGN","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2w4864"},{"taskId":"86d3bn9np","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9np"},{"taskId":"86d3bn9v1","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test COPY SCRIPT","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9v1"},{"taskId":"86d3bn9ya","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test DESIGN STYLEFRAMES + STORYBOARD","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9ya"},{"taskId":"86d3bn9zy","taskName":"SAPN New explainer - Annual Smarter Homes Solar Curtailment Test ANIMATION + VO","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3bn9zy"},{"taskId":"86d31k272","taskName":"SAPN - Educational series - Solar and electricity","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d31k272"},{"taskId":"86d31k28t","taskName":"SAPN - Educational series - Solar and electricity COPY/CONTENT","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d31k28t"},{"taskId":"86d31k2ag","taskName":"SAPN - Educational series - Solar and electricity DESIGN","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d31k2ag"},{"taskId":"86d31k2c0","taskName":"SAPN - Educational series - Solar and electricity ANIMATION + VO","listName":"SAPN - Retainer Projects 2026","folderName":"SAPN","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d31k2c0"},{"taskId":"86d42ff8d","taskName":"Resmed - CPAP Trial EDM","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42ff8d"},{"taskId":"86d42bgyj","taskName":"Resmed - ATL + OOH Ads Aug 2026","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42bgyj"},{"taskId":"86d3qj25d","taskName":"Resmed - ATL + OOH Ads July 2026","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3qj25d"},{"taskId":"86d4213xf","taskName":"Resmed - Tiered Bundles EDMs","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4213xf"},{"taskId":"86d408jdp","taskName":"Resmed - TIered Bundles","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d408jdp"},{"taskId":"86d408vjz","taskName":"Resmed - Service days EDMs","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d408vjz"},{"taskId":"86d411aa4","taskName":"Resmed - comorbidity artwork -ads","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d411aa4"},{"taskId":"86d3v5fv8","taskName":"Resmed - Ecom mask resize images","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3v5fv8"},{"taskId":"86d3ke9z4","taskName":"Resmed - Agnostic Landing page banner","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3ke9z4"},{"taskId":"86d2mct22","taskName":"Resmed - May promo","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2mct22"},{"taskId":"86d2mct2v","taskName":"Resmed - May promo KV DESIGN","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2mct2v"},{"taskId":"86d288ap3","taskName":"Resmed - April Promos Rollout DESIGN AND PRODUCTION","listName":"Resmed - Retainer List 2026","folderName":"Resmed","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d288ap3"},{"taskId":"86d42vdv2","taskName":"B2B - Therapy plan x 6 brochures brand updates","listName":"Resmed - B2B2C List","folderName":"Resmed - B2B2C","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42vdv2"},{"taskId":"86d41w18t","taskName":"B2B - Aircurve 11 Vautor Hype reel launch","listName":"Resmed - B2B2C List","folderName":"Resmed - B2B2C","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d41w18t"},{"taskId":"86d3t0uwr","taskName":"B2B - Marketing Hub","listName":"Resmed - B2B2C List","folderName":"Resmed - B2B2C","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3t0uwr"},{"taskId":"86d435ptp","taskName":"Maptek - NS4 on site at Kanmantoo Mine","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d435ptp"},{"taskId":"86d3ykhp2","taskName":"Maptek - Evolution Promo","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3ykhp2"},{"taskId":"86d3pu2uw","taskName":"Maptek - Conference video","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3pu2uw"},{"taskId":"86d3nybxp","taskName":"Maptek - Conference content","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3nybxp"},{"taskId":"86d3nybke","taskName":"Maptek - Blast Logic Explainer","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3nybke"},{"taskId":"86d3nybhu","taskName":"Maptek - Vulcan Explainer","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3nybhu"},{"taskId":"86d3nybh8","taskName":"maptek - vestrex explainer","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3nybh8"},{"taskId":"86d2xhcpr","taskName":"Maptek Vestrex Teaser New script + styleframes","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2xhcpr"},{"taskId":"86d2aw6pn","taskName":"Maptek - Recruitment Video POSTPRODUCTION","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2aw6pn"},{"taskId":"86d24yv9q","taskName":"Maptek - Corporate Video POST PRODUCTION","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d24yv9q"},{"taskId":"86d23488v","taskName":"Maptek - Corporate Videos","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d23488v"},{"taskId":"86d39f3h5","taskName":"Maptek - How to videos DESIGN and POSTPRODUCTION","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d39f3h5"},{"taskId":"86d36ccmg","taskName":"Maptek - 45 years - socials cuts","listName":"Maptek - Retainer List 2026","folderName":"Maptek","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d36ccmg"},{"taskId":"86d06ennj","taskName":"Symons - Onboarding Visitors video","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06ennj"},{"taskId":"86d06enrw","taskName":"Symons - Onboarding Visitors video - SCRIPTS","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06enrw"},{"taskId":"86d06envy","taskName":"Symons - Onboarding Visitors video - STORYBOARD","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06envy"},{"taskId":"86d06ep1p","taskName":"Symons - Onboarding Visitors video - POSTPRODUCTION","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06ep1p"},{"taskId":"86d06ep2v","taskName":"Symons - Onboarding Visitors video - VO","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d06ep2v"},{"taskId":"86d0pfv1a","taskName":"Symons - Fitness for work video","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0pfv1a"},{"taskId":"86d0pfv5y","taskName":"Symons - Fitness for work video STORYBOARD","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0pfv5y"},{"taskId":"86d0pfv7r","taskName":"Symons - Fitness for work video ANIMATION/POST","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0pfv7r"},{"taskId":"86d0pfv8r","taskName":"Symons - Fitness for work video VO","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0pfv8r"},{"taskId":"86d2nnn68","taskName":"Symons - Induction Video - Animation","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2nnn68"},{"taskId":"86d2nnn82","taskName":"Symons - Induction Video - Rewrite CONTENT/COPY","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2nnn82"},{"taskId":"86d2nnna0","taskName":"Symons - Induction Video - Storyboard DESIGN","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2nnna0"},{"taskId":"86d3pjg2b","taskName":"Symons - Mining Brochure","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3pjg2b"},{"taskId":"86d3pu42f","taskName":"Symons - HSE Survey results poster","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3pu42f"},{"taskId":"86d3pdge2","taskName":"Symons - Survey results PPT","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3pdge2"},{"taskId":"86d40ncfk","taskName":"Symons - Emergency Icons design","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d40ncfk"},{"taskId":"86d2buu9f","taskName":"Symons - Email Signature Outlook template 2026","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2buu9f"},{"taskId":"86d1r2gyv","taskName":"Symons - 'Ask Jason poster' DESIGN","listName":"Symons Clark - Retainer List 2026","folderName":"Symons Clark","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1r2gyv"},{"taskId":"86d40zbww","taskName":"ILIM - Guilds Course Copy 2026","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d40zbww"},{"taskId":"86d40990y","taskName":"ILIM - Recruitment Social Post","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d40990y"},{"taskId":"86d3tvpg0","taskName":"Ilim - Dallas girls poster Design","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3tvpg0"},{"taskId":"86d3tvpht","taskName":"Ilim - School Fee Schedule","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3tvpht"},{"taskId":"86d34c576","taskName":"Ilim - Annual report 2026","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d34c576"},{"taskId":"86d0mdv0f","taskName":"Ilim - Yearbook","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0mdv0f"},{"taskId":"86d0mdv7d","taskName":"Ilim - Yearbook - COVERS & INT TEMPLATE CONCEPTS DESIGN","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0mdv7d"},{"taskId":"86d0tehnb","taskName":"Ilim - yearbook 2025 - LAYOUT DESIGN","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0tehnb"},{"taskId":"86d0tejun","taskName":"Ilim - yearbook 2025 - CONTENT + FINAL DELIVERY","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0tejun"},{"taskId":"86d1y5zax","taskName":"Ilim - VCE Video Feb 2026","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1y5zax"},{"taskId":"86d1y5zgb","taskName":"Ilim - VCE Video -Feb 2026 SHOOT DAYS","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1y5zgb"},{"taskId":"86d1y5zpq","taskName":"Ilim VCE Video - PRE AND POST PRODUCTION","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1y5zpq"},{"taskId":"86d1y6081","taskName":"Ilim - VCE Video - MOODBOARD/CONCEPT","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1y6081"},{"taskId":"86d2h3xpj","taskName":"Ilim - Classroom posters x 7 REDESIGN","listName":"Ilim College - Retainer List 2026","folderName":"Ilim College","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2h3xpj"},{"taskId":"86d3zqwzf","taskName":"Cole - Corporate video post production","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3zqwzf"},{"taskId":"86d3ymq7z","taskName":"Cole - EDM Year-end","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3ymq7z"},{"taskId":"86d3ymq5f","taskName":"Cole - SEP socials","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3ymq5f"},{"taskId":"86d3h1evk","taskName":"Cole - All services Prospectus brochure COPY + DESIGN","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3h1evk"},{"taskId":"86d0ah51v","taskName":"Cole - Social Media Oct 2025","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0ah51v"},{"taskId":"86d0ah56h","taskName":"Cole - Social Media Oct 2025 CONTENT","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0ah56h"},{"taskId":"86d0ah5b7","taskName":"Cole - Social Media Oct 2025 DESIGN / POST PRODUCTION","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d0ah5b7"},{"taskId":"86d1a96mq","taskName":"Cole - School payroll health selfdiagnosis DESIGN","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1a96mq"},{"taskId":"86d3arx0e","taskName":"Cole - Website","listName":"Cole School Experts Retainer List 2026","folderName":"Cole School Experts","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3arx0e"},{"taskId":"86d42bdb7","taskName":"Aurizn GPTW Town Hall PPT","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42bdb7"},{"taskId":"86d42bd8q","taskName":"Aurizn GPTW Leader Toolkit","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42bd8q"},{"taskId":"86d4186py","taskName":"Aurizn - GPTW wallpapaers, email banners, posters","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4186py"},{"taskId":"86d4187kj","taskName":"Aurizn - GPTW wallpapaers, email banners, posters CONCEPTS","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4187kj"},{"taskId":"86d4187pk","taskName":"Aurizn - GPTW wallpapaers, email banners, posters COPY","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4187pk"},{"taskId":"86d420rd3","taskName":"Aurizn - AmCham Parliamentary Showcase Booklet","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d420rd3"},{"taskId":"86d3me3yq","taskName":"Aurzin - Company slidedeck","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3me3yq"},{"taskId":"86d22gdr0","taskName":"Aurizn - Sales Deck DESIGN + CONTENT","listName":"Aurizn - Retainer List 2026","folderName":"Aurizn","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d22gdr0"},{"taskId":"86d3rq6xc","taskName":"AOL - OBD July edits","listName":"AOL - Retainer List 2026","folderName":"AOL","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3rq6xc"},{"taskId":"86d3mwjd9","taskName":"AOL - UBA 2026 postproduction","listName":"AOL - Retainer List 2026","folderName":"AOL","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3mwjd9"},{"taskId":"86d3n282a","taskName":"Subnet - Conference Video","listName":"Subnet Retainer List","folderName":"Subnet","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3n282a"},{"taskId":"86d42yb6p","taskName":"MBD - Onboarding 2026","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d42yb6p"},{"taskId":"86d4096mf","taskName":"MBD EDM - August 2026","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d4096mf"},{"taskId":"86d3hjnbn","taskName":"MBD - EDM July","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3hjnbn"},{"taskId":"86d3850d3","taskName":"MBD - Website SEO Pages 2026","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d3850d3"},{"taskId":"86d1jjfk6","taskName":"MBD - CAS Explainer 2026","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1jjfk6"},{"taskId":"86d1jjfq5","taskName":"MBD - CAS Explainer 2026 CONTENT","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1jjfq5"},{"taskId":"86d1jjft4","taskName":"MBD - CAS Explainer 2026 DESIGN","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1jjft4"},{"taskId":"86d1jjfu5","taskName":"MBD - CAS Explainer 2026 POST PRODUCTION","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d1jjfu5"},{"taskId":"86d2xhem0","taskName":"MBD - Marketing Funnels COPY","listName":"MBD - Billable Projects 2026","folderName":"MBD Billable","spaceName":"CAAS MBD Clients","url":"https://app.clickup.com/t/86d2xhem0"},{"taskId":"86d2c5302","taskName":"MBD - Non billable - Meetings, catch ups","listName":"Active list","folderName":null,"spaceName":"MBD Non billable","url":"https://app.clickup.com/t/86d2c5302"},{"taskId":"86d2c55nd","taskName":"MBD - Non billable - Admin, shops","listName":"Active list","folderName":null,"spaceName":"MBD Non billable","url":"https://app.clickup.com/t/86d2c55nd"},{"taskId":"86d2c54d1","taskName":"MBD - Non billable - Training, Trials","listName":"Active list","folderName":null,"spaceName":"MBD Non billable","url":"https://app.clickup.com/t/86d2c54d1"},{"taskId":"86d2c5581","taskName":"MBD - Non billable - Clean, tidy up","listName":"Active list","folderName":null,"spaceName":"MBD Non billable","url":"https://app.clickup.com/t/86d2c5581"}],"targets":{"dailyMinutes":390,"billableMinutes":390},"display":{"timezone":"Australia/Adelaide","dayStartHour":7,"dayEndHour":19,"snapMinutes":15,"minEntryMinutes":15},"quickLog":[{"index":0,"label":"MBD Meeting","minutes":30,"billable":false,"taskName":"MBD - Non billable - Meetings, catch ups"},{"index":1,"label":"Admin","minutes":15,"billable":false,"taskName":"MBD - Non billable - Admin, shops"},{"index":2,"label":"Training","minutes":30,"billable":false,"taskName":"MBD - Non billable - Training, Trials"}]};
+  var state = {};
+  Object.keys(DATA.scenarios).forEach(function (key) {
+    var scenario = DATA.scenarios[key];
+    state[scenario.date] = JSON.parse(JSON.stringify(scenario));
+  });
+  var dates = Object.keys(state).sort().reverse();
+  var current = DATA.scenarios.typical.date;
+
+  function day(date) { return state[date] || state[current]; }
+
+  /**
+   * The server attaches this to every entry on the way out: the task the time
+   * will actually be logged against, looked up by id. The preview must do the
+   * same, or picking a task from search would show a stale name -- the exact
+   * bug this replaced.
+   */
+  function resolve(entry) {
+    var s = entry.suggestion;
+    if (!entry.taskId) {
+      return { taskId: null, taskName: null, listName: s.listName, folderName: s.folderName,
+               spaceName: s.spaceName, url: null, stale: false };
+    }
+    var task = DATA.tasks.filter(function (t) { return t.taskId === entry.taskId; })[0];
+    if (task) {
+      return { taskId: task.taskId, taskName: task.taskName, listName: task.listName,
+               folderName: task.folderName, spaceName: task.spaceName, url: task.url, stale: false };
+    }
+    if (entry.taskId === s.taskId && s.taskName) {
+      return { taskId: entry.taskId, taskName: s.taskName, listName: s.listName,
+               folderName: s.folderName, spaceName: s.spaceName, url: null, stale: false };
+    }
+    return { taskId: entry.taskId, taskName: null, listName: null, folderName: null,
+             spaceName: null, url: null, stale: true };
+  }
+  function dress(entry) { entry.resolved = resolve(entry); return entry; }
+
+  function summarise(d) {
+    function total(fn) {
+      return d.entries.filter(fn).reduce(function (sum, e) { return sum + e.durationMs; }, 0);
+    }
+    function live(e) { return e.status !== 'deleted'; }
+    function counts(e) { return e.status !== 'deleted' && e.status !== 'rejected'; }
+    return {
+      trackedMs: total(live),
+      pendingMs: total(function (e) { return e.status === 'pending'; }),
+      approvedMs: total(function (e) { return e.status === 'approved'; }),
+      syncedMs: total(function (e) { return e.status === 'synced'; }),
+      billableMs: total(function (e) { return e.billable && counts(e); }),
+      loggedMs: total(counts)
+    };
+  }
+
+  function payload(date) {
+    var d = day(date);
+    return {
+      day: { date: d.date, updatedAt: Date.now(), entries: d.entries.map(dress) },
+      summary: summarise(d),
+      days: dates,
+      catalogFetchedAt: Date.now(),
+      taskCount: DATA.tasks.length,
+      targets: DATA.targets,
+      display: DATA.display,
+      quickLog: DATA.quickLog
+    };
+  }
+
+  function handle(method, path, body) {
+    var date = (body && body.date) || current;
+
+    if (path.indexOf('/api/day?') === 0 || path === '/api/day') {
+      var q = path.split('date=')[1];
+      if (q) { date = decodeURIComponent(q); }
+      if (state[date]) current = date;
+      return payload(current);
+    }
+
+    if (path.indexOf('/api/week') === 0) {
+      // Build a Mon-Fri week around whichever sample day is showing, so the
+      // week view has something real to draw.
+      var anchor = state[current];
+      var parts = anchor.date.split('-').map(Number);
+      var at = new Date(parts[0], parts[1] - 1, parts[2]);
+      at.setDate(at.getDate() - ((at.getDay() + 6) % 7));
+      var out = [];
+      for (var i = 0; i < 7; i++) {
+        var iso = at.getFullYear() + '-' + String(at.getMonth() + 1).padStart(2, '0') + '-' + String(at.getDate()).padStart(2, '0');
+        var d = state[iso];
+        var byClient = {};
+        if (d) {
+          d.entries.forEach(function (e) {
+            if (e.status === 'deleted' || e.status === 'rejected') return;
+            var r = e.resolved || e.suggestion;
+            var c = r.folderName || r.spaceName || 'Unassigned';
+            byClient[c] = (byClient[c] || 0) + e.durationMs;
+          });
+        }
+        out.push({
+          date: iso,
+          summary: d ? summarise(d) : { trackedMs: 0, pendingMs: 0, approvedMs: 0, syncedMs: 0, billableMs: 0, loggedMs: 0 },
+          byClient: byClient,
+          entryCount: d ? d.entries.length : 0
+        });
+        at.setDate(at.getDate() + 1);
+      }
+      return { weekStart: out[0].date, days: out, targets: DATA.targets };
+    }
+
+    if (path.indexOf('/api/tasks') === 0) {
+      var term = decodeURIComponent((path.split('q=')[1] || '')).toLowerCase();
+      var matches = DATA.tasks.filter(function (t) {
+        return t.taskName.toLowerCase().indexOf(term) !== -1 ||
+               (t.listName || '').toLowerCase().indexOf(term) !== -1 ||
+               (t.folderName || '').toLowerCase().indexOf(term) !== -1;
+      }).slice(0, 50);
+      return { tasks: matches };
+    }
+
+    if (path.indexOf('/api/entry/') === 0) {
+      var id = decodeURIComponent(path.slice('/api/entry/'.length));
+      var d = day(date);
+      var entry = d.entries.filter(function (e) { return e.id === id; })[0];
+      if (!entry) throw new Error('No such entry');
+      if (entry.status === 'synced') throw new Error('Already pushed to ClickUp; edit it there instead.');
+
+      if (body.taskId !== undefined) {
+        // The suggestion is the record of what the matcher guessed and is
+        // never overwritten; only the chosen task changes.
+        if (body.taskId && body.taskId !== entry.suggestion.taskId) entry.corrected = true;
+        entry.taskId = body.taskId;
+      }
+      if (typeof body.description === 'string') entry.description = body.description;
+      if (typeof body.billable === 'boolean') entry.billable = body.billable;
+      if (typeof body.durationMinutes === 'number') {
+        entry.durationMs = Math.max(0, Math.round(body.durationMinutes)) * 60000;
+        entry.end = entry.start + entry.durationMs;
+      }
+      if (typeof body.start === 'number') {
+        entry.start = Math.round(body.start);
+        entry.end = entry.start + entry.durationMs;
+      }
+      if (body.status) {
+        if (body.status === 'approved' && !entry.taskId) throw new Error('Pick a task before approving.');
+        entry.status = body.status;
+      }
+      return { entry: dress(entry), summary: summarise(d) };
+    }
+
+    if (path === '/api/entry') {
+      var into = day(date);
+      var grain = DATA.display.snapMinutes || 15;
+      var mins = Math.max(DATA.display.minEntryMinutes || grain, Math.round((body.minutes || grain) / grain) * grain);
+      var start = Number(body.start);
+      if (!isFinite(start)) start = into.entries.length ? into.entries[0].start : Date.now();
+      var blank = {
+        id: 'manual-' + Math.round(start) + '-' + mins,
+        date: into.date,
+        start: start, end: start + mins * 60000,
+        activeMs: mins * 60000, durationMs: mins * 60000,
+        blockIds: [],
+        evidence: { apps: ['Added by hand'], paths: [], titles: ['Added by hand'], urls: [] },
+        suggestion: {
+          taskId: null, taskName: null, listId: null, listName: null, folderName: null, spaceName: null,
+          confidence: 0, reasons: ['added by hand — pick the task'], alternatives: [], billable: true
+        },
+        status: 'pending', taskId: null,
+        description: 'Added by hand', billable: true, manual: true
+      };
+      dress(blank);
+      into.entries = into.entries.concat([blank]).sort(function (a, b) { return a.start - b.start; });
+      return { entry: blank, day: payload(date).day, summary: summarise(into) };
+    }
+
+    if (path === '/api/day/rebuild') {
+      return { day: payload(date).day, summary: summarise(day(date)) };
+    }
+
+    if (path === '/api/day/approve-all') {
+      var target = day(date);
+      var approved = 0;
+      target.entries.forEach(function (e) {
+        if (e.status === 'pending' && e.taskId) { e.status = 'approved'; approved++; }
+      });
+      return { day: payload(date).day, approved: approved, summary: summarise(target) };
+    }
+
+    if (path === '/api/day/push') {
+      var pushing = day(date);
+      var pushed = 0;
+      pushing.entries.forEach(function (e) {
+        if (e.status === 'approved') { e.status = 'synced'; e.syncedAt = Date.now(); pushed++; }
+      });
+      return {
+        result: { pushed: pushed, skipped: 0, reconciled: 0, failures: [] },
+        day: payload(date).day,
+        summary: summarise(pushing)
+      };
+    }
+
+    if (path.indexOf('/api/tracking') === 0) {
+      // Rolled up from the same day the timeline is showing, so the preview
+      // shows the real shape of this view rather than invented numbers.
+      var src = day(current);
+      var seen = {};
+      var order = [];
+      src.entries.forEach(function (e) {
+        if (e.status === 'deleted') return;
+        (e.evidence.apps || []).forEach(function (name) {
+          if (!seen[name]) { seen[name] = { app: name, activeMs: 0, hasPath: false, hasUrl: false, title: null, path: null, url: null }; order.push(name); }
+          var row = seen[name];
+          row.activeMs += e.durationMs / Math.max(1, e.evidence.apps.length);
+          // An entry can span several apps, and its evidence is pooled. Give
+          // file paths to the app that could plausibly have one so the preview
+          // does not show Chrome holding a .psd open.
+          var browserish = /Chrome|Safari|Firefox|Edge|Arc|Slack/.test(name);
+          if (!browserish && (e.evidence.paths || []).length) { row.hasPath = true; row.path = row.path || e.evidence.paths[0]; }
+          if (browserish && (e.evidence.urls || []).length) { row.hasUrl = true; row.url = row.url || e.evidence.urls[0]; }
+          if ((e.evidence.titles || []).length) { row.title = row.title || e.evidence.titles[0]; }
+        });
+      });
+      var BUNDLES = {
+        'Photoshop': 'com.adobe.Photoshop', 'After Effects': 'com.adobe.AfterEffects',
+        'Adobe Premiere Pro': 'com.adobe.PremierePro', 'Google Chrome': 'com.google.Chrome',
+        'Slack': 'com.tinyspeck.slackmacgap', 'Microsoft Word': 'com.microsoft.Word',
+        'Figma': 'com.figma.Desktop', 'Terminal': 'com.apple.Terminal'
+      };
+      var apps = order.map(function (name) {
+        var row = seen[name];
+        var samples = Math.max(1, Math.round(row.activeMs / 5000));
+        return {
+          app: name, bundleId: BUNDLES[name] || 'unknown',
+          activeMs: Math.round(row.activeMs), samples: samples, lastSeen: Date.now(),
+          titleRate: row.title ? 1 : 0,
+          pathRate: row.hasPath ? 1 : 0,
+          urlRate: row.hasUrl ? 1 : 0,
+          exampleTitle: row.title, examplePath: row.path, exampleUrl: row.url
+        };
+      }).sort(function (a, b) { return b.activeMs - a.activeMs; });
+      var total = apps.reduce(function (sum, a) { return sum + a.activeMs; }, 0);
+      return {
+        date: src.date,
+        sampleIntervalSeconds: 5,
+        observer: {
+          lastSampleAt: Date.now() - 4000, ageSeconds: 4,
+          totalSamples: Math.round(total / 5000), activeMs: total,
+          idleSamples: 0, lockedSamples: 0,
+          spoolPath: '~/Library/Application Support/MBDTimeTracker/observer.ndjson'
+        },
+        accessibility: 'granted',
+        apps: apps
+      };
+    }
+
+    if (path === '/api/catalog/refresh') {
+      return { taskCount: DATA.tasks.length, fetchedAt: Date.now() };
+    }
+
+    if (path === '/api/quick-log') {
+      var button = DATA.quickLog[body.index];
+      if (!button) throw new Error('No such quick-log button.');
+      var into = day(date);
+      var mins = body.minutes || button.minutes;
+      var end = into.entries.length
+        ? Math.max.apply(null, into.entries.map(function (e) { return e.end; }))
+        : Date.now();
+      var entry = {
+        id: 'manual-' + Math.round(end) + '-' + body.index,
+        date: into.date,
+        start: end, end: end + mins * 60000,
+        activeMs: mins * 60000, durationMs: mins * 60000,
+        blockIds: [],
+        evidence: { apps: ['Quick log'], paths: [], titles: [button.label], urls: [] },
+        suggestion: {
+          taskId: button.taskId || 'quick-' + body.index, taskName: button.taskName,
+          listId: null, listName: 'Active list', folderName: null, spaceName: 'MBD Non billable',
+          confidence: 1, reasons: ['logged with the "' + button.label + '" button'],
+          alternatives: [], billable: button.billable
+        },
+        status: 'approved', taskId: button.taskId || 'quick-' + body.index,
+        description: button.label, billable: button.billable, manual: true
+      };
+      dress(entry);
+      into.entries = into.entries.concat([entry]).sort(function (a, b) { return a.start - b.start; });
+      return { entry: entry, day: payload(date).day, summary: summarise(into) };
+    }
+
+    throw new Error('Not found: ' + path);
+  }
+
+  function reset(key) {
+    var scenario = DATA.scenarios[key];
+    state[scenario.date] = JSON.parse(JSON.stringify(scenario));
+    current = scenario.date;
+    return scenario.date;
+  }
+
+  return { handle: handle, reset: reset, scenarios: DATA.scenarios };
+})();
+</script>
+
+<style>
+  :root { --pv-ink: #1b1f27; --pv-dim: #5d6572; --pv-line: #d9dde4; --pv-ground: #eceef2; --pv-panel: #ffffff; --pv-accent: #2f6df6; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --pv-ink: #e9ebf0; --pv-dim: #98a1b0; --pv-line: #2b303a; --pv-ground: #0f1116; --pv-panel: #191c22; --pv-accent: #7aa2ff; }
+  }
+  :root[data-theme="dark"] { --pv-ink: #e9ebf0; --pv-dim: #98a1b0; --pv-line: #2b303a; --pv-ground: #0f1116; --pv-panel: #191c22; --pv-accent: #7aa2ff; }
+
+  .pv-bar {
+    background: var(--pv-ground); color: var(--pv-ink); border-bottom: 1px solid var(--pv-line);
+    padding: 10px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font: 13px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .pv-bar strong { font-weight: 600; letter-spacing: 0.02em; }
+  .pv-note { color: var(--pv-dim); }
+  .pv-spacer { flex: 1 1 auto; }
+  .pv-scenarios { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pv-scenarios button {
+    font: inherit; color: var(--pv-ink); background: var(--pv-panel);
+    border: 1px solid var(--pv-line); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  }
+  .pv-scenarios button:hover { border-color: var(--pv-accent); }
+  .pv-scenarios button[aria-pressed="true"] { background: var(--pv-accent); border-color: var(--pv-accent); color: #fff; }
+  .pv-scenarios button:focus-visible { outline: 2px solid var(--pv-accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+<div class="pv-bar">
+  <strong>Preview</strong>
+  <span class="pv-note">the real interface, sample data — nothing is sent to ClickUp</span>
+  <span class="pv-spacer"></span>
+  <span class="pv-scenarios" id="pv-scenarios"></span>
+</div>
+<script>
+(function () {
+  var host = document.getElementById('pv-scenarios');
+  var keys = Object.keys(PREVIEW.scenarios);
+  host.innerHTML = keys.map(function (key, i) {
+    return '<button data-scenario="' + key + '" aria-pressed="' + (i === 0) + '">' +
+      PREVIEW.scenarios[key].label + '</button>';
+  }).join('');
+  host.addEventListener('click', function (event) {
+    var key = event.target.getAttribute && event.target.getAttribute('data-scenario');
+    if (!key) return;
+    var date = PREVIEW.reset(key);
+    host.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-scenario') === key));
+    });
+    // Re-enter the page's own load path so nothing about it is special-cased.
+    var select = document.getElementById('date');
+    select.value = date;
+    select.dispatchEvent(new Event('change'));
+  });
+})();
+</script>
+
+<header>
+  <div class="hrow">
+    <h1>Timesheet review</h1>
+    <span class="week-strip" id="weekstrip"></span>
+    <span class="spacer"></span>
+    <span class="seg-ctl" id="viewctl">
+      <button data-view="day" aria-pressed="true">Day</button>
+      <button data-view="week" aria-pressed="false">Week</button>
+      <button data-view="tracking" aria-pressed="false">Tracking</button>
+    </span>
+    <span id="catalog" class="chip"></span>
+    <button class="btn" id="addEntry">+ Add entry</button>
+    <button class="btn" id="rebuild">Rebuild</button>
+    <button class="btn" id="approveAll">Approve all matched</button>
+    <button class="btn primary" id="push">Push to ClickUp</button>
+  </div>
+  <div class="hrow quicklog" id="quick"></div>
+</header>
+<main>
+  <div class="card goal" id="goal" style="display:none"></div>
+  <div id="dayview">
+    <div class="panes">
+      <div class="card tl" id="timeline"></div>
+      <div class="ent-list" id="entries"></div>
+    </div>
+  </div>
+  <div class="card wk" id="weekview" style="display:none"></div>
+  <div id="trackview" style="display:none"></div>
+</main>
+<div id="toast"></div>
+<script>
+(function () {
+  var state = {
+    date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null,
+    tracking: null,
+    display: { timezone: '', dayStartHour: 7, dayEndHour: 19, snapMinutes: 15, minEntryMinutes: 15 },
+    window: { from: 7, to: 19, stretched: false }
+  };
+
+  var ICON_TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>';
+  var ICON_X = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+
+  /* ------------------------------------------------------------ helpers -- */
+  function fmt(ms) {
+    var mins = Math.max(0, Math.round(ms / 60000));
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h > 0 ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm';
+  }
+  function hoursOnly(ms) { return (ms / 3600000).toFixed(1) + 'h'; }
+  /**
+   * All times render in one explicit zone. On an installed tracker that is the
+   * Mac's own zone; setting display.timezone pins it, so a shared preview shows
+   * studio time rather than whatever zone the viewer's browser happens to be in.
+   */
+  var TZ;
+  var fmtClock, fmtParts;
+  function setTimezone(tz) {
+    TZ = tz || undefined;
+    fmtClock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
+    fmtParts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TZ });
+  }
+  setTimezone('');
+
+  function clock(ts) { return fmtClock.format(new Date(ts)); }
+
+  /** Minutes since midnight in the display zone — the timeline's coordinate space. */
+  function minutesOfDay(ts) {
+    var hm = clock(ts).split(':');
+    return Number(hm[0]) * 60 + Number(hm[1]);
+  }
+
+  /** Today's date in the display zone. Never toISOString(), which is UTC and
+      lands on yesterday all morning anywhere east of Greenwich. */
+  function todayInZone() { return fmtParts.format(new Date()); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function basename(p) { return p.split('/').pop(); }
+  function toast(message, isError) {
+    var el = document.getElementById('toast');
+    el.textContent = message;
+    el.style.borderColor = isError ? 'var(--bad)' : 'var(--line-strong)';
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.style.display = 'none'; }, 4500);
+  }
+  // ---- preview stand-in for the local server -----------------------------
+  // Same request shapes as the real API, answered from memory so the page can
+  // be clicked through anywhere. Nothing here runs in the installed tracker.
+  async function api(path, options) {
+    await new Promise(function (r) { setTimeout(r, 90); });  // feel of a real round trip
+    var body = options && options.body ? JSON.parse(options.body) : {};
+    var method = (options && options.method) || 'GET';
+    return PREVIEW.handle(method, path, body);
+  }
+
+  /**
+   * A stable hue per client. Same folder name always lands on the same colour,
+   * on every machine, with no palette to maintain.
+   */
+  var HUES = [259, 199, 154, 24, 336, 96, 217, 44, 280, 172];
+  function hueFor(name) {
+    if (!name) return null;
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return HUES[h % HUES.length];
+  }
+  /**
+   * Always the resolved task, never the suggestion. entry.resolved is what
+   * the time will actually be logged against; the suggestion is only what the
+   * matcher guessed, and the two part ways the moment anyone corrects a match.
+   */
+  function taskOf(entry) {
+    return entry.resolved || { taskName: null, listName: null, folderName: null, spaceName: null, stale: false };
+  }
+  function clientOf(entry) {
+    var r = taskOf(entry);
+    return r.folderName || r.spaceName || null;
+  }
+  function hueStyle(entry) {
+    var hue = hueFor(clientOf(entry));
+    return hue === null ? '' : ' style="--h:' + hue + '"';
+  }
+
+  function live(entries) { return entries.filter(function (e) { return e.status !== 'deleted'; }); }
+
+  /* ----------------------------------------------------------- progress -- */
+  function renderGoal(summary) {
+    var el = document.getElementById('goal');
+    if (!state.targets) { el.style.display = 'none'; return; }
+    var dayMs = state.targets.dailyMinutes * 60000;
+    var billTargetMs = state.targets.billableMinutes * 60000;
+    var logged = summary.loggedMs || 0;
+    var billable = Math.min(summary.billableMs || 0, logged);
+    var other = logged - billable;
+    var scale = Math.max(dayMs, billTargetMs, logged, 1);
+
+    var cls, headline, aside;
+    if (billable >= billTargetMs) {
+      cls = 'ok';
+      headline = 'Billable target met — ' + fmt(billable) + ' billable';
+      aside = 'Anything else today is a bonus.';
+    } else if (logged >= dayMs) {
+      cls = 'warn';
+      headline = fmt(logged) + ' logged, ' + fmt(billable) + ' billable';
+      aside = 'Day minimum met. Swap in billable work if any is available — target is ' + fmt(billTargetMs) + '.';
+    } else {
+      cls = logged >= dayMs * 0.6 ? 'warn' : 'bad';
+      headline = fmt(dayMs - logged) + ' short of the ' + fmt(dayMs) + ' day';
+      aside = fmt(billable) + ' billable · ' + fmt(other) + ' non-billable. Meeting not logged? Use the buttons above.';
+    }
+
+    var bp = Math.min(100, (billable / scale) * 100);
+    var op = Math.min(100 - bp, (other / scale) * 100);
+    var mp = Math.min(100, (dayMs / scale) * 100);
+
+    el.style.display = '';
+    el.innerHTML =
+      '<div class="top"><span class="headline ' + cls + '">' + headline + '</span>' +
+      '<span class="aside">' + aside + '</span></div>' +
+      '<div class="meter">' +
+        '<div class="seg billable" style="left:0;width:' + bp + '%"></div>' +
+        '<div class="seg other" style="left:' + bp + '%;width:' + op + '%"></div>' +
+      '</div>' +
+      (mp < 100 ? '<div class="mark"><i style="left:' + mp + '%"></i><span style="left:' + mp + '%">' + fmt(dayMs) + ' target</span></div>' : '') +
+      '<div class="key"><span><i style="background:var(--ok)"></i>billable</span>' +
+      '<span><i style="background:var(--muted);opacity:0.5"></i>non-billable</span></div>';
+  }
+
+  /* ------------------------------------------------------------ week bar -- */
+  function renderWeekStrip() {
+    var el = document.getElementById('weekstrip');
+    if (!state.week) { el.innerHTML = ''; return; }
+    var todayIso = todayInZone();
+    el.innerHTML = state.week.days.slice(0, 5).map(function (d) {
+      var target = (state.targets && state.targets.dailyMinutes * 60000) || 1;
+      var pct = Math.min(100, (d.summary.loggedMs / target) * 100);
+      var parts = d.date.split('-');
+      var dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][state.week.days.indexOf(d)];
+      return '<button class="daypill' + (d.date > todayIso ? ' future' : '') + '" data-date="' + d.date + '"' +
+        ' aria-current="' + (d.date === state.date) + '" title="' + fmt(d.summary.loggedMs) + ' logged">' +
+        '<span class="dow">' + dow + '</span>' +
+        '<span class="num">' + Number(parts[2]) + '</span>' +
+        '<span class="met"><i style="width:' + pct + '%"></i></span></button>';
+    }).join('');
+  }
+
+  /* ----------------------------------------------------------- timeline -- */
+  var PX_PER_HOUR = 58;
+  /** Grain of the whole interface — set by capture.roundToMinutes. */
+  function snapMin() { return state.display.snapMinutes || 15; }
+  function minMin() { return state.display.minEntryMinutes || snapMin(); }
+  function snapTo(minutes) { return Math.round(minutes / snapMin()) * snapMin(); }
+
+  /**
+   * The working window, from config. It is expanded only if an entry genuinely
+   * falls outside it — hiding recorded time would be worse than a longer axis —
+   * and the page says so when that happens.
+   */
+  function timelineWindow(entries) {
+    var from = state.display.dayStartHour;
+    var to = state.display.dayEndHour;
+    var stretched = false;
+    entries.forEach(function (e) {
+      var startH = minutesOfDay(e.start) / 60;
+      var endH = startH + e.durationMs / 3600000;
+      if (startH < from) { from = Math.floor(startH); stretched = true; }
+      if (endH > to) { to = Math.ceil(endH); stretched = true; }
+    });
+    return { from: from, to: Math.max(to, from + 1), stretched: stretched };
+  }
+
+  function renderTimeline() {
+    var el = document.getElementById('timeline');
+    var entries = live(state.day.entries);
+    if (!entries.length) {
+      el.innerHTML = '<div class="tl-head"><span class="tl-title">Timeline</span></div>' +
+        '<div class="tl-empty">Nothing recorded yet.</div>';
+      return;
+    }
+    var win = timelineWindow(entries);
+    var height = (win.to - win.from) * PX_PER_HOUR;
+
+    var hours = '';
+    for (var h = win.from; h <= win.to; h++) {
+      hours += '<div class="tl-hour" style="top:' + ((h - win.from) * PX_PER_HOUR) + 'px">' +
+        '<span>' + String(h).padStart(2, '0') + ':00</span></div>';
+    }
+
+    var blocks = entries.map(function (entry) {
+      var top = ((minutesOfDay(entry.start) - win.from * 60) / 60) * PX_PER_HOUR;
+      var h = Math.max(20, (entry.durationMs / 3600000) * PX_PER_HOUR);
+      var label = taskOf(entry).taskName || entry.description || 'Unmatched';
+      var client = clientOf(entry) || 'No client';
+      return '<div class="tl-block' + (entry.status === 'rejected' ? ' rejected' : '') +
+        (state.selected === entry.id ? ' selected' : '') + '" data-id="' + entry.id + '"' +
+        ' style="top:' + top + 'px;height:' + h + 'px;' +
+        (hueFor(client) !== null ? '--h:' + hueFor(client) : '--h:250') + '"' +
+        ' title="' + esc(label) + '">' +
+        (h > 30 ? '<div class="who">' + esc(client) + '</div>' : '') +
+        '<div class="len">' + clock(entry.start) + ' · ' + fmt(entry.durationMs) + '</div>' +
+        (entry.status === 'synced' ? '' : '<div class="grip" data-grip="' + entry.id + '"></div>') +
+        '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="tl-head"><span class="tl-title">Timeline</span>' +
+      '<span class="tl-hint">drag to move · edge to resize</span></div>' +
+      '<div class="tl-grid" style="height:' + height + 'px">' + hours + blocks + '</div>' +
+      (win.stretched
+        ? '<div class="tl-note">Some time falls outside ' +
+          String(state.display.dayStartHour).padStart(2, '0') + ':00–' +
+          String(state.display.dayEndHour).padStart(2, '0') + ':00.</div>'
+        : '');
+    state.window = win;
+  }
+
+  /* Dragging a block moves its start; dragging the grip changes its length. */
+  /**
+   * Drawing a new entry on empty timeline space. Deliberately the same gesture
+   * as a calendar: press, drag down, release. Everything snaps to the block
+   * grain, and a release shorter than one block still yields one block.
+   */
+  var draw = null;
+  document.addEventListener('pointerdown', function (event) {
+    if (event.target.closest && event.target.closest('.tl-block')) return;
+    var grid = event.target.closest ? event.target.closest('.tl-grid') : null;
+    if (!grid || state.view !== 'day') return;
+
+    var rect = grid.getBoundingClientRect();
+    var minutesFromTop = snapTo(((event.clientY - rect.top) / PX_PER_HOUR) * 60);
+    draw = { grid: grid, startMin: state.window.from * 60 + minutesFromTop, y0: event.clientY, el: null };
+    event.preventDefault();
+  });
+
+  document.addEventListener('pointermove', function (event) {
+    if (!draw) return;
+    var rect = draw.grid.getBoundingClientRect();
+    var endMin = state.window.from * 60 + snapTo(((event.clientY - rect.top) / PX_PER_HOUR) * 60);
+    var from = Math.min(draw.startMin, endMin);
+    var to = Math.max(draw.startMin, endMin);
+    var length = Math.max(minMin(), to - from);
+    draw.from = Math.min(from, state.window.to * 60 - length);
+    draw.length = length;
+
+    if (!draw.el) {
+      draw.el = document.createElement('div');
+      draw.el.className = 'tl-draft';
+      draw.grid.appendChild(draw.el);
+    }
+    draw.el.style.top = (((draw.from - state.window.from * 60) / 60) * PX_PER_HOUR) + 'px';
+    draw.el.style.height = ((draw.length / 60) * PX_PER_HOUR) + 'px';
+    draw.el.textContent = minutesToClock(draw.from) + ' · ' + fmt(draw.length * 60000);
+  });
+
+  document.addEventListener('pointerup', async function () {
+    if (!draw) return;
+    var finished = draw;
+    draw = null;
+    if (finished.el) finished.el.remove();
+    if (!finished.length) return;
+    await createEntry(finished.from, finished.length);
+  });
+
+  /** Minutes-since-midnight back to a clock label. */
+  function minutesToClock(minutes) {
+    var h = Math.floor(minutes / 60) % 24, m = Math.round(minutes % 60);
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  /**
+   * Turn a minutes-of-day position back into a real timestamp for the day on
+   * screen, going through the display zone so it lands on the right instant.
+   */
+  function timestampFor(minutes) {
+    var anchor = state.day.entries.length ? state.day.entries[0].start : Date.now();
+    var anchorMin = minutesOfDay(anchor);
+    return anchor + (minutes - anchorMin) * 60000;
+  }
+
+  async function createEntry(minutesOfDayStart, lengthMinutes) {
+    try {
+      var data = await api('/api/entry', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: state.date,
+          start: timestampFor(minutesOfDayStart),
+          minutes: lengthMinutes
+        })
+      });
+      state.day = data.day;
+      renderGoal(data.summary);
+      render();
+      loadWeek(state.date);
+      // Land the person straight in the task box — the entry is useless without one.
+      var card = document.querySelector('.ent[data-id="' + data.entry.id + '"]');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var box = card.querySelector('input[data-act="search"]');
+        if (box) box.focus();
+      }
+      toast('Added ' + fmt(lengthMinutes * 60000) + ' at ' + minutesToClock(minutesOfDayStart) + '. Now pick its task.');
+    } catch (e) { toast(e.message, true); }
+  }
+
+  var drag = null;
+  document.addEventListener('pointerdown', function (event) {
+    var grip = event.target.closest ? event.target.closest('.grip') : null;
+    var block = event.target.closest ? event.target.closest('.tl-block') : null;
+    if (!block) return;
+    var entry = state.day.entries.filter(function (e) { return e.id === block.dataset.id; })[0];
+    if (!entry || entry.status === 'synced') return;
+
+    drag = {
+      id: entry.id, mode: grip ? 'resize' : 'move', y0: event.clientY,
+      start0: entry.start, dur0: entry.durationMs, el: block, moved: false
+    };
+    block.classList.add('dragging');
+    block.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  document.addEventListener('pointermove', function (event) {
+    if (!drag) return;
+    var deltaMin = ((event.clientY - drag.y0) / PX_PER_HOUR) * 60;
+    var snapped = snapTo(deltaMin);
+    if (Math.abs(snapped) < snapMin() && !drag.moved) return;
+    drag.moved = true;
+
+    // Everything is clamped to the visible window, so a block can never be
+    // dragged off the axis and lose its relationship to the hour labels.
+    var win = state.window;
+    var lo = win.from * 60;
+    var hi = win.to * 60;
+    var startMin0 = minutesOfDay(drag.start0);
+    var durMin0 = drag.dur0 / 60000;
+
+    if (drag.mode === 'move') {
+      var wanted = startMin0 + snapped;
+      var placed = Math.min(Math.max(wanted, lo), hi - durMin0);
+      drag.newStart = drag.start0 + (placed - startMin0) * 60000;
+      drag.newDur = drag.dur0;
+      drag.el.style.top = (((placed - lo) / 60) * PX_PER_HOUR) + 'px';
+    } else {
+      var maxMin = hi - startMin0;
+      var durMin = Math.min(Math.max(durMin0 + snapped, minMin()), maxMin);
+      drag.newDur = durMin * 60000;
+      drag.newStart = drag.start0;
+      drag.el.style.height = Math.max(20, (durMin / 60) * PX_PER_HOUR) + 'px';
+    }
+    var len = drag.el.querySelector('.len');
+    if (len) len.textContent = clock(drag.newStart) + ' · ' + fmt(drag.newDur);
+  });
+
+  document.addEventListener('pointerup', async function () {
+    if (!drag) return;
+    var finished = drag;
+    drag = null;
+    finished.el.classList.remove('dragging');
+    if (!finished.moved) { select(finished.id); return; }
+
+    try {
+      await patch(finished.id, {
+        start: finished.newStart,
+        durationMinutes: Math.round(finished.newDur / 60000)
+      });
+      render();
+      toast('Adjusted to ' + clock(finished.newStart) + ' · ' + fmt(finished.newDur));
+    } catch (e) { toast(e.message, true); render(); }
+  });
+
+  function select(id) {
+    state.selected = id;
+    renderTimeline();
+    var card = document.querySelector('.ent[data-id="' + id + '"]');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.remove('flash');
+      void card.offsetWidth;
+      card.classList.add('flash');
+    }
+  }
+
+  /* ------------------------------------------------------------ entries -- */
+  function renderEntry(entry) {
+    var s = entry.suggestion;
+    var r = taskOf(entry);
+    var synced = entry.status === 'synced';
+    var corrected = entry.corrected || (entry.taskId && entry.taskId !== s.taskId);
+    // A corrected entry is no longer a guess; showing the matcher's old
+    // confidence against a name a person chose by hand reads as nonsense.
+    var pct = Math.round((s.confidence || 0) * 100);
+    var confCls = corrected ? 'high' : s.confidence >= 0.7 ? 'high' : s.confidence >= 0.45 ? 'mid' : 'low';
+    var confWord = corrected ? 'chosen by you' : s.confidence >= 0.7 ? 'confident' : s.confidence >= 0.45 ? 'unsure' : 'guess';
+    var scope = [r.folderName, r.listName].filter(Boolean).map(esc).join(' › ');
+    var why = (s.reasons || []).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
+    var files = entry.evidence.paths.slice(0, 2).map(function (p) { return esc(p); }).join('<br>');
+    var urls = entry.evidence.urls.slice(0, 1).map(function (u) { return esc(u); }).join('');
+
+    return '<div class="card ent' + (clientOf(entry) ? '' : ' none') + '" data-status="' + entry.status + '"' +
+      ' data-id="' + entry.id + '"' + hueStyle(entry) + '>' +
+
+      '<div class="ent-state">' +
+        '<button class="tick" data-act="toggle" title="' +
+          (entry.status === 'approved' ? 'Approved — click to undo' :
+           synced ? 'In ClickUp' : 'Approve this entry') + '"' + (synced ? ' disabled' : '') + '>' +
+          ICON_TICK + '</button>' +
+        (synced ? '' : '<button class="ent-kill" data-act="delete" title="Delete this entry">' + ICON_X + '</button>') +
+      '</div>' +
+
+      '<div class="ent-when">' +
+        '<div class="range">' + clock(entry.start) + '–' + clock(entry.end) + '</div>' +
+        '<div class="dur"><input type="number" min="' + minMin() + '" step="' + snapMin() + '" value="' + Math.round(entry.durationMs / 60000) + '"' +
+          (synced ? ' disabled' : '') + ' data-act="duration"><span class="unit">min</span></div>' +
+        '<div class="measured">measured ' + fmt(entry.activeMs) + '</div>' +
+      '</div>' +
+
+      '<div class="ent-what">' +
+        '<input class="desc" type="text" value="' + esc(entry.description) + '"' + (synced ? ' disabled' : '') + ' data-act="description">' +
+        '<div class="meta">' + esc(entry.evidence.apps.join(', ')) + '</div>' +
+        (files || urls ? '<div class="paths">' + files + (urls ? (files ? '<br>' : '') + urls : '') + '</div>' : '') +
+        (why ? '<ul class="why">' + why + '</ul>' : '') +
+      '</div>' +
+
+      '<div class="ent-task">' +
+        '<span class="conf ' + confCls + '">' +
+          (corrected ? confWord : pct + '% · ' + confWord) + '</span>' +
+        '<div class="name' + (entry.taskId ? '' : ' empty') + '">' +
+          (entry.taskId
+            ? esc(r.taskName || ('Task ' + entry.taskId))
+            : 'No task chosen') + '</div>' +
+        (r.stale
+          ? '<div class="scope stale">Not in the cached task list — run &ldquo;tracker catalog&rdquo; to refresh names.</div>'
+          : '') +
+        (scope ? '<div class="scope">' + scope + '</div>' : '') +
+        (synced ? '' : '<input class="search" type="text" placeholder="Search tasks…" data-act="search">') +
+        '<div class="ent-actions">' +
+          (synced
+            ? '<span class="conf high">in ClickUp</span>'
+            : '<button class="btn" data-act="skip">' + (entry.status === 'rejected' ? 'Un-skip' : 'Skip') + '</button>' +
+              '<label><input type="checkbox" data-act="billable"' + (entry.billable ? ' checked' : '') + '> billable</label>') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function render() {
+    renderWeekStrip();
+    var container = document.getElementById('entries');
+    var entries = live(state.day.entries);
+    if (!entries.length) {
+      container.innerHTML = '<div class="card empty">No activity recorded for this day yet.</div>';
+    } else {
+      container.innerHTML = entries.map(renderEntry).join('');
+    }
+    renderTimeline();
+  }
+
+  async function patch(id, body) {
+    var result = await api('/api/entry/' + encodeURIComponent(id), {
+      method: 'POST',
+      body: JSON.stringify(Object.assign({ date: state.date }, body))
+    });
+    var index = state.day.entries.findIndex(function (e) { return e.id === id; });
+    if (index >= 0) state.day.entries[index] = result.entry;
+    renderGoal(result.summary);
+    return result.entry;
+  }
+
+  /* --------------------------------------------------------------- week -- */
+  function renderWeek() {
+    var el = document.getElementById('weekview');
+    if (!state.week) { el.innerHTML = '<div class="empty">Loading…</div>'; return; }
+    var days = state.week.days.slice(0, 5);
+    var dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    var todayIso = todayInZone();
+    var targetMs = state.targets.dailyMinutes * 60000;
+
+    var totalLogged = days.reduce(function (s, d) { return s + d.summary.loggedMs; }, 0);
+    var totalBillable = days.reduce(function (s, d) { return s + d.summary.billableMs; }, 0);
+    var totalPending = days.reduce(function (s, d) { return s + d.summary.pendingMs; }, 0);
+    var weekTarget = targetMs * 5;
+
+    var cards = days.map(function (d, i) {
+      var clients = Object.keys(d.byClient).sort(function (a, b) { return d.byClient[b] - d.byClient[a]; });
+      var stack = clients.map(function (c) {
+        var pct = (d.byClient[c] / Math.max(d.summary.loggedMs, 1)) * 100;
+        return '<i style="width:' + pct + '%;background:hsl(' + hueFor(c) + ' var(--cl-s) var(--cl-l))"></i>';
+      }).join('');
+      var rows = clients.slice(0, 4).map(function (c) {
+        return '<div><span><span class="sw" style="background:hsl(' + hueFor(c) + ' var(--cl-s) var(--cl-l))"></span>' +
+          esc(c) + '</span><span>' + fmt(d.byClient[c]) + '</span></div>';
+      }).join('');
+      var cls = d.summary.loggedMs === 0 ? 'none' : (d.summary.loggedMs < targetMs ? 'short' : '');
+      return '<button class="wk-day' + (d.date === todayIso ? ' today' : '') + '" data-goto="' + d.date + '" style="text-align:left">' +
+        '<div class="d">' + dayNames[i] + '</div>' +
+        '<div class="h ' + cls + '">' + hoursOnly(d.summary.loggedMs) + '</div>' +
+        '<div class="wk-stack">' + stack + '</div>' +
+        (rows ? '<div class="wk-clients">' + rows + '</div>' : '<div class="wk-clients"><div>Nothing logged</div></div>') +
+        '</button>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="wk-total">' +
+        '<div><span class="k">Week logged</span><span class="v">' + fmt(totalLogged) + '</span></div>' +
+        '<div><span class="k">Billable</span><span class="v">' + fmt(totalBillable) + '</span></div>' +
+        '<div><span class="k">Target</span><span class="v">' + fmt(weekTarget) + '</span></div>' +
+        '<div><span class="k">Still to review</span><span class="v">' + fmt(totalPending) + '</span></div>' +
+      '</div>' +
+      '<div class="wk-grid">' + cards + '</div>';
+  }
+
+  /* ----------------------------------------------------------- tracking -- */
+  /**
+   * "Is it actually watching Photoshop?" answered without a terminal. Three
+   * failures look identical on a blank timesheet -- a dead observer, a missing
+   * Accessibility grant, and a quiet day -- so this names which one it is, then
+   * lists every app that has been in front and exactly how much of it the
+   * tracker could read.
+   */
+  function pill(rate, samples) {
+    if (samples === 0) return '<span class="tk-pill no">never</span>';
+    if (rate >= 0.6) return '<span class="tk-pill yes">' + Math.round(rate * 100) + '%</span>';
+    if (rate > 0) return '<span class="tk-pill part">' + Math.round(rate * 100) + '%</span>';
+    return '<span class="tk-pill no">never</span>';
+  }
+
+  function renderTracking() {
+    var el = document.getElementById('trackview');
+    var t = state.tracking;
+    if (!t) { el.innerHTML = '<div class="card"><div class="empty">Loading…</div></div>'; return; }
+
+    var age = t.observer.ageSeconds;
+    var banner;
+    if (age === null) {
+      banner = '<div class="tk-banner bad"><b>Nothing has been recorded today.</b>' +
+        'The observer is not running, or it has not been given permission to start. ' +
+        'Restart it from Terminal with <code>launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker.observer</code>.</div>';
+    } else if (age > 120) {
+      banner = '<div class="tk-banner bad"><b>The last sample was ' + fmt(age * 1000) + ' ago.</b>' +
+        'Samples should arrive every ' + t.sampleIntervalSeconds + ' seconds, so the observer has stopped. ' +
+        'Restarting it: <code>launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker.observer</code></div>';
+    } else if (t.accessibility === 'missing') {
+      banner = '<div class="tk-banner bad"><b>Recording, but it cannot see inside any window.</b>' +
+        'Every app below reports its name and nothing else, which is what happens without Accessibility ' +
+        'permission. Grant it in System Settings &rsaquo; Privacy &amp; Security &rsaquo; Accessibility to ' +
+        '&ldquo;MBD Time Tracker&rdquo;, then restart the observer. Until then, matching has only the app ' +
+        'name to work with.</div>';
+    } else if (t.accessibility === 'unknown') {
+      banner = '<div class="tk-banner"><b>Recording — too little activity yet to say more.</b>' +
+        'Work in a couple of apps and come back.</div>';
+    } else {
+      banner = '<div class="tk-banner good"><b>Recording normally.</b>' +
+        'Last sample ' + (age < 10 ? 'just now' : fmt(age * 1000) + ' ago') +
+        ', and it can read inside windows. Anything at 0% below is an app that will not say ' +
+        'which document is open — that time is still tracked, it just lands on the app alone.</div>';
+    }
+
+    var stats =
+      '<div class="card tk-stats">' +
+        '<div><span class="k">Active today</span><span class="v">' + fmt(t.observer.activeMs) + '</span></div>' +
+        '<div><span class="k">Samples</span><span class="v">' + t.observer.totalSamples + '</span></div>' +
+        '<div><span class="k">Apps seen</span><span class="v">' + t.apps.length + '</span></div>' +
+        '<div><span class="k">Sampling every</span><span class="v">' + t.sampleIntervalSeconds + 's</span></div>' +
+      '</div>';
+
+    var rows = t.apps.map(function (a) {
+      var sees = a.examplePath || a.exampleUrl || a.exampleTitle;
+      return '<tr>' +
+        '<td><div class="tk-app">' + esc(a.app) + '</div>' +
+          '<div class="tk-bundle">' + esc(a.bundleId) + '</div></td>' +
+        '<td class="num">' + fmt(a.activeMs) + '</td>' +
+        '<td class="num">' + pill(a.titleRate, a.samples) + '</td>' +
+        '<td class="num">' + pill(Math.max(a.pathRate, a.urlRate), a.samples) + '</td>' +
+        '<td class="tk-sees">' + (sees ? esc(String(sees).slice(0, 110)) : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    el.innerHTML = banner + stats +
+      '<div class="card">' +
+        (t.apps.length === 0
+          ? '<div class="empty">No apps recorded yet today.</div>'
+          : '<table class="tk-table"><thead><tr>' +
+              '<th>App</th><th class="num">Active</th><th class="num">Window title</th>' +
+              '<th class="num">File or page</th><th>Most recent thing it could see</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>') +
+      '</div>';
+  }
+
+  async function loadTracking(date) {
+    state.tracking = await api('/api/tracking' + (date ? '?date=' + encodeURIComponent(date) : ''));
+    if (state.view === 'tracking') renderTracking();
+  }
+
+  function setView(view) {
+    state.view = view;
+    document.getElementById('dayview').style.display = view === 'day' ? '' : 'none';
+    document.getElementById('weekview').style.display = view === 'week' ? '' : 'none';
+    document.getElementById('trackview').style.display = view === 'tracking' ? '' : 'none';
+    document.getElementById('goal').style.display = view === 'day' && state.targets ? '' : 'none';
+    document.querySelectorAll('#viewctl button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.view === view));
+    });
+    if (view === 'week') renderWeek();
+    if (view === 'tracking') { renderTracking(); loadTracking(state.date); }
+  }
+
+  /* ---------------------------------------------------------------- load -- */
+  async function loadWeek(date) {
+    state.week = await api('/api/week' + (date ? '?date=' + encodeURIComponent(date) : ''));
+    renderWeekStrip();
+    if (state.view === 'week') renderWeek();
+  }
+
+  async function load(date) {
+    var data = await api(date ? '/api/day?date=' + encodeURIComponent(date) : '/api/day');
+    state.date = data.day.date;
+    state.day = data.day;
+    state.targets = data.targets || null;
+    state.quickLog = data.quickLog || [];
+    if (data.display) { state.display = data.display; setTimezone(data.display.timezone); }
+
+    var quick = document.getElementById('quick');
+    quick.innerHTML = state.quickLog.length
+      ? '<span class="lbl">Quick log</span>' + state.quickLog.map(function (q) {
+          return '<button class="btn ghost" data-quick="' + q.index + '" title="' + esc(q.taskName || q.label) + '">+ ' +
+            esc(q.label) + ' ' + q.minutes + 'm</button>';
+        }).join('')
+      : '';
+
+    document.getElementById('catalog').textContent = data.taskCount + ' tasks';
+    renderGoal(data.summary);
+    render();
+    await loadWeek(state.date);
+  }
+
+  /* ------------------------------------------------------------- events -- */
+  document.addEventListener('click', async function (event) {
+    var t = event.target;
+
+    var pill = t.closest ? t.closest('.daypill') : null;
+    if (pill) { try { await load(pill.dataset.date); setView('day'); } catch (e) { toast(e.message, true); } return; }
+
+    var goto = t.closest ? t.closest('[data-goto]') : null;
+    if (goto) { try { await load(goto.dataset.goto); setView('day'); } catch (e) { toast(e.message, true); } return; }
+
+    if (t.dataset && t.dataset.view) { setView(t.dataset.view); return; }
+
+    if (t.dataset && t.dataset.quick !== undefined) {
+      try {
+        var q = state.quickLog[Number(t.dataset.quick)];
+        var data = await api('/api/quick-log', {
+          method: 'POST', body: JSON.stringify({ index: Number(t.dataset.quick), date: state.date })
+        });
+        state.day = data.day; renderGoal(data.summary); render(); loadWeek(state.date);
+        toast('Logged ' + q.minutes + 'm — ' + q.label + '. Adjust on the entry if it ran longer.');
+      } catch (e) { toast(e.message, true); }
+      return;
+    }
+
+    var pick = t.closest ? t.closest('.results div[data-task-id]') : null;
+    if (pick) {
+      var card = pick.closest('.ent');
+      try {
+        // The server answers with the resolved task, so the card redraws with
+        // the real ClickUp name rather than whatever the search row happened
+        // to show.
+        await patch(card.dataset.id, { taskId: pick.dataset.taskId });
+        render(); loadWeek(state.date);
+      } catch (e) { toast(e.message, true); }
+      return;
+    }
+
+    var entCard = t.closest ? t.closest('.ent') : null;
+    if (!entCard) return;
+    var id = entCard.dataset.id;
+    var act = t.closest('[data-act]') ? t.closest('[data-act]').dataset.act : null;
+
+    try {
+      if (act === 'toggle') {
+        var entry = state.day.entries.filter(function (e) { return e.id === id; })[0];
+        await patch(id, { status: entry.status === 'approved' ? 'pending' : 'approved' });
+        render(); loadWeek(state.date);
+      }
+      if (act === 'delete') {
+        await patch(id, { status: 'deleted' });
+        render(); loadWeek(state.date);
+        toast('Entry deleted. Rebuilding the day will not bring it back.');
+      }
+      if (act === 'skip') {
+        var e2 = state.day.entries.filter(function (e) { return e.id === id; })[0];
+        await patch(id, { status: e2.status === 'rejected' ? 'pending' : 'rejected' });
+        render(); loadWeek(state.date);
+      }
+    } catch (e) { toast(e.message, true); }
+  });
+
+  document.addEventListener('change', async function (event) {
+    var t = event.target;
+    var card = t.closest ? t.closest('.ent') : null;
+    if (!card || !t.dataset || !t.dataset.act) return;
+    try {
+      if (t.dataset.act === 'duration') {
+        var wanted = Math.max(minMin(), snapTo(Number(t.value) || 0));
+        await patch(card.dataset.id, { durationMinutes: wanted });
+        render(); loadWeek(state.date);
+      }
+      if (t.dataset.act === 'description') await patch(card.dataset.id, { description: t.value });
+      if (t.dataset.act === 'billable') { await patch(card.dataset.id, { billable: t.checked }); loadWeek(state.date); }
+    } catch (e) { toast(e.message, true); }
+  });
+
+  var searchTimer = null;
+  document.addEventListener('input', function (event) {
+    var t = event.target;
+    if (!t.dataset || t.dataset.act !== 'search') return;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async function () {
+      var open = t.parentElement.querySelector('.results');
+      if (open) open.remove();
+      if (t.value.trim().length < 2) return;
+      var data = await api('/api/tasks?q=' + encodeURIComponent(t.value.trim()));
+      var box = document.createElement('div');
+      box.className = 'results';
+      box.innerHTML = data.tasks.map(function (task) {
+        return '<div data-task-id="' + esc(task.taskId) + '" data-task-name="' + esc(task.taskName) + '">' +
+          esc(task.taskName) + '<small>' + esc([task.folderName, task.listName].filter(Boolean).join(' › ')) + '</small></div>';
+      }).join('') || '<div><small>No matches</small></div>';
+      t.parentElement.appendChild(box);
+    }, 220);
+  });
+
+  document.getElementById('addEntry').addEventListener('click', function () {
+    // Start it after whatever is already logged, so a day builds forwards.
+    var entries = live(state.day.entries);
+    var after = entries.length
+      ? Math.max.apply(null, entries.map(function (e) { return minutesOfDay(e.start) + e.durationMs / 60000; }))
+      : state.window.from * 60;
+    var length = Math.max(minMin(), snapMin() * 2);
+    var startMin = Math.min(snapTo(after), state.window.to * 60 - length);
+    createEntry(Math.max(state.window.from * 60, startMin), length);
+  });
+
+  document.getElementById('rebuild').addEventListener('click', async function () {
+    try {
+      var data = await api('/api/day/rebuild', { method: 'POST', body: JSON.stringify({ date: state.date }) });
+      state.day = data.day; renderGoal(data.summary); render(); loadWeek(state.date);
+      toast('Rebuilt from raw activity.');
+    } catch (e) { toast(e.message, true); }
+  });
+  document.getElementById('approveAll').addEventListener('click', async function () {
+    try {
+      var data = await api('/api/day/approve-all', { method: 'POST', body: JSON.stringify({ date: state.date }) });
+      state.day = data.day; renderGoal(data.summary); render(); loadWeek(state.date);
+      toast('Approved ' + data.approved + ' entries.');
+    } catch (e) { toast(e.message, true); }
+  });
+  document.getElementById('push').addEventListener('click', async function () {
+    if (!confirm('Write all approved entries to ClickUp?')) return;
+    try {
+      var data = await api('/api/day/push', { method: 'POST', body: JSON.stringify({ date: state.date }) });
+      state.day = data.day; renderGoal(data.summary); render(); loadWeek(state.date);
+      var failed = data.result.failures.length;
+      toast('Pushed ' + data.result.pushed + ' entries' + (failed ? ', ' + failed + ' failed' : '.'), failed > 0);
+    } catch (e) { toast(e.message, true); }
+  });
+
+  // The tracking view is a live readout; anywhere else this would be churn.
+  setInterval(function () {
+    if (state.view !== 'tracking' || document.hidden) return;
+    loadTracking(state.date).catch(function () {});
+  }, 10000);
+
+  load('').catch(function (e) { toast(e.message, true); });
+})();
+</script>
+</body>
+</html>

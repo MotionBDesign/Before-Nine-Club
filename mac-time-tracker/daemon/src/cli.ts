@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Runtime, defaultObserverPath } from './runtime.ts';
-import { loadDay, localDate, listDays, rebuildDay, saveDay } from './store.ts';
+import { loadCatalog, loadDay, localDate, listDays, rebuildDay, resolveTask, saveDay } from './store.ts';
 import { pushApproved } from './sync.ts';
 import { loadToken } from './config.ts';
 import { paths, ensureDirs } from './paths.ts';
@@ -46,12 +46,16 @@ function report(date: string): void {
     return;
   }
   console.log(`\n  ${date}\n`);
+  // Names come from the catalog by way of the entry's *chosen* task, so a
+  // corrected entry prints the task it will be logged against.
+  const tasksById = new Map(loadCatalog().tasks.map((t) => [t.taskId, t]));
   for (const entry of day.entries) {
     const flag = entry.status === 'synced' ? green('*')
       : entry.status === 'approved' ? green('>')
       : entry.status === 'rejected' ? dim('.') : ' ';
-    const task = entry.taskId ? (entry.suggestion.taskName ?? entry.taskId) : amber('(no task)');
-    const scope = [entry.suggestion.folderName, entry.suggestion.listName].filter(Boolean).join(' > ');
+    const resolved = resolveTask(entry, tasksById);
+    const task = entry.taskId ? (resolved.taskName ?? entry.taskId) : amber('(no task)');
+    const scope = [resolved.folderName, resolved.listName].filter(Boolean).join(' > ');
     const conf = entry.taskId && entry.suggestion.confidence < LOW_CONFIDENCE ? amber(' (low confidence)') : '';
     console.log(`  ${flag} ${clock(entry.start)}-${clock(entry.end)}  ${hhmm(entry.durationMs)}  ${task}${conf}`);
     console.log(dim(`      ${scope || '-'}  |  ${entry.description}`));

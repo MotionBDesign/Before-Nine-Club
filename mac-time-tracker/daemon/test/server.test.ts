@@ -58,6 +58,98 @@ after(async () => {
 });
 
 describe('review server', () => {
+  it('names the task the entry is actually logged against, not the guess', async () => {
+    // The bug this pins: after correcting a match, the card kept showing the
+    // *suggested* task's name, so people saw a name with nothing to do with
+    // the entry -- and the ClickUp name they had just picked was nowhere.
+    const before = await asJson(await fetch(`${base}/api/day?date=${date}`));
+    const entry = before.day.entries[0];
+    assert.equal(entry.resolved.taskName, 'Powerline Safety poster series');
+    assert.equal(entry.resolved.folderName, 'SAPN');
+    assert.equal(entry.resolved.stale, false);
+
+    const patched = await asJson(await fetch(`${base}/api/entry/${entry.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, taskId: '86ccc0001' }),
+    }));
+    assert.equal(patched.entry.resolved.taskId, '86ccc0001');
+    assert.equal(patched.entry.resolved.taskName, 'Underground drilling explainer video');
+    assert.equal(patched.entry.resolved.folderName, 'Maptek');
+    // The suggestion is untouched -- it is the record of what was guessed.
+    assert.equal(patched.entry.suggestion.taskName, 'Powerline Safety poster series');
+
+    const after_ = await asJson(await fetch(`${base}/api/day?date=${date}`));
+    assert.equal(after_.day.entries[0].resolved.taskName, 'Underground drilling explainer video');
+
+    // The week rolls up under the corrected client too.
+    const week = await asJson(await fetch(`${base}/api/week?date=${date}`));
+    const today = week.days.find((d: any) => d.date === date);
+    assert.ok(today.byClient.Maptek > 0, 'the week still counts this under SAPN');
+    assert.equal(today.byClient.SAPN, undefined);
+
+    // Put it back so the rest of the suite sees what it expects.
+    await fetch(`${base}/api/entry/${entry.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, taskId: '86aaa0001' }),
+    });
+  });
+
+  it('reports what the observer can actually see, per app', async () => {
+    const t = await asJson(await fetch(`${base}/api/tracking?date=${date}`));
+    assert.equal(t.accessibility, 'granted');
+    assert.ok(t.observer.totalSamples > 0);
+    const photoshop = t.apps.find((a: any) => a.bundleId === 'com.adobe.Photoshop');
+    assert.ok(photoshop, 'Photoshop is missing from the tracking view');
+    assert.equal(photoshop.pathRate, 1);
+    assert.equal(
+      photoshop.examplePath,
+      '/Volumes/Projects/Clients/SAPN/2026/PowerlineSafety_Poster.psd',
+    );
+    assert.ok(photoshop.activeMs > 0);
+  });
+
+  it('calls out a missing Accessibility grant rather than showing a blank day', async () => {
+    // Without the grant every app still reports its name, and nothing else.
+    // That is indistinguishable from a quiet day unless it is named.
+    const blindDate = '2026-03-02';
+    for (const snapshot of snapshots(new Date(2026, 2, 2, 9, 0, 0).getTime(), 40, {
+      app: 'DaVinci Resolve',
+      bundleId: 'com.blackmagic-design.DaVinciResolve',
+      title: null,
+      documentPath: null,
+    })) store.appendSnapshot(snapshot);
+
+    const t = await asJson(await fetch(`${base}/api/tracking?date=${blindDate}`));
+    assert.equal(t.accessibility, 'missing');
+    const resolve = t.apps.find((a: any) => a.app === 'DaVinci Resolve');
+    assert.ok(resolve, 'Resolve should still be listed — it is tracked, just unreadable');
+    assert.equal(resolve.titleRate, 0);
+    assert.ok(resolve.activeMs > 0, 'the time is tracked even with nothing readable');
+  });
+
+  it('says so when a task is not in the cached catalog', async () => {
+    const before = await asJson(await fetch(`${base}/api/day?date=${date}`));
+    const entry = before.day.entries[0];
+    const patched = await asJson(await fetch(`${base}/api/entry/${entry.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, taskId: '86zzz9999' }),
+    }));
+    // The id still pushes fine; only the name is unknown, and inventing one
+    // would be worse than admitting it.
+    assert.equal(patched.entry.resolved.taskId, '86zzz9999');
+    assert.equal(patched.entry.resolved.taskName, null);
+    assert.equal(patched.entry.resolved.stale, true);
+
+    await fetch(`${base}/api/entry/${entry.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, taskId: '86aaa0001' }),
+    });
+  });
+
   it('serves the review page', async () => {
     const response = await fetch(`${base}/`);
     assert.equal(response.status, 200);

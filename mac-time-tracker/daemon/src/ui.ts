@@ -279,6 +279,7 @@ const HTML = `<!doctype html>
   .conf.low { background: var(--bad-soft); color: var(--bad); }
   .ent-task .name { font-weight: 600; line-height: 1.35; }
   .ent-task .name.empty { color: var(--muted); font-weight: 500; }
+  .ent-task .scope.stale { color: var(--bad); }
   .ent-task .scope {
     display: inline-block; margin-top: 4px; font-size: 11px; padding: 2px 8px; border-radius: 99px;
     background: hsl(var(--h) var(--cl-s) var(--cl-soft-l)); color: hsl(var(--h) var(--cl-s) var(--cl-ink-l));
@@ -324,6 +325,35 @@ const HTML = `<!doctype html>
   .seg-ctl button[aria-pressed="true"] { background: var(--panel); color: var(--text); font-weight: 550; box-shadow: var(--shadow); }
 
   .empty { color: var(--muted); text-align: center; padding: 50px 0; }
+  /* ------------------------------------------------------------ tracking -- */
+  .tk-banner {
+    border-radius: 12px; padding: 13px 16px; margin-bottom: 14px;
+    border: 1px solid var(--line-strong); background: var(--panel); font-size: 13px;
+  }
+  .tk-banner.good { border-color: var(--ok); background: var(--ok-soft); }
+  .tk-banner.bad { border-color: var(--bad); background: var(--bad-soft); }
+  .tk-banner b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .tk-banner code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .tk-stats { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 14px; padding: 14px 16px; }
+  .tk-stats div { display: flex; flex-direction: column; gap: 3px; }
+  .tk-stats .k { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .tk-stats .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tk-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--line);
+  }
+  .tk-table th.num, .tk-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tk-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tk-table tr:last-child td { border-bottom: 0; }
+  .tk-app { font-weight: 600; }
+  .tk-bundle { font-size: 11px; color: var(--muted); }
+  .tk-sees { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .tk-pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .tk-pill.yes { background: var(--ok-soft); color: var(--ok); }
+  .tk-pill.part { background: var(--warn-soft); color: var(--warn); }
+  .tk-pill.no { background: var(--bad-soft); color: var(--bad); }
+
   #toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40;
     background: var(--panel); border: 1px solid var(--line-strong); border-radius: 9px;
@@ -340,6 +370,7 @@ const HTML = `<!doctype html>
     <span class="seg-ctl" id="viewctl">
       <button data-view="day" aria-pressed="true">Day</button>
       <button data-view="week" aria-pressed="false">Week</button>
+      <button data-view="tracking" aria-pressed="false">Tracking</button>
     </span>
     <span id="catalog" class="chip"></span>
     <button class="btn" id="addEntry">+ Add entry</button>
@@ -358,12 +389,14 @@ const HTML = `<!doctype html>
     </div>
   </div>
   <div class="card wk" id="weekview" style="display:none"></div>
+  <div id="trackview" style="display:none"></div>
 </main>
 <div id="toast"></div>
 <script>
 (function () {
   var state = {
     date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null,
+    tracking: null,
     display: { timezone: '', dayStartHour: 7, dayEndHour: 19, snapMinutes: 15, minEntryMinutes: 15 },
     window: { from: 7, to: 19, stretched: false }
   };
@@ -435,8 +468,17 @@ const HTML = `<!doctype html>
     for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
     return HUES[h % HUES.length];
   }
+  /**
+   * Always the resolved task, never the suggestion. entry.resolved is what
+   * the time will actually be logged against; the suggestion is only what the
+   * matcher guessed, and the two part ways the moment anyone corrects a match.
+   */
+  function taskOf(entry) {
+    return entry.resolved || { taskName: null, listName: null, folderName: null, spaceName: null, stale: false };
+  }
   function clientOf(entry) {
-    return entry.suggestion.folderName || entry.suggestion.spaceName || null;
+    var r = taskOf(entry);
+    return r.folderName || r.spaceName || null;
   }
   function hueStyle(entry) {
     var hue = hueFor(clientOf(entry));
@@ -551,7 +593,7 @@ const HTML = `<!doctype html>
     var blocks = entries.map(function (entry) {
       var top = ((minutesOfDay(entry.start) - win.from * 60) / 60) * PX_PER_HOUR;
       var h = Math.max(20, (entry.durationMs / 3600000) * PX_PER_HOUR);
-      var label = entry.suggestion.taskName || entry.description || 'Unmatched';
+      var label = taskOf(entry).taskName || entry.description || 'Unmatched';
       var client = clientOf(entry) || 'No client';
       return '<div class="tl-block' + (entry.status === 'rejected' ? ' rejected' : '') +
         (state.selected === entry.id ? ' selected' : '') + '" data-id="' + entry.id + '"' +
@@ -745,11 +787,15 @@ const HTML = `<!doctype html>
   /* ------------------------------------------------------------ entries -- */
   function renderEntry(entry) {
     var s = entry.suggestion;
+    var r = taskOf(entry);
     var synced = entry.status === 'synced';
+    var corrected = entry.corrected || (entry.taskId && entry.taskId !== s.taskId);
+    // A corrected entry is no longer a guess; showing the matcher's old
+    // confidence against a name a person chose by hand reads as nonsense.
     var pct = Math.round((s.confidence || 0) * 100);
-    var confCls = s.confidence >= 0.7 ? 'high' : s.confidence >= 0.45 ? 'mid' : 'low';
-    var confWord = s.confidence >= 0.7 ? 'confident' : s.confidence >= 0.45 ? 'unsure' : 'guess';
-    var scope = [s.folderName, s.listName].filter(Boolean).map(esc).join(' › ');
+    var confCls = corrected ? 'high' : s.confidence >= 0.7 ? 'high' : s.confidence >= 0.45 ? 'mid' : 'low';
+    var confWord = corrected ? 'chosen by you' : s.confidence >= 0.7 ? 'confident' : s.confidence >= 0.45 ? 'unsure' : 'guess';
+    var scope = [r.folderName, r.listName].filter(Boolean).map(esc).join(' › ');
     var why = (s.reasons || []).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
     var files = entry.evidence.paths.slice(0, 2).map(function (p) { return esc(p); }).join('<br>');
     var urls = entry.evidence.urls.slice(0, 1).map(function (u) { return esc(u); }).join('');
@@ -780,9 +826,15 @@ const HTML = `<!doctype html>
       '</div>' +
 
       '<div class="ent-task">' +
-        '<span class="conf ' + confCls + '">' + pct + '% · ' + confWord + '</span>' +
+        '<span class="conf ' + confCls + '">' +
+          (corrected ? confWord : pct + '% · ' + confWord) + '</span>' +
         '<div class="name' + (entry.taskId ? '' : ' empty') + '">' +
-          (entry.taskId ? esc(entry._picked || s.taskName || entry.taskId) : 'No task chosen') + '</div>' +
+          (entry.taskId
+            ? esc(r.taskName || ('Task ' + entry.taskId))
+            : 'No task chosen') + '</div>' +
+        (r.stale
+          ? '<div class="scope stale">Not in the cached task list — run &ldquo;tracker catalog&rdquo; to refresh names.</div>'
+          : '') +
         (scope ? '<div class="scope">' + scope + '</div>' : '') +
         (synced ? '' : '<input class="search" type="text" placeholder="Search tasks…" data-act="search">') +
         '<div class="ent-actions">' +
@@ -861,15 +913,99 @@ const HTML = `<!doctype html>
       '<div class="wk-grid">' + cards + '</div>';
   }
 
+  /* ----------------------------------------------------------- tracking -- */
+  /**
+   * "Is it actually watching Photoshop?" answered without a terminal. Three
+   * failures look identical on a blank timesheet -- a dead observer, a missing
+   * Accessibility grant, and a quiet day -- so this names which one it is, then
+   * lists every app that has been in front and exactly how much of it the
+   * tracker could read.
+   */
+  function pill(rate, samples) {
+    if (samples === 0) return '<span class="tk-pill no">never</span>';
+    if (rate >= 0.6) return '<span class="tk-pill yes">' + Math.round(rate * 100) + '%</span>';
+    if (rate > 0) return '<span class="tk-pill part">' + Math.round(rate * 100) + '%</span>';
+    return '<span class="tk-pill no">never</span>';
+  }
+
+  function renderTracking() {
+    var el = document.getElementById('trackview');
+    var t = state.tracking;
+    if (!t) { el.innerHTML = '<div class="card"><div class="empty">Loading…</div></div>'; return; }
+
+    var age = t.observer.ageSeconds;
+    var banner;
+    if (age === null) {
+      banner = '<div class="tk-banner bad"><b>Nothing has been recorded today.</b>' +
+        'The observer is not running, or it has not been given permission to start. ' +
+        'Restart it from Terminal with <code>launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker.observer</code>.</div>';
+    } else if (age > 120) {
+      banner = '<div class="tk-banner bad"><b>The last sample was ' + fmt(age * 1000) + ' ago.</b>' +
+        'Samples should arrive every ' + t.sampleIntervalSeconds + ' seconds, so the observer has stopped. ' +
+        'Restarting it: <code>launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker.observer</code></div>';
+    } else if (t.accessibility === 'missing') {
+      banner = '<div class="tk-banner bad"><b>Recording, but it cannot see inside any window.</b>' +
+        'Every app below reports its name and nothing else, which is what happens without Accessibility ' +
+        'permission. Grant it in System Settings &rsaquo; Privacy &amp; Security &rsaquo; Accessibility to ' +
+        '&ldquo;MBD Time Tracker&rdquo;, then restart the observer. Until then, matching has only the app ' +
+        'name to work with.</div>';
+    } else if (t.accessibility === 'unknown') {
+      banner = '<div class="tk-banner"><b>Recording — too little activity yet to say more.</b>' +
+        'Work in a couple of apps and come back.</div>';
+    } else {
+      banner = '<div class="tk-banner good"><b>Recording normally.</b>' +
+        'Last sample ' + (age < 10 ? 'just now' : fmt(age * 1000) + ' ago') +
+        ', and it can read inside windows. Anything at 0% below is an app that will not say ' +
+        'which document is open — that time is still tracked, it just lands on the app alone.</div>';
+    }
+
+    var stats =
+      '<div class="card tk-stats">' +
+        '<div><span class="k">Active today</span><span class="v">' + fmt(t.observer.activeMs) + '</span></div>' +
+        '<div><span class="k">Samples</span><span class="v">' + t.observer.totalSamples + '</span></div>' +
+        '<div><span class="k">Apps seen</span><span class="v">' + t.apps.length + '</span></div>' +
+        '<div><span class="k">Sampling every</span><span class="v">' + t.sampleIntervalSeconds + 's</span></div>' +
+      '</div>';
+
+    var rows = t.apps.map(function (a) {
+      var sees = a.examplePath || a.exampleUrl || a.exampleTitle;
+      return '<tr>' +
+        '<td><div class="tk-app">' + esc(a.app) + '</div>' +
+          '<div class="tk-bundle">' + esc(a.bundleId) + '</div></td>' +
+        '<td class="num">' + fmt(a.activeMs) + '</td>' +
+        '<td class="num">' + pill(a.titleRate, a.samples) + '</td>' +
+        '<td class="num">' + pill(Math.max(a.pathRate, a.urlRate), a.samples) + '</td>' +
+        '<td class="tk-sees">' + (sees ? esc(String(sees).slice(0, 110)) : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    el.innerHTML = banner + stats +
+      '<div class="card">' +
+        (t.apps.length === 0
+          ? '<div class="empty">No apps recorded yet today.</div>'
+          : '<table class="tk-table"><thead><tr>' +
+              '<th>App</th><th class="num">Active</th><th class="num">Window title</th>' +
+              '<th class="num">File or page</th><th>Most recent thing it could see</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>') +
+      '</div>';
+  }
+
+  async function loadTracking(date) {
+    state.tracking = await api('/api/tracking' + (date ? '?date=' + encodeURIComponent(date) : ''));
+    if (state.view === 'tracking') renderTracking();
+  }
+
   function setView(view) {
     state.view = view;
     document.getElementById('dayview').style.display = view === 'day' ? '' : 'none';
     document.getElementById('weekview').style.display = view === 'week' ? '' : 'none';
+    document.getElementById('trackview').style.display = view === 'tracking' ? '' : 'none';
     document.getElementById('goal').style.display = view === 'day' && state.targets ? '' : 'none';
     document.querySelectorAll('#viewctl button').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.view === view));
     });
     if (view === 'week') renderWeek();
+    if (view === 'tracking') { renderTracking(); loadTracking(state.date); }
   }
 
   /* ---------------------------------------------------------------- load -- */
@@ -929,8 +1065,10 @@ const HTML = `<!doctype html>
     if (pick) {
       var card = pick.closest('.ent');
       try {
-        var updated = await patch(card.dataset.id, { taskId: pick.dataset.taskId });
-        updated._picked = pick.dataset.taskName;
+        // The server answers with the resolved task, so the card redraws with
+        // the real ClickUp name rather than whatever the search row happened
+        // to show.
+        await patch(card.dataset.id, { taskId: pick.dataset.taskId });
         render(); loadWeek(state.date);
       } catch (e) { toast(e.message, true); }
       return;
@@ -1029,6 +1167,12 @@ const HTML = `<!doctype html>
       toast('Pushed ' + data.result.pushed + ' entries' + (failed ? ', ' + failed + ' failed' : '.'), failed > 0);
     } catch (e) { toast(e.message, true); }
   });
+
+  // The tracking view is a live readout; anywhere else this would be churn.
+  setInterval(function () {
+    if (state.view !== 'tracking' || document.hidden) return;
+    loadTracking(state.date).catch(function () {});
+  }, 10000);
 
   load('').catch(function (e) { toast(e.message, true); });
 })();

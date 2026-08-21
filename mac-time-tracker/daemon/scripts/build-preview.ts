@@ -26,6 +26,7 @@ import type { ProposedEntry, Snapshot } from '../src/types.ts';
 import { realCatalog } from '../test/real-tasks.ts';
 import { evalConfig, evalRules } from '../test/real-cases.ts';
 import { snapshots } from '../test/fixtures.ts';
+import { resolveTask } from '../src/store.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = process.argv[2] ?? path.resolve(here, '..', '..', 'preview.html');
@@ -40,8 +41,13 @@ const config = structuredClone(evalConfig);
 config.display.timezone = 'Australia/Adelaide';
 const context = buildContext(config, evalRules, realCatalog());
 
+const tasksById = new Map(realCatalog().tasks.map((t) => [t.taskId, t]));
+
 function build(timeline: Snapshot[]): ProposedEntry[] {
-  return buildEntries(segment(timeline, config), context, '2026-08-20');
+  // `resolved` is added by the server on the way out, so the preview has to do
+  // it too or the page would render every task name blank.
+  return buildEntries(segment(timeline, config), context, '2026-08-20')
+    .map((entry) => ({ ...entry, resolved: resolveTask(entry, tasksById) }));
 }
 
 /* ---------------------------------------------------------- scenarios ---- */
@@ -141,6 +147,7 @@ const previewData = {
   scenarios: SCENARIOS,
   tasks: realCatalog().tasks.map((t) => ({
     taskId: t.taskId, taskName: t.taskName, listName: t.listName, folderName: t.folderName,
+    spaceName: t.spaceName, url: t.url,
   })),
   targets: config.targets,
   display: {
@@ -172,6 +179,32 @@ var PREVIEW = (function () {
 
   function day(date) { return state[date] || state[current]; }
 
+  /**
+   * The server attaches this to every entry on the way out: the task the time
+   * will actually be logged against, looked up by id. The preview must do the
+   * same, or picking a task from search would show a stale name -- the exact
+   * bug this replaced.
+   */
+  function resolve(entry) {
+    var s = entry.suggestion;
+    if (!entry.taskId) {
+      return { taskId: null, taskName: null, listName: s.listName, folderName: s.folderName,
+               spaceName: s.spaceName, url: null, stale: false };
+    }
+    var task = DATA.tasks.filter(function (t) { return t.taskId === entry.taskId; })[0];
+    if (task) {
+      return { taskId: task.taskId, taskName: task.taskName, listName: task.listName,
+               folderName: task.folderName, spaceName: task.spaceName, url: task.url, stale: false };
+    }
+    if (entry.taskId === s.taskId && s.taskName) {
+      return { taskId: entry.taskId, taskName: s.taskName, listName: s.listName,
+               folderName: s.folderName, spaceName: s.spaceName, url: null, stale: false };
+    }
+    return { taskId: entry.taskId, taskName: null, listName: null, folderName: null,
+             spaceName: null, url: null, stale: true };
+  }
+  function dress(entry) { entry.resolved = resolve(entry); return entry; }
+
   function summarise(d) {
     function total(fn) {
       return d.entries.filter(fn).reduce(function (sum, e) { return sum + e.durationMs; }, 0);
@@ -191,7 +224,7 @@ var PREVIEW = (function () {
   function payload(date) {
     var d = day(date);
     return {
-      day: { date: d.date, updatedAt: Date.now(), entries: d.entries },
+      day: { date: d.date, updatedAt: Date.now(), entries: d.entries.map(dress) },
       summary: summarise(d),
       days: dates,
       catalogFetchedAt: Date.now(),
@@ -227,7 +260,8 @@ var PREVIEW = (function () {
         if (d) {
           d.entries.forEach(function (e) {
             if (e.status === 'deleted' || e.status === 'rejected') return;
-            var c = e.suggestion.folderName || e.suggestion.spaceName || 'Unassigned';
+            var r = e.resolved || e.suggestion;
+            var c = r.folderName || r.spaceName || 'Unassigned';
             byClient[c] = (byClient[c] || 0) + e.durationMs;
           });
         }
@@ -260,17 +294,9 @@ var PREVIEW = (function () {
       if (entry.status === 'synced') throw new Error('Already pushed to ClickUp; edit it there instead.');
 
       if (body.taskId !== undefined) {
-        if (body.taskId && body.taskId !== entry.suggestion.taskId) {
-          entry.corrected = true;
-          var picked = DATA.tasks.filter(function (t) { return t.taskId === body.taskId; })[0];
-          if (picked) {
-            entry.suggestion.taskName = picked.taskName;
-            entry.suggestion.listName = picked.listName;
-            entry.suggestion.folderName = picked.folderName;
-            entry.suggestion.confidence = 1;
-            entry.suggestion.reasons = ['you chose this task'];
-          }
-        }
+        // The suggestion is the record of what the matcher guessed and is
+        // never overwritten; only the chosen task changes.
+        if (body.taskId && body.taskId !== entry.suggestion.taskId) entry.corrected = true;
         entry.taskId = body.taskId;
       }
       if (typeof body.description === 'string') entry.description = body.description;
@@ -287,7 +313,7 @@ var PREVIEW = (function () {
         if (body.status === 'approved' && !entry.taskId) throw new Error('Pick a task before approving.');
         entry.status = body.status;
       }
-      return { entry: entry, summary: summarise(d) };
+      return { entry: dress(entry), summary: summarise(d) };
     }
 
     if (path === '/api/entry') {
@@ -310,6 +336,7 @@ var PREVIEW = (function () {
         status: 'pending', taskId: null,
         description: 'Added by hand', billable: true, manual: true
       };
+      dress(blank);
       into.entries = into.entries.concat([blank]).sort(function (a, b) { return a.start - b.start; });
       return { entry: blank, day: payload(date).day, summary: summarise(into) };
     }
@@ -340,6 +367,60 @@ var PREVIEW = (function () {
       };
     }
 
+    if (path.indexOf('/api/tracking') === 0) {
+      // Rolled up from the same day the timeline is showing, so the preview
+      // shows the real shape of this view rather than invented numbers.
+      var src = day(current);
+      var seen = {};
+      var order = [];
+      src.entries.forEach(function (e) {
+        if (e.status === 'deleted') return;
+        (e.evidence.apps || []).forEach(function (name) {
+          if (!seen[name]) { seen[name] = { app: name, activeMs: 0, hasPath: false, hasUrl: false, title: null, path: null, url: null }; order.push(name); }
+          var row = seen[name];
+          row.activeMs += e.durationMs / Math.max(1, e.evidence.apps.length);
+          // An entry can span several apps, and its evidence is pooled. Give
+          // file paths to the app that could plausibly have one so the preview
+          // does not show Chrome holding a .psd open.
+          var browserish = /Chrome|Safari|Firefox|Edge|Arc|Slack/.test(name);
+          if (!browserish && (e.evidence.paths || []).length) { row.hasPath = true; row.path = row.path || e.evidence.paths[0]; }
+          if (browserish && (e.evidence.urls || []).length) { row.hasUrl = true; row.url = row.url || e.evidence.urls[0]; }
+          if ((e.evidence.titles || []).length) { row.title = row.title || e.evidence.titles[0]; }
+        });
+      });
+      var BUNDLES = {
+        'Photoshop': 'com.adobe.Photoshop', 'After Effects': 'com.adobe.AfterEffects',
+        'Adobe Premiere Pro': 'com.adobe.PremierePro', 'Google Chrome': 'com.google.Chrome',
+        'Slack': 'com.tinyspeck.slackmacgap', 'Microsoft Word': 'com.microsoft.Word',
+        'Figma': 'com.figma.Desktop', 'Terminal': 'com.apple.Terminal'
+      };
+      var apps = order.map(function (name) {
+        var row = seen[name];
+        var samples = Math.max(1, Math.round(row.activeMs / 5000));
+        return {
+          app: name, bundleId: BUNDLES[name] || 'unknown',
+          activeMs: Math.round(row.activeMs), samples: samples, lastSeen: Date.now(),
+          titleRate: row.title ? 1 : 0,
+          pathRate: row.hasPath ? 1 : 0,
+          urlRate: row.hasUrl ? 1 : 0,
+          exampleTitle: row.title, examplePath: row.path, exampleUrl: row.url
+        };
+      }).sort(function (a, b) { return b.activeMs - a.activeMs; });
+      var total = apps.reduce(function (sum, a) { return sum + a.activeMs; }, 0);
+      return {
+        date: src.date,
+        sampleIntervalSeconds: 5,
+        observer: {
+          lastSampleAt: Date.now() - 4000, ageSeconds: 4,
+          totalSamples: Math.round(total / 5000), activeMs: total,
+          idleSamples: 0, lockedSamples: 0,
+          spoolPath: '~/Library/Application Support/MBDTimeTracker/observer.ndjson'
+        },
+        accessibility: 'granted',
+        apps: apps
+      };
+    }
+
     if (path === '/api/catalog/refresh') {
       return { taskCount: DATA.tasks.length, fetchedAt: Date.now() };
     }
@@ -365,9 +446,10 @@ var PREVIEW = (function () {
           confidence: 1, reasons: ['logged with the "' + button.label + '" button'],
           alternatives: [], billable: button.billable
         },
-        status: 'approved', taskId: 'quick-' + body.index,
+        status: 'approved', taskId: button.taskId || 'quick-' + body.index,
         description: button.label, billable: button.billable, manual: true
       };
+      dress(entry);
       into.entries = into.entries.concat([entry]).sort(function (a, b) { return a.start - b.start; });
       return { entry: entry, day: payload(date).day, summary: summarise(into) };
     }

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { DayFile, ProposedEntry, Snapshot } from './types.ts';
+import type { DayFile, ProposedEntry, Snapshot, TaskRef } from './types.ts';
 import type { Catalog } from './catalog.ts';
 import { emptyCatalog } from './catalog.ts';
 import type { Correction, MatchContext } from './matcher.ts';
@@ -107,6 +107,87 @@ export function rebuildDay(date: string, ctx: MatchContext): DayFile {
 }
 
 /* --------------------------------------------------------- manual entries -- */
+
+/**
+ * What an entry is *actually* logged against.
+ *
+ * `entry.taskId` is the answer; `entry.suggestion` is only ever what the
+ * matcher guessed. The moment someone corrects a match those two disagree, and
+ * anything that reads the name off the suggestion then shows a task unrelated
+ * to the one the time will land on. Always go through here.
+ *
+ * `stale` marks an entry whose task is not in the catalog — usually a task
+ * added or renamed in ClickUp since the last `catalog` refresh, occasionally
+ * one that was archived. The id is still correct, so the push works; only the
+ * name is unknown, and the UI says so rather than inventing one.
+ */
+export interface ResolvedTask {
+  taskId: string | null;
+  taskName: string | null;
+  listName: string | null;
+  folderName: string | null;
+  spaceName: string | null;
+  url: string | null;
+  stale: boolean;
+}
+
+export function resolveTask(
+  entry: ProposedEntry,
+  tasksById: ReadonlyMap<string, TaskRef>,
+): ResolvedTask {
+  const suggestion = entry.suggestion;
+
+  if (entry.taskId === null) {
+    // No task yet, but a list-level match still names the client, which is
+    // what the timeline colours by.
+    return {
+      taskId: null,
+      taskName: null,
+      listName: suggestion.listName,
+      folderName: suggestion.folderName,
+      spaceName: suggestion.spaceName,
+      url: null,
+      stale: false,
+    };
+  }
+
+  const task = tasksById.get(entry.taskId);
+  if (task) {
+    return {
+      taskId: task.taskId,
+      taskName: task.taskName,
+      listName: task.listName,
+      folderName: task.folderName,
+      spaceName: task.spaceName,
+      url: task.url,
+      stale: false,
+    };
+  }
+
+  // Not in the catalog. If it is still the suggested task we at least captured
+  // its name when the match was made; a quick-log button does the same.
+  if (entry.taskId === suggestion.taskId && suggestion.taskName) {
+    return {
+      taskId: entry.taskId,
+      taskName: suggestion.taskName,
+      listName: suggestion.listName,
+      folderName: suggestion.folderName,
+      spaceName: suggestion.spaceName,
+      url: null,
+      stale: false,
+    };
+  }
+
+  return {
+    taskId: entry.taskId,
+    taskName: null,
+    listName: null,
+    folderName: null,
+    spaceName: null,
+    url: null,
+    stale: true,
+  };
+}
 
 /**
  * A quick-log entry: a block of time entered by a button press rather than
