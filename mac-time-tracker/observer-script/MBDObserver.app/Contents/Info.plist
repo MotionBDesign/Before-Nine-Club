@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>MBD Observer</string>
+  <key>CFBundleDisplayName</key>
+  <string>MBD Observer</string>
+  <key>CFBundleIdentifier</key>
+  <string>au.com.motionbydesign.observer</string>
+  <key>CFBundleVersion</key>
+  <string>1.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleExecutable</key>
+  <string>MBDObserver</string>
+  <!-- No dock icon, no menu bar: this is a background helper. -->
+  <key>LSUIElement</key>
+  <true/>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <!-- Shown in the permission prompts, so it reads as something deliberate. -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Reads the address of the current browser tab so time can be matched to the right ClickUp task.</string>
+  <key>NSAccessibilityUsageDescription</key>
+  <string>Reads the title and file path of the window you are working in so time can be matched to the right ClickUp task.</string>
+</dict>
+</plist>

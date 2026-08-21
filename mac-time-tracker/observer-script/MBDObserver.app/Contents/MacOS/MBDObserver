@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+# The no-compiler observer.
+#
+# Same job and same output as the Swift BNObserver: one JSON snapshot per line,
+# appended to a spool the daemon tails. Everything here ships with macOS —
+# osascript for the Accessibility reads, ioreg for idle and lock state — so no
+# developer tools are needed on any Mac.
+#
+# It lives inside a .app bundle on purpose. macOS attributes the Accessibility
+# grant to a bundle identity; a bare script would force the grant onto
+# /bin/bash, which would be both ugly and far too broad.
+#
+#   MBDObserver [--interval SECONDS] [--out PATH]
+#
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SAMPLER="$HERE/../Resources/sample.js"
+
+INTERVAL=5
+OUT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --interval) INTERVAL="${2:-5}"; shift 2 ;;
+    --out)      OUT="${2:-}"; shift 2 ;;
+    # Accepted and ignored, so this is a drop-in for the Swift observer's
+    # command line: browser URLs here always come from AppleScript.
+    --browser-urls) shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+emit() {
+  if [[ -n "$OUT" ]]; then
+    printf '%s\n' "$1" >> "$OUT"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
+problem() {
+  printf '%s\n' "$1" >&2
+  local escaped
+  escaped="$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  emit "{\"error\":\"$escaped\"}"
+}
+
+[[ -f "$SAMPLER" ]] || { problem "Sampler script missing at $SAMPLER"; exit 1; }
+
+if [[ -n "$OUT" ]]; then
+  mkdir -p "$(dirname "$OUT")" 2>/dev/null
+  touch "$OUT" 2>/dev/null && chmod 600 "$OUT" 2>/dev/null
+fi
+
+# Seconds since the last keyboard or mouse event. Read from the IOHIDSystem
+# registry entry, which needs no permission at all.
+idle_seconds() {
+  ioreg -c IOHIDSystem 2>/dev/null \
+    | awk '/HIDIdleTime/ { gsub(/[^0-9]/, "", $NF); if ($NF != "") { printf "%.0f", $NF / 1000000000; exit } }'
+}
+
+# True while the screen is locked or the screensaver is up.
+screen_locked() {
+  if ioreg -n Root -d1 -r 2>/dev/null | grep -q '"CGSSessionScreenIsLocked" = Yes'; then
+    echo true
+  else
+    echo false
+  fi
+}
+
+warned_permission=0
+
+while true; do
+  idle="$(idle_seconds)"
+  [[ -z "$idle" ]] && idle=0
+  locked="$(screen_locked)"
+
+  line="$(osascript -l JavaScript "$SAMPLER" "$idle" "$locked" 2>/dev/null)"
+  status=$?
+
+  if (( status != 0 )) || [[ -z "$line" ]]; then
+    if (( warned_permission == 0 )); then
+      warned_permission=1
+      problem "Could not read the frontmost app. Grant Accessibility to MBD Observer in System Settings > Privacy & Security > Accessibility, then restart the tracker."
+    fi
+  else
+    warned_permission=0
+    emit "$line"
+  fi
+
+  sleep "$INTERVAL"
+done

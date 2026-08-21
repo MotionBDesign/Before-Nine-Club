@@ -65,11 +65,19 @@ password. If the Mac already has Node 22.18 or newer, that one is used
 instead. `package-for-tester.sh --with-node` embeds the runtime for an install
 that needs no internet at all.
 
-**Xcode command line tools are needed on exactly one Mac** — whichever builds
-the Swift observer. Everyone else installs a staged bundle carrying the
-prebuilt binary and never sees a compiler. Build once with
-`stage-release.sh`, and the rest of the studio installs in a couple of
-minutes.
+**No developer tools are needed anywhere.** There are two observers and the
+installer picks whichever it can use:
+
+| | Needs | File paths | Notes |
+| --- | --- | --- | --- |
+| `observer/` (Swift) | Xcode command line tools, once, on one Mac | Best | Compiled by `stage-release.sh`; everyone else gets the binary |
+| `observer-script/` (AppleScript) | Nothing | Good, weaker in a few apps | Falls back to this automatically |
+
+The script observer is a `.app` bundle wrapping `osascript`, which reaches the
+same Accessibility attributes — `AXTitle`, `AXDocument` — that the Swift one
+does. It is a bundle rather than a bare script so macOS has a stable identity
+to attach the Accessibility grant to, rather than forcing the grant onto
+`/bin/bash`.
 
 No npm dependencies at runtime. `@types/node` and `typescript` are dev-only.
 

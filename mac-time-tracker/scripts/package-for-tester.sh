@@ -43,6 +43,7 @@ cp "$REPO/daemon/scripts/demo.ts" "$STAGE/app/daemon/scripts/"
 cp "$REPO/daemon/scripts/build-preview.ts" "$STAGE/app/daemon/scripts/"
 cp "$REPO/daemon/package.json" "$STAGE/app/daemon/"
 cp -R "$REPO/observer" "$STAGE/app/observer"
+cp -R "$REPO/observer-script" "$STAGE/app/observer-script"
 rm -rf "$STAGE/app/observer/.build"
 cp -R "$REPO/config" "$STAGE/app/config"
 cp -R "$REPO/scripts" "$STAGE/app/scripts"
@@ -92,15 +93,10 @@ It never sends anything anywhere on its own.
 
 Before you start
 ----------------
-Nothing. The installer sorts out what it needs.
+Nothing at all. The installer sorts out everything it needs.
 
 It downloads a small runtime the first time (about 50 MB) unless that was
 included in this package, so be on the internet when you run it.
-
-One exception: if this copy was not staged by Dom, the installer will stop
-and say it needs Apple's developer tools. That is expected — it means you
-have a plain copy of the source rather than a ready-made one. Tell Dom; he
-can send you a staged copy that installs in two minutes without any of it.
 
 
 Installing
@@ -122,8 +118,11 @@ Installing
        System Settings > Privacy & Security > Accessibility
 
    Click "+", then press Cmd-Shift-G and paste the path the installer
-   printed. Without this the tracker can see which app you are in but not
-   which file, and the matching will be poor.
+   printed at the end. Without this the tracker can see which app you are
+   in but not which file, and the matching will be poor.
+
+   You may also see a prompt asking to control Google Chrome or Safari.
+   Allow it — that is how it reads which page you are on.
 
 
 Using it

@@ -119,39 +119,26 @@ fi
 # people never need Xcode. Only a source checkout has to compile.
 BUNDLED=0
 [[ -f "$SOURCE/BUNDLE" ]] && BUNDLED=1
+OBSERVER_KIND="prebuilt"
 
 if (( BUNDLED )); then
   note "Installing bundle $(cat "$SOURCE/BUNDLE") from $SOURCE"
 else
   # /usr/bin/swift always exists on macOS, even with no developer tools: it is
   # a stub that pops Apple's installer when you invoke it. So `command -v swift`
-  # proves nothing, and checking it let the install sail past this point and
-  # fail later at the actual build. Ask whether the tools are really selected
-  # and whether the compiler genuinely answers.
-  if ! { xcode-select -p >/dev/null 2>&1 && swift --version >/dev/null 2>&1; }; then
-    printf '\n'
-    note "This copy has no prebuilt helper, so it would have to be compiled"
-    note "here — and that needs Apple's free developer tools, which are not"
-    note "installed on this Mac."
-    note ""
-    note "You have two options:"
-    note ""
-    note "  A. Ask Dom for a staged copy. It carries the helper already built,"
-    note "     installs in about two minutes, and needs none of this. This is"
-    note "     the normal way to install and what everyone else will use."
-    note ""
-    note "  B. Install the tools yourself, if you would rather not wait:"
-    note ""
-    note "       xcode-select --install"
-    note ""
-    note "     Accept Apple's dialog and let it finish — it is a large"
-    note "     download and takes a while. Then run this installer again."
-    note ""
-    note "Nothing was changed on this Mac apart from the Node runtime, which"
-    note "is harmless to leave in place."
-    die "Apple's developer tools are not installed."
+  # proves nothing — ask whether the tools are really selected and whether the
+  # compiler genuinely answers.
+  if { xcode-select -p >/dev/null 2>&1 && swift --version >/dev/null 2>&1; }; then
+    OBSERVER_KIND="swift"
+    note "Using $(swift --version 2>/dev/null | head -1)"
+  else
+    # No compiler, no problem: there is a script observer that uses only what
+    # macOS already ships. Slightly less reliable at reading file paths out of
+    # a few apps, but it needs nothing installed and works everywhere.
+    OBSERVER_KIND="script"
+    note "No developer tools here — using the script observer instead."
+    note "Nothing else is needed; file-path matching is a little weaker in some apps."
   fi
-  note "Using $(swift --version 2>/dev/null | head -1)"
 fi
 
 say "2. Copying the program to this Mac"
@@ -163,7 +150,7 @@ unload_agents
 mkdir -p "$APP_DIR"
 rm -rf "$APP_DIR.new"
 mkdir -p "$APP_DIR.new"
-for item in daemon config scripts observer README.md BUNDLE; do
+for item in daemon config scripts observer observer-script README.md BUNDLE; do
   [[ -e "$SOURCE/$item" ]] && cp -R "$SOURCE/$item" "$APP_DIR.new/"
 done
 # Never carry a stale build or dev dependencies across.
@@ -176,19 +163,34 @@ chmod -R u+rwX "$APP_DIR"
 note "Installed to $APP_DIR"
 
 say "3. Preparing the observer"
-if (( BUNDLED )); then
+if (( BUNDLED )) && [[ -f "$APP_DIR/observer/BNObserver" ]]; then
   OBSERVER="$APP_DIR/observer/BNObserver"
-  [[ -f "$OBSERVER" ]] || die "The bundle is missing $OBSERVER"
   chmod +x "$OBSERVER"
   # Files copied from a network share can carry a quarantine flag; clearing it
   # avoids a Gatekeeper prompt the first time launchd starts the observer.
-  xattr -d com.apple.quarantine "$OBSERVER" 2>/dev/null || true
-  note "Using the prebuilt observer (no Xcode needed)"
-else
+  xattr -dr com.apple.quarantine "$OBSERVER" 2>/dev/null || true
+  OBSERVER_NAME="BNObserver"
+  note "Using the prebuilt observer (nothing to compile)"
+elif [[ "$OBSERVER_KIND" == "swift" ]]; then
   ( cd "$APP_DIR/observer" && swift build -c release )
   OBSERVER="$APP_DIR/observer/.build/release/BNObserver"
   [[ -x "$OBSERVER" ]] || die "Build finished but $OBSERVER is missing."
+  OBSERVER_NAME="BNObserver"
   note "Built $OBSERVER"
+else
+  APP_BUNDLE="$APP_DIR/observer-script/MBDObserver.app"
+  OBSERVER="$APP_BUNDLE/Contents/MacOS/MBDObserver"
+  [[ -f "$OBSERVER" ]] || die "The script observer is missing from this package."
+  chmod +x "$OBSERVER"
+  xattr -dr com.apple.quarantine "$APP_BUNDLE" 2>/dev/null || true
+  # An ad-hoc signature gives the bundle a stable identity, so the Accessibility
+  # grant survives an update instead of silently lapsing. Best effort only —
+  # codesign is not always present, and the grant still works without it.
+  codesign --force --deep --sign - "$APP_BUNDLE" >/dev/null 2>&1 \
+    && note "Signed the observer app locally" \
+    || note "Could not sign the observer app; it will still work."
+  OBSERVER_NAME="MBD Observer"
+  note "Using the script observer at $APP_BUNDLE"
 fi
 
 say "4. Setting up the data directory"
@@ -279,7 +281,7 @@ cat <<NEXT
 
     System Settings > Privacy & Security > Accessibility
 
-  Add this binary with the "+" button:
+  Add this with the "+" button:
     $OBSERVER
 
   If the list will not accept it, press Cmd-Shift-G in the file picker and

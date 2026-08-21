@@ -49,6 +49,9 @@ cp "$REPO/daemon/scripts/demo.ts" "$STAGE/daemon/scripts/demo.ts"
 cp "$REPO/daemon/package.json" "$STAGE/daemon/package.json"
 
 cp -R "$REPO/config" "$STAGE/config"
+# Ship the script observer too, as a fallback for any Mac the prebuilt binary
+# will not run on.
+cp -R "$REPO/observer-script" "$STAGE/observer-script"
 cp "$REPO/scripts/install.sh" "$STAGE/scripts/install.sh"
 cp "$REPO/scripts/com.motionbydesign.timetracker.plist.template" "$STAGE/scripts/"
 cp "$REPO/scripts/com.motionbydesign.timetracker.observer.plist.template" "$STAGE/scripts/"
