@@ -15,8 +15,8 @@
     "idleThresholdSeconds": 180,
     "minBlockSeconds": 60,
     "mergeGapSeconds": 300,
-    "roundToMinutes": 5,
-    "minEntryMinutes": 5,
+    "roundToMinutes": 15,
+    "minEntryMinutes": 15,
     "dayStartHour": 7,
     "dayEndHour": 19
   },
@@ -46,13 +46,15 @@
   },
 
   "update": {
-    "channel": "/Volumes/MBD Server/Software/TimeTracker",
+    "_comment": "Set by scripts/install.sh, or `tracker configure --channel`. A wrong path here is worse than an empty one: it fails silently.",
+    "channel": "",
     "checkEveryHours": 6,
     "autoApply": true
   },
 
   "fleet": {
-    "statusDir": "/Volumes/MBD Server/Software/TimeTracker/status",
+    "_comment": "Set by scripts/install.sh, or `tracker configure --status-dir`.",
+    "statusDir": "",
     "reportEveryMinutes": 30
   },
 

@@ -3,6 +3,10 @@
 # Build a zip one person can be handed to install and try the tracker.
 #
 #   ./scripts/package-for-tester.sh [output-dir]
+#   ./scripts/package-for-tester.sh --channel "/Volumes/Server/TimeTracker"
+#
+# Pass --channel to bake the studio's update folder into the zip. Without it
+# the install works but is on its own: no updates, and no health reporting.
 #
 # Unlike stage-release.sh this does not need the file server, and it adds a
 # double-clickable installer plus plain-language instructions, because the
@@ -16,13 +20,18 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # prerequisites at all. Without it the installer fetches Node itself, which
 # keeps the zip about 50 MB smaller.
 WITH_NODE=0
+CHANNEL=""
+STATUS_DIR=""
 ARGS=()
-for arg in "$@"; do
-  case "$arg" in
-    --with-node) WITH_NODE=1 ;;
-    *) ARGS+=("$arg") ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --with-node)  WITH_NODE=1; shift ;;
+    --channel)    CHANNEL="${2:?--channel needs a path}"; shift 2 ;;
+    --status-dir) STATUS_DIR="${2:?--status-dir needs a path}"; shift 2 ;;
+    *) ARGS+=("$1"); shift ;;
   esac
 done
+[[ -n "$CHANNEL" && -z "$STATUS_DIR" ]] && STATUS_DIR="$CHANNEL/status"
 OUT="${ARGS[0]:-$HOME/Desktop}"
 VERSION="$(date +%Y%m%d)-$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo local)"
 NAME="MBD-TimeTracker-$VERSION"
@@ -49,6 +58,22 @@ cp -R "$REPO/config" "$STAGE/app/config"
 cp -R "$REPO/scripts" "$STAGE/app/scripts"
 cp "$REPO/README.md" "$STAGE/app/README.md"
 echo "$VERSION" > "$STAGE/app/VERSION"
+
+# An emailed zip is unpacked in Downloads, so there is no share next door to
+# derive the studio's paths from. Baking them in is what keeps a hand-delivered
+# install from being an orphan: it still gets updates, and it still reports
+# whether it is working.
+if [[ -n "$CHANNEL" ]]; then
+  cat > "$STAGE/app/deploy.json" <<DEPLOY
+{
+  "channel": "$CHANNEL",
+  "statusDir": "$STATUS_DIR"
+}
+DEPLOY
+  note "Update channel baked in: $CHANNEL"
+else
+  note "No --channel given: this install will not receive updates or report in."
+fi
 
 # A designer should not have to open Terminal to install this. A .command file
 # runs on double-click; the shebang keeps it readable if anyone inspects it.

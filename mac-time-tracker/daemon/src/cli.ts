@@ -17,6 +17,7 @@ import { LOW_CONFIDENCE } from './matcher.ts';
 import { applyUpdate, checkForUpdate, installedVersion } from './update.ts';
 import { assess, readFleet } from './fleet.ts';
 import { readMemory, DAEMON_RSS_WARN_MB } from './health.ts';
+import { applyDeploySettings, type DeploySettings } from './deploy.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
@@ -335,6 +336,53 @@ async function main(): Promise<void> {
       console.log(`\n  Apps with a file path or URL will match best. Title-only still works\n  via the filename; app-only needs a rule or a manual entry.\n`);
       return;
     }
+    case 'configure': {
+      // Wiring an *existing* install, without reinstalling it. Every Mac needs
+      // the same two paths, and typing them into six config files by hand is
+      // how five of them end up right.
+      const flags = process.argv.slice(3);
+      const settings: DeploySettings = {};
+      for (let i = 0; i < flags.length; i += 2) {
+        const value = flags[i + 1];
+        if (value === undefined) break;
+        if (flags[i] === '--channel') settings.channel = value;
+        else if (flags[i] === '--status-dir') settings.statusDir = value;
+        else if (flags[i] === '--workspace') settings.workspaceId = value;
+      }
+      if (Object.keys(settings).length === 0) {
+        console.log(`
+  Usage: tracker configure [--channel <path>] [--status-dir <path>] [--workspace <id>]
+
+    --channel      folder on the share holding LATEST and the staged bundles.
+                   Updates are picked up from here automatically.
+    --status-dir   folder this Mac writes its health file into, so the studio
+                   can see whether tracking is actually working.
+    --workspace    ClickUp workspace id.
+
+  Nothing else in config.json is touched.
+`);
+        process.exitCode = 1;
+        return;
+      }
+
+      const result = applyDeploySettings(settings);
+      console.log('');
+      if (result.unchanged) {
+        console.log(`  Already set that way in ${result.configPath}`);
+      } else {
+        for (const [key, value] of Object.entries(result.applied)) {
+          console.log(`  ${green('OK')} ${key} = ${value}`);
+        }
+        console.log(`\n  Written to ${result.configPath}`);
+      }
+      for (const missing of result.unreachable) {
+        console.log(`  ${amber(' !')} ${missing} is not reachable right now — mount the share, or check the path.`);
+      }
+      console.log(`\n  Restart the tracker so it picks this up:`);
+      console.log(`    launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker\n`);
+      return;
+    }
+
     case 'fleet': {
       fleet(new Runtime());
       return;
@@ -379,6 +427,8 @@ async function main(): Promise<void> {
     version       Show which bundle is installed
     update        Check the server for a newer bundle (--apply to install)
     fleet         Show every Mac's tracker health from the shared status folder
+    configure     Point this Mac at the studio's update channel and status
+                  folder — run "tracker configure" for the flags
     probe [secs]  Watch what each app actually reports — the way to check
                   whether Resolve, Photoshop or Figma give up a file path
 `);

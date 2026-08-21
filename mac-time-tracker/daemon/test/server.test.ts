@@ -96,6 +96,15 @@ describe('review server', () => {
     });
   });
 
+  it('says plainly when this Mac was never connected to the studio', async () => {
+    // An unconnected install is valid, not an error: it tracks and pushes
+    // fine. It just cannot be seen or updated, and that should be said rather
+    // than shown as an empty table.
+    const body = await asJson(await fetch(`${base}/api/fleet`));
+    assert.equal(body.configured, false);
+    assert.deepEqual(body.machines, []);
+  });
+
   it('reports what the observer can actually see, per app', async () => {
     const t = await asJson(await fetch(`${base}/api/tracking?date=${date}`));
     assert.equal(t.accessibility, 'granted');

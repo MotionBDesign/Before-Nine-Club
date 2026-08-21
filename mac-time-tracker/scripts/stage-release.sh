@@ -79,6 +79,21 @@ chmod +x "$STAGE/scripts/install.sh"
 # The marker file is what switches install.sh into bundle mode.
 echo "$VERSION" > "$STAGE/BUNDLE"
 
+# Where this bundle came from, so an install picks up updates and starts
+# reporting its health without anyone typing a path. install.sh can also derive
+# the channel from LATEST next door, but writing it down means the same bundle
+# works when it is zipped up and emailed to someone.
+STATUS_DIR="${MBD_TT_STATUS_DIR:-$DEST/status}"
+cat > "$STAGE/deploy.json" <<DEPLOY
+{
+  "channel": "$DEST",
+  "statusDir": "$STATUS_DIR"
+}
+DEPLOY
+mkdir -p "$STATUS_DIR"
+note "Update channel: $DEST"
+note "Status folder:  $STATUS_DIR"
+
 # SMB shares handle symlinks unreliably, so LATEST is a plain text pointer.
 # Writing it last means a half-copied bundle is never advertised.
 echo "MBDTimeTracker-$VERSION" > "$DEST/LATEST"
@@ -101,6 +116,10 @@ note "on their next update check (within a few hours, or at login)."
 note ""
 note "For a first-time install, tell the person to run:"
 note "  cd \"$STAGE\" && ./scripts/install.sh"
+note ""
+note "To see who is running what, and whether it is working:"
+note "  \"\$HOME/Library/Application Support/MBDTimeTracker/tracker\" fleet"
+note "  ...or open the review page and click Fleet."
 note ""
 note "To roll back, point LATEST at an older bundle:"
 note "  ls \"$DEST\""

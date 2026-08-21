@@ -1,4 +1,5 @@
 import http from 'node:http';
+import os from 'node:os';
 import type { Config, DayFile, ProposedEntry } from './types.ts';
 import type { MatchContext } from './matcher.ts';
 import type { ClickUpClient } from './clickup.ts';
@@ -7,6 +8,8 @@ import { pushApproved } from './sync.ts';
 import { renderPage } from './ui.ts';
 import { log } from './log.ts';
 import { paths } from './paths.ts';
+import { assess, readFleet } from './fleet.ts';
+import { installedVersion } from './update.ts';
 import { readMemory, DAEMON_RSS_WARN_MB, OBSERVER_RSS_WARN_MB } from './health.ts';
 
 export interface Runtime {
@@ -333,6 +336,28 @@ export function createServer(runtime: Runtime): http.Server {
     if (method === 'GET' && url.pathname === '/api/tracking') {
       const date = url.searchParams.get('date')?.trim() || localDate();
       json(res, 200, tracking(date, runtime.config));
+      return;
+    }
+
+    if (method === 'GET' && url.pathname === '/api/fleet') {
+      const statusDir = runtime.config.fleet.statusDir;
+      if (!statusDir) {
+        // Not an error: a Mac that was never connected to the studio is a
+        // perfectly valid install, and saying so beats an empty table.
+        json(res, 200, { configured: false, statusDir: '', machines: [] });
+        return;
+      }
+      const machines = readFleet(statusDir).map((status) => ({
+        ...status,
+        ...assess(status),
+        isThisMac: status.mac === os.hostname() && status.user === os.userInfo().username,
+      }));
+      json(res, 200, {
+        configured: true,
+        statusDir,
+        installedVersion: installedVersion(),
+        machines,
+      });
       return;
     }
 

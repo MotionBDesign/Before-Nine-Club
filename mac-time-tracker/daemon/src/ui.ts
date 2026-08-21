@@ -354,6 +354,33 @@ const HTML = `<!doctype html>
   .tk-pill.part { background: var(--warn-soft); color: var(--warn); }
   .tk-pill.no { background: var(--bad-soft); color: var(--bad); }
 
+  /* --------------------------------------------------------------- fleet -- */
+  .fl-row {
+    display: grid; grid-template-columns: 96px 1fr 130px 120px 110px;
+    gap: 14px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--line);
+  }
+  .fl-row:last-child { border-bottom: 0; }
+  .fl-row.head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 600; padding-bottom: 9px;
+  }
+  .fl-who { font-weight: 600; }
+  .fl-mac { font-size: 11px; color: var(--muted); }
+  .fl-note { grid-column: 2 / -1; font-size: 12px; color: var(--warn); margin-top: -4px; }
+  .fl-badge {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px;
+    text-align: center; white-space: nowrap;
+  }
+  .fl-badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .fl-badge.attention { background: var(--warn-soft); color: var(--warn); }
+  .fl-badge.broken { background: var(--bad-soft); color: var(--bad); }
+  .fl-badge.stale { background: var(--panel-2); color: var(--muted); }
+  .fl-ver { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .fl-ver.behind { color: var(--warn); }
+  .fl-hrs { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .fl-hrs.short { color: var(--warn); }
+  .fl-seen { font-size: 12px; color: var(--muted); text-align: right; }
+
   #toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40;
     background: var(--panel); border: 1px solid var(--line-strong); border-radius: 9px;
@@ -371,6 +398,7 @@ const HTML = `<!doctype html>
       <button data-view="day" aria-pressed="true">Day</button>
       <button data-view="week" aria-pressed="false">Week</button>
       <button data-view="tracking" aria-pressed="false">Tracking</button>
+      <button data-view="fleet" aria-pressed="false">Fleet</button>
     </span>
     <span id="catalog" class="chip"></span>
     <button class="btn" id="addEntry">+ Add entry</button>
@@ -390,13 +418,14 @@ const HTML = `<!doctype html>
   </div>
   <div class="card wk" id="weekview" style="display:none"></div>
   <div id="trackview" style="display:none"></div>
+  <div id="fleetview" style="display:none"></div>
 </main>
 <div id="toast"></div>
 <script>
 (function () {
   var state = {
     date: null, day: null, targets: null, quickLog: [], view: 'day', selected: null, week: null,
-    tracking: null,
+    tracking: null, fleet: null,
     display: { timezone: '', dayStartHour: 7, dayEndHour: 19, snapMinutes: 15, minEntryMinutes: 15 },
     window: { from: 7, to: 19, stretched: false }
   };
@@ -1010,17 +1039,108 @@ const HTML = `<!doctype html>
     if (state.view === 'tracking') renderTracking();
   }
 
+  /* -------------------------------------------------------------- fleet -- */
+  /**
+   * Every Mac running the tracker, from the health files each one writes to
+   * the shared folder. The point is not the hours -- it is spotting the
+   * install that quietly stopped working three weeks ago, which is otherwise
+   * indistinguishable from someone having a light week.
+   */
+  function relative(ts) {
+    var mins = Math.round((Date.now() - ts) / 60000);
+    if (mins < 2) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    var h = Math.round(mins / 60);
+    if (h < 48) return h + 'h ago';
+    return Math.round(h / 24) + ' days ago';
+  }
+
+  function renderFleet() {
+    var el = document.getElementById('fleetview');
+    var f = state.fleet;
+    if (!f) { el.innerHTML = '<div class="card"><div class="empty">Loading…</div></div>'; return; }
+
+    if (!f.configured) {
+      el.innerHTML = '<div class="tk-banner"><b>This Mac is not connected to the studio.</b>' +
+        'It tracks and pushes to ClickUp perfectly well, but it will not receive updates ' +
+        'and nobody can see whether it is working. Connect it from Terminal:<br><br>' +
+        '<code>"~/Library/Application Support/MBDTimeTracker/tracker" configure ' +
+        '--channel &#39;/Volumes/&lt;share&gt;/TimeTracker&#39;</code></div>';
+      return;
+    }
+
+    var machines = f.machines.slice().sort(function (a, b) {
+      var rank = { broken: 0, stale: 1, attention: 2, ok: 3 };
+      if (rank[a.verdict] !== rank[b.verdict]) return rank[a.verdict] - rank[b.verdict];
+      return a.user.localeCompare(b.user);
+    });
+
+    var versions = {};
+    machines.forEach(function (m) { versions[m.version || 'unknown'] = true; });
+    var newest = Object.keys(versions).sort().reverse()[0];
+
+    var trouble = machines.filter(function (m) { return m.verdict !== 'ok'; }).length;
+    var banner = machines.length === 0
+      ? '<div class="tk-banner"><b>No Macs have reported yet.</b>' +
+        'The folder is set to <code>' + esc(f.statusDir) + '</code> but nothing has been written ' +
+        'to it. Either nobody has installed a connected copy yet, or the share is not mounted ' +
+        'on the Macs that have.</div>'
+      : trouble === 0
+        ? '<div class="tk-banner good"><b>All ' + machines.length + ' Macs are tracking normally.</b>' +
+          'Health is reported every half hour to <code>' + esc(f.statusDir) + '</code>.</div>'
+        : '<div class="tk-banner bad"><b>' + trouble + ' of ' + machines.length +
+          ' need attention.</b>Anything below the line is still recording; the ones at the ' +
+          'top are not, or cannot see enough to match anything.</div>';
+
+    var rows = machines.map(function (m) {
+      var hrs = (m.today.loggedMinutes / 60).toFixed(1);
+      var target = m.targets.dailyMinutes / 60;
+      var behind = (m.version || 'unknown') !== newest;
+      return '<div class="fl-row">' +
+        '<span class="fl-badge ' + m.verdict + '">' + m.verdict + '</span>' +
+        '<span><span class="fl-who">' + esc(m.user) + (m.isThisMac ? ' (this Mac)' : '') + '</span>' +
+          '<span class="fl-mac"> · ' + esc(m.mac) + '</span></span>' +
+        '<span class="fl-ver' + (behind ? ' behind' : '') + '">' + esc(m.version || 'unknown') +
+          (behind ? ' ↑' : '') + '</span>' +
+        '<span class="fl-hrs' + (m.today.loggedMinutes < m.targets.dailyMinutes ? ' short' : '') + '">' +
+          hrs + 'h <span class="fl-mac">/ ' + target.toFixed(1) + 'h</span></span>' +
+        '<span class="fl-seen">' + relative(m.reportedAt) + '</span>' +
+        (m.note ? '<span class="fl-note">' + esc(m.note) + '</span>' : '') +
+      '</div>';
+    }).join('');
+
+    el.innerHTML = banner +
+      (machines.length === 0 ? '' :
+        '<div class="card" style="padding:6px 0">' +
+          '<div class="fl-row head"><span>State</span><span>Who</span><span>Version</span>' +
+          '<span>Today</span><span style="text-align:right">Reported</span></div>' +
+          rows +
+        '</div>' +
+        (Object.keys(versions).length > 1
+          ? '<div class="tl-note" style="margin-top:12px">' + Object.keys(versions).length +
+            ' different versions in use. Stage a release and the rest pick it up ' +
+            'within a few hours, or at their next login.</div>'
+          : ''));
+  }
+
+  async function loadFleet() {
+    state.fleet = await api('/api/fleet');
+    if (state.view === 'fleet') renderFleet();
+  }
+
   function setView(view) {
     state.view = view;
     document.getElementById('dayview').style.display = view === 'day' ? '' : 'none';
     document.getElementById('weekview').style.display = view === 'week' ? '' : 'none';
     document.getElementById('trackview').style.display = view === 'tracking' ? '' : 'none';
+    document.getElementById('fleetview').style.display = view === 'fleet' ? '' : 'none';
     document.getElementById('goal').style.display = view === 'day' && state.targets ? '' : 'none';
     document.querySelectorAll('#viewctl button').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.view === view));
     });
     if (view === 'week') renderWeek();
     if (view === 'tracking') { renderTracking(); loadTracking(state.date); }
+    if (view === 'fleet') { renderFleet(); loadFleet(); }
   }
 
   /* ---------------------------------------------------------------- load -- */

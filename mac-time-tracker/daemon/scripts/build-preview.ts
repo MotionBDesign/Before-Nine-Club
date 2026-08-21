@@ -425,6 +425,38 @@ var PREVIEW = (function () {
       };
     }
 
+    if (path === '/api/fleet') {
+      // A studio mid-rollout: most fine, one Mac that never got Accessibility
+      // permission, one that has not reported since Friday, two behind on the
+      // version. Exactly the states this view exists to make obvious.
+      var HOUR = 3600000;
+      function mac(user, host, verdict, note, version, logged, agoHours, extra) {
+        return Object.assign({
+          mac: host, user: user, version: version, verdict: verdict, note: note,
+          reportedAt: Date.now() - agoHours * HOUR,
+          daemonStartedAt: Date.now() - 8 * HOUR,
+          observerLastSampleAgeSeconds: 4, observerHealthy: true,
+          accessibilityLikelyGranted: true, hasToken: true, catalogTasks: 113,
+          today: { date: '2026-08-20', loggedMinutes: logged, billableMinutes: Math.round(logged * 0.9), pendingMinutes: 0, syncedMinutes: logged },
+          targets: { dailyMinutes: 390, billableMinutes: 390 },
+          memory: { daemonMB: 71, observerMB: 22, observerPid: 1, observerName: 'MBD Time Tracker.app' },
+          lastError: null, isThisMac: false
+        }, extra || {});
+      }
+      return {
+        configured: true,
+        statusDir: '/Volumes/MBD Server/Software/TimeTracker/status',
+        installedVersion: '20260821-dd17ff8',
+        machines: [
+          mac('dom', 'dom-studio', 'ok', '', '20260821-dd17ff8', 420, 0.2, { isThisMac: true }),
+          mac('ashley', 'ashley-mbp', 'broken', 'Accessibility permission missing - titles and file paths are blank', '20260821-dd17ff8', 95, 0.4, { accessibilityLikelyGranted: false }),
+          mac('sam', 'sam-imac', 'ok', '', '20260821-dd17ff8', 400, 0.5),
+          mac('jo', 'jo-mbp', 'stale', 'no report for 68h - Mac off, or the tracker is not running', '20260814-9f31c02', 0, 68),
+          mac('priya', 'priya-mbp', 'attention', 'no ClickUp token; nothing can be pushed', '20260814-9f31c02', 380, 0.3, { hasToken: false })
+        ]
+      };
+    }
+
     if (path === '/api/catalog/refresh') {
       return { taskCount: DATA.tasks.length, fetchedAt: Date.now() };
     }

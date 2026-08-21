@@ -5,6 +5,14 @@
 #   ./scripts/install.sh              full install
 #   ./scripts/install.sh --uninstall  stop and remove the agent (keeps your data)
 #
+# Managed deployment (both optional, both usually worked out automatically):
+#   --channel <path>      folder on the share holding LATEST — where updates
+#                         come from. Derived automatically when installing
+#                         from a staged bundle.
+#   --status-dir <path>   folder this Mac writes its health file into, so the
+#                         studio can see whether tracking actually works.
+#                         Defaults to <channel>/status.
+#
 set -euo pipefail
 
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,7 +39,19 @@ unload_agents() {
   launchctl bootout "gui/$UID/$OBSERVER_LABEL" 2>/dev/null || true
 }
 
-if [[ "${1:-}" == "--uninstall" ]]; then
+CHANNEL="${MBD_TT_CHANNEL:-}"
+STATUS_DIR="${MBD_TT_STATUS_DIR:-}"
+UNINSTALL=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --uninstall)  UNINSTALL=1; shift ;;
+    --channel)    CHANNEL="${2:?--channel needs a path}"; shift 2 ;;
+    --status-dir) STATUS_DIR="${2:?--status-dir needs a path}"; shift 2 ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+if (( UNINSTALL )); then
   say "Removing the time tracker agents"
   unload_agents
   rm -f "$PLIST" "$OBSERVER_PLIST"
@@ -145,7 +165,7 @@ unload_agents
 mkdir -p "$APP_DIR"
 rm -rf "$APP_DIR.new"
 mkdir -p "$APP_DIR.new"
-for item in daemon config scripts observer observer-script README.md BUNDLE; do
+for item in daemon config scripts observer observer-script README.md BUNDLE deploy.json; do
   [[ -e "$SOURCE/$item" ]] && cp -R "$SOURCE/$item" "$APP_DIR.new/"
 done
 # Never carry a stale build or dev dependencies across.
@@ -250,6 +270,46 @@ say "4. Setting up the data directory"
 mkdir -p "$DATA_DIR"
 chmod 700 "$DATA_DIR"
 "$NODE_BIN" "$REPO/daemon/src/cli.ts" init
+
+# Where updates come from, and where this Mac reports its health. Both are
+# worked out rather than typed, because a path typed by hand on six Macs is a
+# path that is wrong on at least one -- and a wrong path here fails silently:
+# the tracker works perfectly and reports to nobody.
+#
+# Order: what was asked for on the command line, then what was baked into the
+# package, then the share this installer is being run from.
+if [[ -z "$CHANNEL" && -f "$SOURCE/deploy.json" ]]; then
+  CHANNEL="$("$NODE_BIN" -e '
+    try { process.stdout.write(String(require(process.argv[1]).channel ?? "")); } catch { }
+  ' "$SOURCE/deploy.json" 2>/dev/null || true)"
+fi
+if [[ -z "$STATUS_DIR" && -f "$SOURCE/deploy.json" ]]; then
+  STATUS_DIR="$("$NODE_BIN" -e '
+    try { process.stdout.write(String(require(process.argv[1]).statusDir ?? "")); } catch { }
+  ' "$SOURCE/deploy.json" 2>/dev/null || true)"
+fi
+# A staged bundle lives at <channel>/MBDTimeTracker-<version>/, and the channel
+# is whichever folder holds LATEST. Right by construction, so nobody has to
+# remember how the share is spelled on their Mac.
+if [[ -z "$CHANNEL" && -f "$(dirname "$SOURCE")/LATEST" ]]; then
+  CHANNEL="$(dirname "$SOURCE")"
+fi
+[[ -n "$CHANNEL" && -z "$STATUS_DIR" ]] && STATUS_DIR="$CHANNEL/status"
+
+if [[ -n "$CHANNEL" || -n "$STATUS_DIR" ]]; then
+  say "4b. Connecting to the studio"
+  CONFIGURE=("$NODE_BIN" "$REPO/daemon/src/cli.ts" configure)
+  [[ -n "$CHANNEL" ]] && CONFIGURE+=(--channel "$CHANNEL")
+  [[ -n "$STATUS_DIR" ]] && CONFIGURE+=(--status-dir "$STATUS_DIR")
+  "${CONFIGURE[@]}" || note "Could not write those settings; tracking still works."
+  # Best effort: on the very first install nobody has created it yet, and a
+  # read-only share is a perfectly normal way to distribute software.
+  [[ -n "$STATUS_DIR" ]] && mkdir -p "$STATUS_DIR" 2>/dev/null || true
+else
+  note "No update channel set. This Mac will track fine but will not receive"
+  note "updates or report its health. To connect it later:"
+  note "  \"$DATA_DIR/tracker\" configure --channel '/Volumes/<share>/TimeTracker'"
+fi
 
 say "5. ClickUp token"
 if security find-generic-password -s mbd-time-tracker -a clickup-api-token -w >/dev/null 2>&1; then
