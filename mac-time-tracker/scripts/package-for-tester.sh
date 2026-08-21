@@ -97,9 +97,10 @@ Nothing. The installer sorts out what it needs.
 It downloads a small runtime the first time (about 50 MB) unless that was
 included in this package, so be on the internet when you run it.
 
-One exception: if Dom has not yet built this for the studio, the installer
-will ask you to run a one-off Apple developer tools install and say so
-clearly. If that happens, tell him rather than working through it.
+One exception: if this copy was not staged by Dom, the installer will stop
+and say it needs Apple's developer tools. That is expected — it means you
+have a plain copy of the source rather than a ready-made one. Tell Dom; he
+can send you a staged copy that installs in two minutes without any of it.
 
 
 Installing

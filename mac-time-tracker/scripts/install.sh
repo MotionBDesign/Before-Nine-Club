@@ -123,21 +123,35 @@ BUNDLED=0
 if (( BUNDLED )); then
   note "Installing bundle $(cat "$SOURCE/BUNDLE") from $SOURCE"
 else
-  if ! command -v swift >/dev/null; then
+  # /usr/bin/swift always exists on macOS, even with no developer tools: it is
+  # a stub that pops Apple's installer when you invoke it. So `command -v swift`
+  # proves nothing, and checking it let the install sail past this point and
+  # fail later at the actual build. Ask whether the tools are really selected
+  # and whether the compiler genuinely answers.
+  if ! { xcode-select -p >/dev/null 2>&1 && swift --version >/dev/null 2>&1; }; then
     printf '\n'
-    note "This package has no prebuilt helper, so it has to be compiled here,"
-    note "which needs Apple's developer tools."
+    note "This copy has no prebuilt helper, so it would have to be compiled"
+    note "here — and that needs Apple's free developer tools, which are not"
+    note "installed on this Mac."
     note ""
-    note "Run this, let it finish (it is a big download), then run the"
-    note "installer again:"
+    note "You have two options:"
     note ""
-    note "    xcode-select --install"
+    note "  A. Ask Dom for a staged copy. It carries the helper already built,"
+    note "     installs in about two minutes, and needs none of this. This is"
+    note "     the normal way to install and what everyone else will use."
     note ""
-    note "Only one Mac ever needs to do this — once Dom has built it, everyone"
-    note "else installs a ready-made copy with no developer tools at all."
-    die "Developer tools are not installed yet."
+    note "  B. Install the tools yourself, if you would rather not wait:"
+    note ""
+    note "       xcode-select --install"
+    note ""
+    note "     Accept Apple's dialog and let it finish — it is a large"
+    note "     download and takes a while. Then run this installer again."
+    note ""
+    note "Nothing was changed on this Mac apart from the Node runtime, which"
+    note "is harmless to leave in place."
+    die "Apple's developer tools are not installed."
   fi
-  note "Swift $(swift --version 2>/dev/null | head -1)"
+  note "Using $(swift --version 2>/dev/null | head -1)"
 fi
 
 say "2. Copying the program to this Mac"
