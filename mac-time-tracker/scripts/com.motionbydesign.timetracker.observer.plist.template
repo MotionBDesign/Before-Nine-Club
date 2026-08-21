@@ -7,18 +7,19 @@
 
   <!--
     launchd starts this binary directly, which is the whole point: macOS then
-    attributes the Accessibility permission to BNObserver itself rather than to
+    attributes the Accessibility permission to the observer itself rather than to
     whatever process spawned it. Grant the permission to the path below.
+  -->
+  <!--
+    The flags belong to the compiled Swift observer. The applet takes none at
+    all -- an AppleScript applet treats stray argv as an open request -- so the
+    installer renders __OBSERVER_ARGS__ empty for it and reads the interval
+    from config.json instead.
   -->
   <key>ProgramArguments</key>
   <array>
     <string>__OBSERVER__</string>
-    <string>--interval</string>
-    <string>5</string>
-    <string>--out</string>
-    <string>__SPOOL__</string>
-    <string>--browser-urls</string>
-    <string>__BROWSER_URLS__</string>
+    __OBSERVER_ARGS__
   </array>
 
   <key>RunAtLoad</key>

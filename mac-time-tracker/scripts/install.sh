@@ -163,17 +163,50 @@ say "3. Preparing the observer"
 # always a working observer at the end, because the script one needs no build.
 OBSERVER=""
 OBSERVER_NAME=""
+# The path a person has to drag into System Settings > Accessibility. For the
+# applet that is the .app bundle, not the executable buried inside it.
+OBSERVER_APP=""
+# The applet reads config.json itself and takes no flags; the Swift binary
+# takes them. Rendered into the launch agent below.
+OBSERVER_ARGS_XML=""
 
+# Build the observer as a real .app with osacompile, which ships with macOS.
+# This is why the permission dialog says "MBD Time Tracker" rather than "bash":
+# an applet is a genuine bundle with a real executable, so macOS has a proper
+# identity to attach the Accessibility grant to.
 use_script_observer() {
-  local bundle="$APP_DIR/observer-script/MBDObserver.app"
-  [[ -f "$bundle/Contents/MacOS/MBDObserver" ]] || return 1
-  chmod +x "$bundle/Contents/MacOS/MBDObserver"
+  local source="$APP_DIR/observer-script/MBDTimeTracker.js"
+  local bundle="$APP_DIR/MBD Time Tracker.app"
+  [[ -f "$source" ]] || return 1
+  command -v osacompile >/dev/null || return 1
+
+  rm -rf "$bundle"
+  # -s keeps it running so its idle handler fires on a timer.
+  osacompile -s -l JavaScript -o "$bundle" "$source" >/dev/null 2>&1 || return 1
+
+  local plist="$bundle/Contents/Info.plist"
+  local pb=/usr/libexec/PlistBuddy
+  if [[ -x "$pb" ]]; then
+    # No Dock icon, a stable identity, and honest wording in the prompts.
+    "$pb" -c "Delete :LSUIElement" "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Add :LSUIElement bool true" "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Set :CFBundleName MBD Time Tracker" "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Add :CFBundleDisplayName string MBD Time Tracker" "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Set :CFBundleIdentifier au.com.motionbydesign.timetracker.observer" "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Add :NSAccessibilityUsageDescription string Reads the title and file path of the window you are working in, so your time can be matched to the right ClickUp task." "$plist" >/dev/null 2>&1 || true
+    "$pb" -c "Add :NSAppleEventsUsageDescription string Reads which page your browser is on, so time spent on a ClickUp task can be matched to it." "$plist" >/dev/null 2>&1 || true
+  fi
+
   xattr -dr com.apple.quarantine "$bundle" 2>/dev/null || true
-  # An ad-hoc signature gives the bundle a stable identity so the Accessibility
-  # grant survives updates. Best effort; it works unsigned too.
+  # An ad-hoc signature keeps the identity stable, so the Accessibility grant
+  # survives an update instead of quietly lapsing. Best effort.
   codesign --force --deep --sign - "$bundle" >/dev/null 2>&1 || true
-  OBSERVER="$bundle/Contents/MacOS/MBDObserver"
-  OBSERVER_NAME="MBD Observer"
+
+  OBSERVER="$bundle/Contents/MacOS/applet"
+  OBSERVER_APP="$bundle"
+  OBSERVER_NAME="MBD Time Tracker"
+  OBSERVER_ARGS_XML=""
+  [[ -x "$OBSERVER" ]] || return 1
   return 0
 }
 
@@ -182,6 +215,8 @@ if (( BUNDLED )) && [[ -f "$APP_DIR/observer/BNObserver" ]]; then
   chmod +x "$OBSERVER"
   xattr -dr com.apple.quarantine "$OBSERVER" 2>/dev/null || true
   OBSERVER_NAME="BNObserver"
+  OBSERVER_APP="$OBSERVER"
+  OBSERVER_ARGS_XML='<string>--interval</string><string>__INTERVAL__</string><string>--out</string><string>__SPOOL__</string><string>--browser-urls</string><string>__BROWSER_URLS__</string>'
   note "Using the prebuilt observer (nothing to compile)"
 
 elif (( SWIFT_AVAILABLE )) && [[ "${MBD_TT_BUILD_SWIFT:-}" == "1" ]]; then
@@ -193,6 +228,8 @@ elif (( SWIFT_AVAILABLE )) && [[ "${MBD_TT_BUILD_SWIFT:-}" == "1" ]]; then
      && [[ -x "$APP_DIR/observer/BNObserver" ]]; then
     OBSERVER="$APP_DIR/observer/BNObserver"
     OBSERVER_NAME="BNObserver"
+  OBSERVER_APP="$OBSERVER"
+    OBSERVER_ARGS_XML='<string>--interval</string><string>__INTERVAL__</string><string>--out</string><string>__SPOOL__</string><string>--browser-urls</string><string>__BROWSER_URLS__</string>'
     note "Built $OBSERVER"
   else
     note "The compile did not work, so the script observer is being used instead."
@@ -203,10 +240,11 @@ elif (( SWIFT_AVAILABLE )) && [[ "${MBD_TT_BUILD_SWIFT:-}" == "1" ]]; then
 
 else
   use_script_observer || die "No observer available at all — the package is incomplete."
-  note "Using the script observer — no compiler involved."
+  note "Built \"MBD Time Tracker.app\" — no compiler involved."
 fi
 
 [[ -n "$OBSERVER" ]] || die "No observer was prepared."
+[[ -n "$OBSERVER_APP" ]] || OBSERVER_APP="$OBSERVER"
 
 say "4. Setting up the data directory"
 mkdir -p "$DATA_DIR"
@@ -269,9 +307,18 @@ BROWSER_URLS="$("$NODE_BIN" -e '
     process.stdout.write(c?.observer?.browserUrls ?? "accessibility");
   } catch { process.stdout.write("accessibility"); }
 ' "$DATA_DIR/config.json" 2>/dev/null || echo accessibility)"
-note "Browser URL mode: $BROWSER_URLS"
+INTERVAL="$("$NODE_BIN" -e '
+  try {
+    const c = require(process.argv[1]);
+    const n = Number(c?.capture?.sampleIntervalSeconds);
+    process.stdout.write(String(Number.isFinite(n) && n > 0 ? n : 5));
+  } catch { process.stdout.write("5"); }
+' "$DATA_DIR/config.json" 2>/dev/null || echo 5)"
+note "Browser URL mode: $BROWSER_URLS, sampling every ${INTERVAL}s"
 
 sed -e "s|__OBSERVER__|$OBSERVER|g" \
+    -e "s|__OBSERVER_ARGS__|$OBSERVER_ARGS_XML|g" \
+    -e "s|__INTERVAL__|$INTERVAL|g" \
     -e "s|__SPOOL__|$SPOOL|g" \
     -e "s|__BROWSER_URLS__|$BROWSER_URLS|g" \
     -e "s|__HOME__|$HOME|g" \
@@ -296,8 +343,10 @@ cat <<NEXT
 
     System Settings > Privacy & Security > Accessibility
 
-  Add this with the "+" button:
-    $OBSERVER
+  Add this app with the "+" button:
+    $OBSERVER_APP
+
+  It appears in the list as "$OBSERVER_NAME".
 
   If the list will not accept it, press Cmd-Shift-G in the file picker and
   paste that path. Then restart the agent:
