@@ -1290,7 +1290,8 @@ const HTML = `<!doctype html>
     try {
       var data = await api('/api/day/approve-all', { method: 'POST', body: JSON.stringify({ date: state.date }) });
       state.day = data.day; renderGoal(data.summary); render(); loadWeek(state.date);
-      toast('Approved ' + data.approved + ' entries.');
+      toast('Approved ' + data.approved + ' entries.' +
+        (data.skipped ? ' ' + data.skipped + ' left for you — the match was only a guess.' : ''));
     } catch (e) { toast(e.message, true); }
   });
   document.getElementById('push').addEventListener('click', async function () {

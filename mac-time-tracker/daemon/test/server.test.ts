@@ -15,6 +15,8 @@ const asJson = async (response: Response): Promise<any> => response.json();
 
 let home: string;
 let base: string;
+/** Alias so a test can use `base` for something else locally. */
+let base_: string;
 let port: number;
 let close: () => Promise<void>;
 let date: string;
@@ -48,6 +50,7 @@ before(async () => {
   port = (server.address() as AddressInfo).port;
   runtime.config.server.port = port;
   base = `http://127.0.0.1:${port}`;
+  base_ = base;
   close = () => new Promise<void>((resolve) => { server.close(() => resolve()); });
 });
 
@@ -103,6 +106,40 @@ describe('review server', () => {
     const body = await asJson(await fetch(`${base}/api/fleet`));
     assert.equal(body.configured, false);
     assert.deepEqual(body.machines, []);
+  });
+
+  it('will not sweep a weak guess into "approve all matched"', async () => {
+    // A weak guess still carries a taskId. Approving those in bulk is how work
+    // nobody did reaches ClickUp, which is the one mistake here a client sees.
+    const weakDate = '2026-03-09';
+    const day = store.loadDay(weakDate);
+    const base = (await asJson(await fetch(`${base_}/api/day?date=${date}`))).day.entries[0];
+
+    day.entries = [
+      // An earlier test in this file corrects an entry, so `corrected` has to
+      // be set explicitly here rather than inherited from the template.
+      { ...base, id: 'weak1', date: weakDate, status: 'pending', corrected: false, manual: false,
+        suggestion: { ...base.suggestion, confidence: 0.2 } },
+      { ...base, id: 'strong1', date: weakDate, status: 'pending', corrected: false, manual: false,
+        suggestion: { ...base.suggestion, confidence: 0.8 } },
+      { ...base, id: 'weak-but-chosen', date: weakDate, status: 'pending', corrected: true, manual: false,
+        suggestion: { ...base.suggestion, confidence: 0.1 } },
+    ];
+    store.saveDay(day);
+
+    const result = await asJson(await fetch(`${base_}/api/day/approve-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: weakDate }),
+    }));
+    assert.equal(result.approved, 2, 'the confident one and the one chosen by hand');
+    assert.equal(result.skipped, 1);
+
+    const after = store.loadDay(weakDate);
+    const status = (id: string) => after.entries.find((e) => e.id === id)!.status;
+    assert.equal(status('weak1'), 'pending', 'a 0.2-confidence guess was approved in bulk');
+    assert.equal(status('strong1'), 'approved');
+    assert.equal(status('weak-but-chosen'), 'approved', 'a hand-picked task is the person\'s call');
   });
 
   it('reports what the observer can actually see, per app', async () => {

@@ -20,6 +20,12 @@ export interface DeploySettings {
   statusDir?: string;
   /** Set once for the studio so nobody has to find it in ClickUp. */
   workspaceId?: string;
+  /**
+   * The grid time is logged on. Set here because it is a studio-wide policy,
+   * not a preference — and because installs made before it was settled are
+   * still carrying whatever the example config said at the time.
+   */
+  roundMinutes?: number;
 }
 
 export interface DeployResult {
@@ -43,7 +49,8 @@ export function applyDeploySettings(settings: DeploySettings, configPath = paths
   const applied: DeploySettings = {};
   let changed = false;
 
-  const set = (section: string, key: string, value: string | undefined, label: keyof DeploySettings) => {
+  type StringKey = 'channel' | 'statusDir' | 'workspaceId';
+  const set = (section: string, key: string, value: string | undefined, label: StringKey) => {
     if (value === undefined) return;
     config[section] = { ...(config[section] as object | undefined) };
     if (config[section][key] !== value) {
@@ -56,6 +63,19 @@ export function applyDeploySettings(settings: DeploySettings, configPath = paths
   set('update', 'channel', settings.channel, 'channel');
   set('fleet', 'statusDir', settings.statusDir, 'statusDir');
   set('clickup', 'workspaceId', settings.workspaceId, 'workspaceId');
+
+  if (settings.roundMinutes !== undefined) {
+    // Both together, always: rounding to 15 while still allowing 5-minute
+    // entries would leave the short ones untouched and the day uneven.
+    config.capture = { ...(config.capture as object | undefined) } as Record<string, unknown>;
+    for (const key of ['roundToMinutes', 'minEntryMinutes']) {
+      if (config.capture[key] !== settings.roundMinutes) {
+        config.capture[key] = settings.roundMinutes;
+        changed = true;
+      }
+    }
+    applied.roundMinutes = settings.roundMinutes;
+  }
 
   if (changed) writeJsonAtomic(configPath, config);
 

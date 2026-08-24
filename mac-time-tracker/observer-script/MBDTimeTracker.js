@@ -114,6 +114,17 @@ function screenLocked() {
 
 /* ------------------------------------------------------------- sampling -- */
 
+/** One accessibility attribute, or null. Missing attributes throw; most do. */
+function attributeOf(element, name) {
+  try {
+    var value = element.attributes.byName(name).value();
+    return value === undefined || value === null ? null : value;
+  } catch (e) {
+    return null;
+  }
+}
+
+
 function sample() {
   var out = {
     ts: Date.now(),
@@ -140,11 +151,34 @@ function sample() {
     return out;
   }
 
-  try {
-    var win = proc.windows[0];
-    try { out.title = win.title() || null; } catch (e) {}
+  /**
+   * The window being worked in -- which is not the same as windows[0].
+   *
+   * windows[0] is the first window in the process's list, and in an app with
+   * palettes, inspectors and several open documents that is regularly not the
+   * one in front. Reading it reports a file that merely happens to be open as
+   * though it were being worked on, which puts time against the wrong job and
+   * makes the tracker look like it is inventing things.
+   *
+   * AXFocusedWindow is the one with keyboard focus. Some apps do not publish
+   * it, so windows[0] stays as a fallback -- a rough answer beats none.
+   */
+  var win = null;
+  try { win = proc.attributes.byName('AXFocusedWindow').value(); } catch (e) {}
+  if (!win) {
+    try { win = proc.windows[0]; } catch (e) {}
+  }
+
+  if (win) {
+    // An AX element reference answers through attributes; a System Events
+    // window object also answers title(). Try the attribute first so both
+    // routes go through the same path.
+    try { out.title = attributeOf(win, 'AXTitle') || null; } catch (e) {}
+    if (!out.title) {
+      try { out.title = win.title() || null; } catch (e) {}
+    }
     try {
-      var doc = win.attributes.byName('AXDocument').value();
+      var doc = attributeOf(win, 'AXDocument');
       if (doc) {
         var text = String(doc);
         if (text.indexOf('file://') === 0) {
@@ -157,7 +191,7 @@ function sample() {
         }
       }
     } catch (e) {}
-  } catch (e) {}
+  }
 
   // Browsers answer directly, and far more reliably than the AX tree does.
   try {

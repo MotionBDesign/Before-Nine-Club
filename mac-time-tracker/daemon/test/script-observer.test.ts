@@ -20,7 +20,17 @@ const source = fs.readFileSync(applet, 'utf8');
 
 interface Stubs {
   /** Frontmost process, as System Events would describe it. */
-  front?: { name: string; bundleId?: string; title?: string | null; axDocument?: string | null };
+  front?: {
+    name: string;
+    bundleId?: string;
+    /** The window with keyboard focus — what the person is actually in. */
+    focused?: { title?: string | null; axDocument?: string | null } | null;
+    /** windows[0]: often a palette, an inspector, or another open document. */
+    title?: string | null;
+    axDocument?: string | null;
+    /** Apps that do not publish AXFocusedWindow at all. */
+    noFocusedWindow?: boolean;
+  };
   /** Raw ioreg HIDIdleTime output, in nanoseconds. */
   idleNanos?: string;
   locked?: boolean;
@@ -119,26 +129,47 @@ function load(stubs: Stubs = {}): Harness {
   };
 
   const front = stubs.front;
+  /** An accessibility element: unknown attributes throw, as they do on a Mac. */
+  const element = (attrs: Record<string, unknown>) => ({
+    title: () => attrs.AXTitle ?? null,
+    attributes: {
+      byName: (key: string) => ({
+        value: () => {
+          if (!(key in attrs)) throw new Error(`no ${key}`);
+          return attrs[key];
+        },
+      }),
+    },
+  });
+
+  const firstWindow = front && element({
+    ...(front.title !== undefined ? { AXTitle: front.title } : {}),
+    ...(front.axDocument !== undefined ? { AXDocument: front.axDocument } : {}),
+  });
+  const focusedWindow = front?.focused
+    ? element({
+        ...(front.focused.title !== undefined ? { AXTitle: front.focused.title } : {}),
+        ...(front.focused.axDocument !== undefined ? { AXDocument: front.focused.axDocument } : {}),
+      })
+    : null;
+
   const process_ = front && {
     name: () => front.name,
     bundleIdentifier: () => {
       if (front.bundleId === undefined) throw new Error('no bundle id');
       return front.bundleId;
     },
-    windows: [
-      {
-        title: () => front.title ?? null,
-        attributes: {
-          byName: (key: string) => ({
-            value: () => {
-              if (key !== 'AXDocument') throw new Error(`unexpected attribute ${key}`);
-              if (front.axDocument === undefined) throw new Error('no AXDocument');
-              return front.axDocument;
-            },
-          }),
+    attributes: {
+      byName: (key: string) => ({
+        value: () => {
+          if (key !== 'AXFocusedWindow') throw new Error(`no ${key}`);
+          // Some apps never publish it; others publish it as null.
+          if (front.noFocusedWindow) throw new Error('no AXFocusedWindow');
+          return focusedWindow;
         },
-      },
-    ],
+      }),
+    },
+    windows: [firstWindow],
   };
 
   const Application: any = (name: string) => {
@@ -300,6 +331,44 @@ describe('script observer applet', () => {
     observer.run();
     assert.equal(observer.idle(), 5);
     assert.ok(observer.spoolPath().endsWith('/MBDTimeTracker/observer.ndjson'));
+  });
+
+  it('reads the window being worked in, not whichever one is first', () => {
+    // The bug this pins: windows[0] is the first window in the process's list,
+    // which in an app with palettes and several open documents is regularly
+    // not the one in front. Reporting it put time against a file that merely
+    // happened to be open — the tracker looking like it invented things.
+    const observer = load({
+      front: {
+        name: 'Adobe Photoshop 2026',
+        bundleId: 'com.adobe.Photoshop',
+        title: 'Colour',
+        axDocument: 'file:///Volumes/Projects/Clients/Resmed/2026/Old_promo.psd',
+        focused: {
+          title: 'Curtailment_styleframes_01.psd',
+          axDocument: 'file:///Volumes/Projects/Clients/SAPN/2026/Curtailment_styleframes_01.psd',
+        },
+      },
+    });
+    const snapshot = observer.snapshot();
+    assert.equal(snapshot.title, 'Curtailment_styleframes_01.psd');
+    assert.equal(
+      snapshot.documentPath,
+      '/Volumes/Projects/Clients/SAPN/2026/Curtailment_styleframes_01.psd',
+    );
+  });
+
+  it('falls back to the first window for apps that publish no focused one', () => {
+    // A rough answer beats none: plenty of apps never expose AXFocusedWindow.
+    const observer = load({
+      front: {
+        name: 'DaVinci Resolve',
+        bundleId: 'com.blackmagic-design.DaVinciResolve',
+        noFocusedWindow: true,
+        title: 'DaVinci Resolve 19 - Curtailment_v04',
+      },
+    });
+    assert.equal(observer.snapshot().title, 'DaVinci Resolve 19 - Curtailment_v04');
   });
 
   it('quits after its recycle window so launchd starts a fresh process', () => {

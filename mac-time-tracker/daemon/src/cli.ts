@@ -348,6 +348,15 @@ async function main(): Promise<void> {
         if (flags[i] === '--channel') settings.channel = value;
         else if (flags[i] === '--status-dir') settings.statusDir = value;
         else if (flags[i] === '--workspace') settings.workspaceId = value;
+        else if (flags[i] === '--round-minutes') {
+          const minutes = Number(value);
+          if (!Number.isFinite(minutes) || minutes <= 0) {
+            console.error(`\n  --round-minutes needs a positive number, got "${value}"\n`);
+            process.exitCode = 1;
+            return;
+          }
+          settings.roundMinutes = minutes;
+        }
       }
       if (Object.keys(settings).length === 0) {
         console.log(`
@@ -358,6 +367,8 @@ async function main(): Promise<void> {
     --status-dir   folder this Mac writes its health file into, so the studio
                    can see whether tracking is actually working.
     --workspace    ClickUp workspace id.
+    --round-minutes  the grid time is logged on, e.g. 15. Sets both the
+                   rounding and the shortest entry, which have to agree.
 
   Nothing else in config.json is touched.
 `);
@@ -377,6 +388,11 @@ async function main(): Promise<void> {
       }
       for (const missing of result.unreachable) {
         console.log(`  ${amber(' !')} ${missing} is not reachable right now — mount the share, or check the path.`);
+      }
+      if (result.applied.roundMinutes !== undefined) {
+        console.log(`\n  Days already recorded keep their old shape until rebuilt:`);
+        console.log(`    tracker rebuild            today`);
+        console.log(`    tracker rebuild 2026-08-20 a particular day`);
       }
       console.log(`\n  Restart the tracker so it picks this up:`);
       console.log(`    launchctl kickstart -k gui/$UID/com.motionbydesign.timetracker\n`);

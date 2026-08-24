@@ -192,15 +192,30 @@ export function buildEntries(
   interface Group { taskId: string | null; blocks: ActivityBlock[]; suggestion: ReturnType<typeof matchBlock> }
   const groups: Group[] = [];
 
+  const lastBlockOf = (group: Group) => group.blocks[group.blocks.length - 1]!;
+
   for (const block of ordered) {
     const suggestion = matchBlock(block, ctx);
     const previous = groups[groups.length - 1];
     const contiguous = previous
-      ? block.start - previous.blocks[previous.blocks.length - 1]!.end <= mergeGapMs
+      ? block.start - lastBlockOf(previous).end <= mergeGapMs
       : false;
-    // Only merge when both sides actually identified the same task; two nulls
-    // are two unknowns, not the same piece of work.
-    if (previous && contiguous && suggestion.taskId !== null && previous.taskId === suggestion.taskId) {
+
+    // Same task, back to back: one line for the work, not one per app switch.
+    const sameTask = suggestion.taskId !== null && previous?.taskId === suggestion.taskId;
+
+    /**
+     * Neither block matched anything, but they are the same app running
+     * without a break — an unbroken stretch in Resolve while it says nothing
+     * about which project is open. That is one thing the person will assign
+     * once, not twelve. Left unmerged it also *invents* time: each fragment
+     * rounds up to the minimum entry length independently, so forty minutes
+     * of editing is logged as an hour.
+     */
+    const sameUnmatchedApp = suggestion.taskId === null && previous?.taskId === null &&
+      previous !== undefined && lastBlockOf(previous).bundleId === block.bundleId;
+
+    if (previous && contiguous && (sameTask || sameUnmatchedApp)) {
       previous.blocks.push(block);
       if (suggestion.confidence > previous.suggestion.confidence) previous.suggestion = suggestion;
     } else {

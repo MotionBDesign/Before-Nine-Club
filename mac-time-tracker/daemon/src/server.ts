@@ -7,6 +7,7 @@ import { addManualEntry, loadDay, localDate, listDays, rebuildDay, readSnapshots
 import { pushApproved } from './sync.ts';
 import { renderPage } from './ui.ts';
 import { log } from './log.ts';
+import { LOW_CONFIDENCE } from './matcher.ts';
 import { paths } from './paths.ts';
 import { assess, readFleet } from './fleet.ts';
 import { installedVersion } from './update.ts';
@@ -462,14 +463,26 @@ export function createServer(runtime: Runtime): http.Server {
       const date = ((await readBody(req)) as { date?: string }).date?.trim() || localDate();
       const day = loadDay(date);
       let approved = 0;
+      let skipped = 0;
       for (const entry of day.entries) {
-        if (entry.status === 'pending' && entry.taskId) {
-          entry.status = 'approved';
-          approved++;
+        if (entry.status !== 'pending' || !entry.taskId) continue;
+        /**
+         * "Matched" has to mean matched. A weak guess still carries a taskId,
+         * and sweeping those in is how work nobody did reaches ClickUp — the
+         * one mistake here that is visible to a client. Anything the person
+         * chose by hand, or entered by hand, is theirs and goes through.
+         */
+        const trusted = entry.corrected === true || entry.manual === true ||
+          entry.suggestion.confidence >= LOW_CONFIDENCE;
+        if (!trusted) {
+          skipped++;
+          continue;
         }
+        entry.status = 'approved';
+        approved++;
       }
       saveDay(day);
-      json(res, 200, { day: dressDay(day), approved, summary: summarise(day) });
+      json(res, 200, { day: dressDay(day), approved, skipped, summary: summarise(day) });
       return;
     }
 

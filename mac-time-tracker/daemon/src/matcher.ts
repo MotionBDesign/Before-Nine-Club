@@ -481,10 +481,18 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
 
     const reasons: string[] = [];
     let score = 0;
+    /**
+     * Evidence tied to what this block actually contained — a path, a URL, a
+     * rule, a remembered correction, words shared with the task name. The app
+     * being open is not that: "Resolve is video work" is true of every video
+     * task in the catalog at once, so on its own it does not point at one.
+     */
+    let hasContentEvidence = false;
 
     const scopeWeight = listWeight.get(task.listId);
     if (scopeWeight !== undefined) {
       score += scopeWeight;
+      hasContentEvidence = true;
       const reason = listReason.get(task.listId);
       if (reason) reasons.push(reason);
     }
@@ -492,6 +500,7 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
     const learnHit = learned.get(task.taskId);
     if (learnHit) {
       score += learnHit.weight;
+      hasContentEvidence = true;
       reasons.push(learnHit.reason);
     }
 
@@ -499,6 +508,7 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
     const overlap = overlapScore(query, taskTokens, ctx.idf);
     if (overlap > 0) {
       score += overlap * WEIGHT.taskNameOverlap;
+      hasContentEvidence = true;
       reasons.push(`task name matches the file (${Math.round(overlap * 100)}%)`);
     }
 
@@ -510,7 +520,11 @@ export function matchBlock(block: ActivityBlock, ctx: MatchContext): Suggestion 
       }
     }
 
-    if (score > 0) scored.push({ task, score, reasons });
+    // An app-phase hit only ever sharpens a task that something else already
+    // pointed at. Without this, opening Resolve was enough to pin the time to
+    // whichever video task sorted first — a confident-looking line about work
+    // that never happened.
+    if (score > 0 && hasContentEvidence) scored.push({ task, score, reasons });
   }
 
   scored.sort((a, b) => b.score - a.score || a.task.taskName.localeCompare(b.task.taskName));

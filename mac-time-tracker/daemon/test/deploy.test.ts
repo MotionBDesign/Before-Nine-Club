@@ -44,6 +44,24 @@ describe('deploy settings', () => {
     assert.equal(after.quickLog[0].taskId, '86d2c5302');
   });
 
+  it('fixes the logging grid on an install that predates the policy', () => {
+    // Every Mac installed from the old example config is on 5-minute blocks.
+    // Updates replace code, not config, so this is the only way to move them.
+    const file = tempConfig({
+      capture: { sampleIntervalSeconds: 5, roundToMinutes: 5, minEntryMinutes: 5, dayStartHour: 7 },
+      quickLog: [{ label: 'MBD Meeting', taskId: '86d2c5302', minutes: 30, billable: false }],
+    });
+    applyDeploySettings({ roundMinutes: 15 }, file);
+    const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+    // Both together: rounding to 15 while still allowing 5-minute entries
+    // would leave the short ones untouched and the day uneven.
+    assert.equal(after.capture.roundToMinutes, 15);
+    assert.equal(after.capture.minEntryMinutes, 15);
+    assert.equal(after.capture.sampleIntervalSeconds, 5, 'the sampling rate is unrelated');
+    assert.equal(after.capture.dayStartHour, 7);
+    assert.equal(after.quickLog.length, 1);
+  });
+
   it('does not write defaults into the file', () => {
     // Going through the typed config loader would fill in every default, which
     // silently opts the Mac out of any later change to them.
