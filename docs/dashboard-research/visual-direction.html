@@ -1,0 +1,882 @@
+<title>Studio Floor Visual Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* ============================================================
+   STUDIO FLOOR — VISUAL DIRECTION (round two)
+   Apple materials + Material 3 tonal surfaces + the restraint
+   of the best data tools, applied to MBD's Today tab.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --paper:      #faf9f7;
+  --surface:    #ffffff;
+  --surface-2:  #f3f1ee;
+  --surface-3:  #ebe8e4;
+  --tint:       rgba(67,56,202,.045);
+  --tint-2:     rgba(67,56,202,.085);
+
+  --ink:        #17161a;
+  --ink-2:      #55535e;
+  --ink-3:      #8b8894;
+  --hair:       #e7e4e0;
+  --hair-2:     #d8d4cf;
+
+  --accent:     #4338ca;
+  --accent-2:   #6366f1;
+  --accent-ink: #ffffff;
+
+  --ok:         #0ca30c;
+  --ok-bg:      rgba(12,163,12,.10);
+  --ok-ink:     #056b05;
+  --warn:       #fab219;
+  --warn-bg:    rgba(250,178,25,.14);
+  --warn-ink:   #8a5a00;
+  --crit:       #d03b3b;
+  --crit-bg:    rgba(208,59,59,.10);
+  --crit-ink:   #a32626;
+
+  --r-s: 10px; --r-m: 16px; --r-l: 22px; --r-xl: 30px;
+
+  --e1: 0 1px 2px rgba(23,22,26,.04), 0 1px 1px rgba(23,22,26,.03);
+  --e2: 0 2px 4px rgba(23,22,26,.04), 0 8px 20px -8px rgba(23,22,26,.10);
+  --e3: 0 4px 8px rgba(23,22,26,.05), 0 20px 44px -16px rgba(23,22,26,.16);
+
+  --f:  'Figtree', -apple-system, 'Segoe UI', sans-serif;
+  --fm: 'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper:     #0f0e12;
+    --surface:   #1a1920;
+    --surface-2: #232029;
+    --surface-3: #2c2934;
+    --tint:      rgba(129,140,248,.07);
+    --tint-2:    rgba(129,140,248,.13);
+    --ink:       #f6f5f8;
+    --ink-2:     #b0adba;
+    --ink-3:     #7d7a88;
+    --hair:      #2a2833;
+    --hair-2:    #383544;
+    --accent:    #818cf8;
+    --accent-2:  #a5b0ff;
+    --accent-ink:#14121f;
+    --ok-bg:     rgba(12,163,12,.16);
+    --ok-ink:    #5fd45f;
+    --warn-bg:   rgba(250,178,25,.16);
+    --warn-ink:  #ffcf5c;
+    --crit-bg:   rgba(208,59,59,.18);
+    --crit-ink:  #ff9494;
+    --e1: 0 1px 2px rgba(0,0,0,.4);
+    --e2: 0 2px 6px rgba(0,0,0,.45), 0 10px 24px -10px rgba(0,0,0,.6);
+    --e3: 0 6px 14px rgba(0,0,0,.5), 0 24px 50px -18px rgba(0,0,0,.75);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:     #0f0e12;
+  --surface:   #1a1920;
+  --surface-2: #232029;
+  --surface-3: #2c2934;
+  --tint:      rgba(129,140,248,.07);
+  --tint-2:    rgba(129,140,248,.13);
+  --ink:       #f6f5f8;
+  --ink-2:     #b0adba;
+  --ink-3:     #7d7a88;
+  --hair:      #2a2833;
+  --hair-2:    #383544;
+  --accent:    #818cf8;
+  --accent-2:  #a5b0ff;
+  --accent-ink:#14121f;
+  --ok-bg:     rgba(12,163,12,.16);
+  --ok-ink:    #5fd45f;
+  --warn-bg:   rgba(250,178,25,.16);
+  --warn-ink:  #ffcf5c;
+  --crit-bg:   rgba(208,59,59,.18);
+  --crit-ink:  #ff9494;
+  --e1: 0 1px 2px rgba(0,0,0,.4);
+  --e2: 0 2px 6px rgba(0,0,0,.45), 0 10px 24px -10px rgba(0,0,0,.6);
+  --e3: 0 6px 14px rgba(0,0,0,.5), 0 24px 50px -18px rgba(0,0,0,.75);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--f); font-size: 17px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 26px 130px; }
+.col { max-width: 66ch; }
+.col.w { max-width: 78ch; }
+
+h1,h2,h3,h4 { margin: 0; font-family: var(--f); text-wrap: balance; }
+h1 { font-size: clamp(44px,7.5vw,86px); font-weight: 800; letter-spacing: -0.042em; line-height: .98; }
+h2 { font-size: clamp(30px,4vw,44px); font-weight: 800; letter-spacing: -0.034em; line-height: 1.06; margin-bottom: 14px; }
+h3 { font-size: 23px; font-weight: 700; letter-spacing: -0.024em; margin-bottom: 8px; }
+h4 { font-size: 16px; font-weight: 700; letter-spacing: -0.014em; margin-bottom: 5px; }
+p { margin: 0 0 16px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+strong { font-weight: 600; }
+
+.eyebrow {
+  font-family: var(--fm); font-size: 11px; font-weight: 500;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 13px;
+}
+.lede { font-size: 21px; line-height: 1.5; color: var(--ink-2); letter-spacing: -.01em; }
+.small { font-size: 15px; color: var(--ink-2); line-height: 1.55; }
+.tiny { font-family: var(--fm); font-size: 12px; color: var(--ink-3); }
+section { padding: 84px 0 0; scroll-margin-top: 24px; }
+
+/* ---------- page-level cards ---------- */
+.pcard {
+  background: var(--surface); border: 1px solid var(--hair);
+  border-radius: var(--r-l); padding: 24px; box-shadow: var(--e1);
+}
+.pgrid { display: grid; gap: 18px; }
+@media (min-width:740px){ .p2 { grid-template-columns: repeat(2,1fr);} }
+@media (min-width:960px){ .p3 { grid-template-columns: repeat(3,1fr);} }
+
+/* ---------- the frame each screen sits in ---------- */
+.shot { margin: 28px 0 0; }
+.shot-cap {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.shot-cap .k {
+  font-family: var(--fm); font-size: 11px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent-ink);
+  background: var(--accent); border-radius: 6px; padding: 3px 8px;
+}
+.shot-cap .t { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
+.shot-cap .s { font-size: 14px; color: var(--ink-3); }
+
+/* device frame */
+.frame {
+  border-radius: var(--r-xl); overflow: hidden;
+  box-shadow: var(--e3); border: 1px solid var(--hair-2);
+  background: var(--surface);
+}
+.frame.dk { background: #101015; border-color: #26242e; }
+
+/* app chrome */
+.chrome {
+  display: flex; align-items: center; gap: 12px; padding: 11px 16px;
+  border-bottom: 1px solid var(--hair); background: var(--surface-2);
+}
+.chrome .dots { display: flex; gap: 6px; }
+.chrome .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--hair-2); }
+.chrome .tabs { display: flex; gap: 3px; margin-left: 6px; }
+.chrome .tab {
+  font-size: 13px; font-weight: 500; color: var(--ink-3);
+  padding: 5px 12px; border-radius: 8px;
+}
+.chrome .tab.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--e1); }
+.chrome .rt { margin-left: auto; display: flex; align-items: center; gap: 10px; font-family: var(--fm); font-size: 12px; color: var(--ink-3); }
+.chrome.dk { background: #17161d; border-bottom-color: #26242e; }
+.chrome.dk .tab.on { background: #232130; color: #f4f3f7; box-shadow: none; }
+
+/* ---------- annotations ---------- */
+.notes { display: grid; gap: 14px; margin-top: 16px; }
+@media (min-width:820px){ .notes.n2{grid-template-columns:repeat(2,1fr)} .notes.n3{grid-template-columns:repeat(3,1fr)} }
+.notes > div { font-size: 14.5px; color: var(--ink-2); line-height: 1.5; }
+.notes b {
+  display: block; font-family: var(--fm); font-size: 11px; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+}
+.callout {
+  background: var(--tint); border: 1px solid var(--hair);
+  border-radius: var(--r-m); padding: 18px 22px; font-size: 15.5px; color: var(--ink-2);
+}
+.callout b { color: var(--ink); }
+.callout :last-child { margin-bottom: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+</style>
+<style>
+/* ============================================================
+   IMAGERY — generated thumbnails of the actual deliverables.
+   For a motion studio the work IS the picture: you recognise
+   "Resmed bundles" from the artwork faster than from the words.
+   ============================================================ */
+.th {
+  position: relative; flex: none; overflow: hidden;
+  border-radius: var(--r-s);
+  background: linear-gradient(145deg, var(--t1, #6366f1), var(--t2, #1e1b4b));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
+}
+.th::after { /* specular sheen — the Apple material cue */
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(160deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 42%);
+  pointer-events: none;
+}
+.th.r169 { aspect-ratio: 16/9; } .th.r45 { aspect-ratio: 4/5; }
+.th.r11  { aspect-ratio: 1/1; }  .th.r23 { aspect-ratio: 2/3; }
+.th.r43  { aspect-ratio: 4/3; }
+
+/* — email / EDM — */
+.th .sheet { position: absolute; inset: 11% 13%; background: #fff; border-radius: 3px; overflow: hidden; display: grid; grid-template-rows: 26% 1fr; }
+.th .sheet .hd { background: var(--t1); }
+.th .sheet .bd { padding: 7% 9%; display: flex; flex-direction: column; gap: 5%; }
+.th .sheet .ln { flex: 0 0 2.5px; border-radius: 2px; background: #ddd9d5; }
+.th .sheet .ln.s { width: 55%; }
+.th .sheet .cta { flex: 0 0 7px; width: 45%; border-radius: 4px; background: var(--t1); margin-top: auto; }
+.th .sheet .blob { flex: 0 0 38%; border-radius: 3px; background: linear-gradient(135deg,var(--t2),var(--t1)); opacity: .55; }
+
+/* — video frame — */
+.th .play {
+  position: absolute; left: 50%; top: 50%; width: 26%; aspect-ratio: 1; margin: -13% 0 0 -13%;
+  border-radius: 50%; background: rgba(255,255,255,.22);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6);
+  display: grid; place-items: center;
+}
+.th .play::before { content:""; border-left: 7px solid #fff; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; margin-left: 2px; }
+.th .scrub { position: absolute; left: 7%; right: 7%; bottom: 9%; height: 2.5px; border-radius: 2px; background: rgba(255,255,255,.3); }
+.th .scrub i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: #fff; }
+.th .dur {
+  position: absolute; right: 7%; top: 8%; font-family: var(--fm); font-size: 9px;
+  color: #fff; background: rgba(0,0,0,.42); padding: 1px 5px; border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* — poster — */
+.th .poster { position: absolute; inset: 0; padding: 12%; display: flex; flex-direction: column; justify-content: flex-end; gap: 6%; }
+.th .poster .big { flex: 0 0 13%; border-radius: 2px; background: #fff; opacity: .95; }
+.th .poster .big.s { width: 62%; } .th .poster .big.m { width: 84%; }
+.th .poster .rule { flex: 0 0 1.5px; background: rgba(255,255,255,.5); }
+
+/* — deck slide — */
+.th .slide { position: absolute; inset: 9%; background: #fff; border-radius: 3px; padding: 8%; display: flex; flex-direction: column; gap: 7%; }
+.th .slide .ttl { flex: 0 0 6px; width: 62%; border-radius: 2px; background: var(--t2); }
+.th .slide .b { flex: 0 0 3px; border-radius: 2px; background: #dedad6; }
+.th .slide .b.s { width: 70%; } .th .slide .b.m { width: 88%; }
+.th .slide .dot { position: absolute; right: 8%; bottom: 8%; width: 12%; aspect-ratio: 1; border-radius: 50%; background: var(--t1); opacity: .85; }
+
+/* — brand sheet — */
+.th .brand { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr 24%; }
+.th .brand .mark {
+  display: grid; place-items: center;
+  font-weight: 900; font-size: 30px; letter-spacing: -.05em; color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+.th .brand .sw { display: flex; }
+.th .brand .sw i { flex: 1; }
+
+/* — social square — */
+.th .soc { position: absolute; inset: 0; display: grid; place-items: center; }
+.th .soc .badge {
+  width: 52%; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(255,255,255,.2); box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: -.03em;
+}
+
+/* ============================================================
+   RINGS — Apple Activity language. You already run three KPIs
+   (utilisation, internal share, logged-same-day). Three rings.
+   ============================================================ */
+.rings { position: relative; flex: none; }
+.rings svg { display: block; transform: rotate(-90deg); }
+.rings .mid {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center; line-height: 1;
+}
+.rings .mid .v { font-weight: 800; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.rings .mid .l { font-family: var(--fm); font-size: 9px; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; margin-top: 3px; }
+
+/* ============================================================
+   LIQUID GLASS — layered translucent material over content
+   ============================================================ */
+.glassbed {
+  position: relative; overflow: hidden; border-radius: var(--r-l);
+  background:
+    radial-gradient(120% 90% at 12% 8%, #ff9a5a 0%, transparent 55%),
+    radial-gradient(110% 90% at 88% 18%, #7c5cff 0%, transparent 55%),
+    radial-gradient(120% 110% at 60% 100%, #00c2b2 0%, transparent 58%),
+    linear-gradient(150deg, #2a1b52, #0d1030);
+  padding: 30px;
+}
+.glass {
+  border-radius: 20px; padding: 18px 20px;
+  background: linear-gradient(150deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 0 rgba(255,255,255,.12),
+    0 12px 34px -10px rgba(0,0,0,.5);
+  color: #fff;
+}
+
+/* ============================================================
+   SHARED UI PARTS
+   ============================================================ */
+.avx {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; color: #fff;
+  font-weight: 700; font-size: 12px; letter-spacing: -.02em;
+  background: linear-gradient(140deg, var(--a1,#6366f1), var(--a2,#312e81));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), var(--e1);
+}
+.avx.s { width: 26px; height: 26px; font-size: 10px; }
+.avx.l { width: 46px; height: 46px; font-size: 15px; }
+.avstack { display: flex; }
+.avstack .avx { margin-left: -9px; box-shadow: 0 0 0 2.5px var(--surface); }
+.avstack .avx:first-child { margin-left: 0; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; letter-spacing: -.005em;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.tag i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.tag.ok   { background: var(--ok-bg);   color: var(--ok-ink); }   .tag.ok i   { background: var(--ok); }
+.tag.warn { background: var(--warn-bg); color: var(--warn-ink); } .tag.warn i { background: var(--warn); }
+.tag.crit { background: var(--crit-bg); color: var(--crit-ink); } .tag.crit i { background: var(--crit); }
+.tag.mute { background: var(--surface-2); color: var(--ink-2); }  .tag.mute i { background: var(--ink-3); }
+.tag.acc  { background: var(--tint-2);  color: var(--accent); }   .tag.acc i  { background: var(--accent); }
+
+.stat { display: grid; gap: 4px; }
+.stat .v { font-size: 40px; font-weight: 800; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+
+.bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; display: flex; position: relative; }
+.bar .f { background: var(--accent); }
+.bar .f.ok { background: var(--ok); } .bar .f.warn { background: var(--warn); } .bar .f.crit { background: var(--crit); }
+.bar .g { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 7px); opacity: .5; }
+.bar .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 2px; background: var(--ink-2); }
+
+/* work card */
+.jcard {
+  display: grid; grid-template-columns: 74px 1fr; gap: 13px;
+  background: var(--surface); border: 1px solid var(--hair);
+  border-radius: var(--r-m); padding: 11px; align-items: center;
+  box-shadow: var(--e1);
+}
+.jcard .th { width: 74px; height: 52px; aspect-ratio: auto; }
+.jcard .meta { display: grid; gap: 6px; min-width: 0; }
+.jcard .nm { font-weight: 650; font-size: 14.5px; letter-spacing: -.016em; line-height: 1.25; }
+.jcard .sub { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-3); }
+.jcard.big { grid-template-columns: 1fr; gap: 11px; padding: 11px; }
+.jcard.big .th { width: 100%; }
+
+.client { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-3); opacity: .6; }
+
+/* person row */
+.prow { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 12px 4px; }
+.prow .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.prow .who .n { font-weight: 650; font-size: 15px; letter-spacing: -.015em; }
+.prow .who .r { font-size: 12.5px; color: var(--ink-3); }
+
+.sect-t { font-size: 13px; font-weight: 700; letter-spacing: -.01em; color: var(--ink-3); text-transform: none; }
+.hairline { height: 1px; background: var(--hair); }
+</style>
+<div class="wrap">
+
+  <header style="padding:80px 0 44px">
+    <div class="eyebrow">Round two · visual direction · <span style="color:var(--ink-3)">10.0.0.87:3200</span></div>
+    <h1>Show the<br>work.</h1>
+
+    <div style="display:flex;gap:10px;margin-top:30px;overflow-x:auto;padding-bottom:6px">
+      <div class="th r45" style="--t1:#ff2d78;--t2:#6a1b6a;width:104px"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="ln s"></div><div class="cta"></div></div></div></div>
+      <div class="th r169" style="--t1:#ff7a29;--t2:#2b1a0e;width:176px"><div class="dur">0:24</div><div class="play"></div><div class="scrub"><i style="width:38%"></i></div></div>
+      <div class="th r23" style="--t1:#ff3b30;--t2:#1a0507;width:82px"><div class="poster"><div class="big m"></div><div class="big s"></div><div class="rule"></div></div></div>
+      <div class="th r43" style="--t1:#00a3e0;--t2:#0b2b5c;width:132px"><div class="brand"><div class="mark">S</div><div class="sw"><i style="background:#00a3e0"></i><i style="background:#0b2b5c"></i><i style="background:#7fd4f5"></i><i style="background:#f2f6f9"></i></div></div></div>
+      <div class="th r169" style="--t1:#4fc3f7;--t2:#1a237e;width:176px"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="b m"></div><div class="dot"></div></div></div>
+      <div class="th r11" style="--t1:#00c2b2;--t2:#06322e;width:98px"><div class="soc"><div class="badge">AZ</div></div></div>
+    </div>
+
+    <div class="col" style="margin-top:30px">
+      <p class="lede">You were right — round one was a spreadsheet with good manners. It was dense, technical and grey, and for a studio whose entire product is <em>pictures</em>, it never once showed one. This is the same data with the visual language it should have had: Apple's materials and rings, Google's tonal surfaces and shape, and the restraint the best data tools have converged on.</p>
+    </div>
+  </header>
+
+  <!-- ================= THESIS ================= -->
+  <section id="thesis" style="padding-top:40px">
+    <div class="col w">
+      <div class="eyebrow">The idea everything else follows from</div>
+      <h2>Imagery frees colour</h2>
+      <p>In round one I refused to give twelve clients twelve colours, because that burns the one channel that should scream. That rule was right, but I paid for it with a grey interface — with no imagery, the only way to tell a Resmed job from a SAPN job was to <em>read</em>.</p>
+      <p>Thumbnails fix both problems at once. The artwork identifies the client instantly and better than any swatch could, which means colour is <em>still</em> free to mean nothing but "this needs you". You get a far more visual dashboard and a stricter use of colour, from the same move.</p>
+      <p>And it is not decoration. You are a motion studio: your jobs already have a picture attached. Showing it is the fastest possible label.</p>
+    </div>
+
+    <div class="pgrid p2" style="margin-top:30px">
+      <div class="pcard">
+        <div class="tiny" style="margin-bottom:14px">Round one — read it</div>
+        <div style="display:grid;gap:8px">
+          <div style="background:#1e2024;border:1px solid #3c414a;border-left:2px solid #e35555;border-radius:5px;padding:9px 11px;color:#f2f4f6;font-family:var(--fm);font-size:12px">Resmed — bundles rollout<div style="color:#a7aeb9;font-size:10px;margin-top:5px">RESMED · 0.75d</div></div>
+          <div style="background:#1e2024;border:1px solid #3c414a;border-left:2px solid #fab219;border-radius:5px;padding:9px 11px;color:#f2f4f6;font-family:var(--fm);font-size:12px">Maptek — Vestrex teaser<div style="color:#a7aeb9;font-size:10px;margin-top:5px">MAPTEK · 1.0d</div></div>
+          <div style="background:#1e2024;border:1px solid #3c414a;border-left:2px solid #0ca30c;border-radius:5px;padding:9px 11px;color:#f2f4f6;font-family:var(--fm);font-size:12px">48hr — opening animation<div style="color:#a7aeb9;font-size:10px;margin-top:5px">48HR · 0.75d</div></div>
+        </div>
+      </div>
+      <div class="pcard">
+        <div class="tiny" style="margin-bottom:14px">Round two — recognise it</div>
+        <div style="display:grid;gap:8px">
+          <div class="jcard" style="box-shadow:none">
+            <div class="th r45" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="ln s"></div><div class="cta"></div></div></div></div>
+            <div class="meta"><div class="nm">Resmed — bundles rollout</div><div class="sub"><span class="client">Resmed</span><span class="dot-sep"></span><span>0.75d</span><span class="tag crit"><i></i>Today</span></div></div>
+          </div>
+          <div class="jcard" style="box-shadow:none">
+            <div class="th r169" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="play"></div><div class="scrub"><i style="width:38%"></i></div></div>
+            <div class="meta"><div class="nm">Maptek — Vestrex teaser</div><div class="sub"><span class="client">Maptek</span><span class="dot-sep"></span><span>1.0d</span><span class="tag mute"><i></i>With client</span></div></div>
+          </div>
+          <div class="jcard" style="box-shadow:none">
+            <div class="th r23" style="--t1:#ff3b30;--t2:#1a0507"><div class="poster"><div class="big m"></div><div class="big s"></div><div class="rule"></div></div></div>
+            <div class="meta"><div class="nm">48hr — opening animation</div><div class="sub"><span class="client">48hr Film</span><span class="dot-sep"></span><span>0.75d</span><span class="tag warn"><i></i>9 Sep</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="tiny" style="margin-top:12px">Thumbnails here are generated stand-ins. In the real build they are the job's ClickUp cover, the latest Drive export, or a frame grabbed from the edit — all of which you already have.</p>
+  </section>
+
+  <!-- ================= INFLUENCES ================= -->
+  <section id="cues">
+    <div class="col w">
+      <div class="eyebrow">Where the cues come from</div>
+      <h2>Three sources, one specific thing taken from each</h2>
+      <p>Not a mood collage — three concrete borrowings, each shown working on your data further down.</p>
+    </div>
+
+    <div class="pgrid p3" style="margin-top:30px">
+      <div class="pcard">
+        <h4>Apple</h4>
+        <p class="small" style="margin-bottom:14px">Activity rings and layered glass materials. Rings because a nearly-closed ring is legible at a glance and from across a room in a way a bar chart never is — and you already run exactly three KPIs.</p>
+        <div style="display:flex;justify-content:center;padding:6px 0">
+          <div class="rings" style="width:104px;height:104px">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="45" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+              <circle cx="52" cy="52" r="32" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+              <circle cx="52" cy="52" r="19" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+              <circle cx="52" cy="52" r="45" fill="none" stroke="#ff2d78" stroke-width="11" stroke-linecap="round" stroke-dasharray="240 283" transform="rotate(0 52 52)"/>
+              <circle cx="52" cy="52" r="32" fill="none" stroke="#0ca30c" stroke-width="11" stroke-linecap="round" stroke-dasharray="171 201"/>
+              <circle cx="52" cy="52" r="19" fill="none" stroke="#4fc3f7" stroke-width="11" stroke-linecap="round" stroke-dasharray="95 119"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="pcard">
+        <h4>Google — Material 3 Expressive</h4>
+        <p class="small" style="margin-bottom:14px">Elevation by <em>tone</em> rather than heavy shadow, a real shape system, and colour that adapts to content. Cards separate because they sit on a different tint, not because they float.</p>
+        <div style="display:grid;gap:8px;padding:4px 0">
+          <div style="background:var(--surface);border:1px solid var(--hair);border-radius:8px;padding:9px 12px;font-size:13px">Surface · base</div>
+          <div style="background:var(--tint);border:1px solid var(--hair);border-radius:14px;padding:9px 12px;font-size:13px">Surface · tint +1</div>
+          <div style="background:var(--tint-2);border:1px solid var(--hair);border-radius:20px;padding:9px 12px;font-size:13px">Surface · tint +2</div>
+        </div>
+      </div>
+      <div class="pcard">
+        <h4>Stripe · Linear · Vercel</h4>
+        <p class="small" style="margin-bottom:14px">Quiet chrome, high information density, and a big honest number with a sparkline under it. Borders and decoration shrink; the data gets the room.</p>
+        <div class="stat" style="padding:6px 0">
+          <div class="v">4.75<span style="font-size:19px;color:var(--ink-3);font-weight:600">d</span></div>
+          <div class="l">on the floor today</div>
+          <svg viewBox="0 0 200 44" style="width:100%;height:44px;margin-top:6px" preserveAspectRatio="none">
+            <defs><linearGradient id="sp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0,30 L28,24 L56,28 L84,14 L112,20 L140,9 L168,17 L196,6 L196,44 L0,44 Z" fill="url(#sp1)"/>
+            <path d="M0,30 L28,24 L56,28 L84,14 L112,20 L140,9 L168,17 L196,6" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="196" cy="6" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+<style>
+/* bento */
+.bento { display: grid; grid-template-columns: repeat(12,1fr); gap: 12px; padding: 14px; background: var(--surface-2); }
+.bt { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r-l); padding: 18px; box-shadow: var(--e1); }
+.bt.tint { background: var(--tint); }
+.bt.flush { padding: 0; overflow: hidden; }
+.bt-hd { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.bt-hd .t { font-weight: 700; font-size: 14.5px; letter-spacing: -.018em; }
+.bt-hd .c { margin-left: auto; font-family: var(--fm); font-size: 11.5px; color: var(--ink-3); }
+.c12{grid-column:span 12}.c8{grid-column:span 12}.c7{grid-column:span 12}.c5{grid-column:span 12}.c4{grid-column:span 12}
+@media (min-width:900px){ .c8{grid-column:span 8}.c7{grid-column:span 7}.c5{grid-column:span 5}.c4{grid-column:span 4} }
+.floorgrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+@media (min-width:620px){ .floorgrid{grid-template-columns:repeat(3,1fr)} }
+@media (min-width:900px){ .floorgrid{grid-template-columns:repeat(6,1fr)} }
+.ptile { border: 1px solid var(--hair); border-radius: var(--r-m); padding: 12px 10px; display: grid; gap: 9px; justify-items: center; align-content: start; text-align: center; background: var(--surface); }
+.ptile.hot { background: var(--crit-bg); border-color: rgba(208,59,59,.24); }
+.ptile.free { background: var(--warn-bg); border-color: rgba(250,178,25,.3); }
+.ptile .n { font-weight: 700; font-size: 13.5px; letter-spacing: -.018em; }
+.ptile .j { font-size: 11.5px; color: var(--ink-3); line-height: 1.3; }
+.ptile .work { width: 100%; aspect-ratio: 16/9; }
+.statrow { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+</style>
+
+  <!-- ================= V1 ================= -->
+  <section id="v1">
+    <div class="col w">
+      <div class="eyebrow">The screen</div>
+      <h2>Today, at a glance</h2>
+      <p>A bento grid: one sentence, three numbers, the studio's three KPIs as rings, six faces and the work itself. Everything above the fold, nothing needing a second look to decode.</p>
+    </div>
+
+    <div class="shot" id="s-v1">
+      <div class="shot-cap"><span class="k">V1</span><span class="t">Today overview</span><span class="s">light · bento · 1440×</span></div>
+      <div class="frame">
+        <div class="chrome">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="tabs"><span class="tab">Overview</span><span class="tab on">Today</span><span class="tab">Months</span><span class="tab">Team</span><span class="tab">Bonus</span><span class="tab">Meetings</span></span>
+          <span class="rt"><span style="display:inline-flex;align-items:center;gap:5px"><i style="width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block"></i>Synced</span></span>
+        </div>
+
+        <div class="bento">
+          <!-- headline + stats -->
+          <div class="bt c8">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+              <span class="tiny" style="letter-spacing:.1em;text-transform:uppercase">Wednesday 26 August</span>
+              <span class="tag crit"><i></i>2 blocked</span>
+            </div>
+            <div style="font-size:31px;font-weight:800;letter-spacing:-.04em;line-height:1.12;margin-bottom:20px">Two clients are waiting on us,<br>and Ashley has three quarters of a day free.</div>
+            <div class="statrow">
+              <div class="stat"><div class="v">4.75<span style="font-size:17px;color:var(--ink-3);font-weight:600">d</span></div><div class="l">booked on the floor</div><div class="bar" style="margin-top:8px"><span class="f" style="width:79%"></span><span class="tick" style="left:100%"></span></div></div>
+              <div class="stat"><div class="v" style="color:var(--warn-ink)">1.25<span style="font-size:17px;font-weight:600">d</span></div><div class="l">unsold today</div><div class="bar" style="margin-top:8px"><span class="f warn" style="width:21%"></span></div></div>
+              <div class="stat"><div class="v">6.25<span style="font-size:17px;color:var(--ink-3);font-weight:600">d</span></div><div class="l">unplaced in pipeline</div><div class="bar" style="margin-top:8px"><span class="f" style="width:54%"></span></div></div>
+            </div>
+          </div>
+
+          <!-- studio rings -->
+          <div class="bt c4 tint">
+            <div class="bt-hd"><span class="t">Studio KPIs</span><span class="c">August</span></div>
+            <div style="display:flex;align-items:center;gap:18px">
+              <div class="rings" style="width:112px;height:112px;flex:none">
+                <svg width="112" height="112" viewBox="0 0 112 112">
+                  <circle cx="56" cy="56" r="48" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+                  <circle cx="56" cy="56" r="35" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+                  <circle cx="56" cy="56" r="22" fill="none" stroke="var(--surface-3)" stroke-width="11"/>
+                  <circle cx="56" cy="56" r="48" fill="none" stroke="#ff2d78" stroke-width="11" stroke-linecap="round" stroke-dasharray="302 302"/>
+                  <circle cx="56" cy="56" r="35" fill="none" stroke="#fab219" stroke-width="11" stroke-linecap="round" stroke-dasharray="191 220"/>
+                  <circle cx="56" cy="56" r="22" fill="none" stroke="#4fc3f7" stroke-width="11" stroke-linecap="round" stroke-dasharray="97 138"/>
+                </svg>
+              </div>
+              <div style="display:grid;gap:9px;font-size:13px">
+                <div><div style="display:flex;align-items:center;gap:6px;font-weight:650"><i style="width:8px;height:8px;border-radius:50%;background:#ff2d78"></i>Utilisation</div><div style="color:var(--ink-3);font-size:12px;margin-left:14px">86% · target 80 <span class="tag ok" style="padding:1px 6px;font-size:10.5px"><i></i>met</span></div></div>
+                <div><div style="display:flex;align-items:center;gap:6px;font-weight:650"><i style="width:8px;height:8px;border-radius:50%;background:#fab219"></i>Logged same day</div><div style="color:var(--ink-3);font-size:12px;margin-left:14px">78% · target 90 <span class="tag warn" style="padding:1px 6px;font-size:10.5px"><i></i>short</span></div></div>
+                <div><div style="display:flex;align-items:center;gap:6px;font-weight:650"><i style="width:8px;height:8px;border-radius:50%;background:#4fc3f7"></i>Internal share</div><div style="color:var(--ink-3);font-size:12px;margin-left:14px">14% · cap 20 <span class="tag ok" style="padding:1px 6px;font-size:10.5px"><i></i>under</span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- the floor -->
+          <div class="bt c12">
+            <div class="bt-hd"><span class="t">The floor</span><span class="c">6 on today · 1 over, 2 free</span></div>
+            <div class="floorgrid">
+              <div class="ptile hot">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="rgba(208,59,59,.2)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--crit)" stroke-width="5" stroke-linecap="round" stroke-dasharray="145 145"/></svg><span class="mid"><span class="v" style="font-size:14px;color:var(--crit-ink)">125</span></span></div>
+                <div><div class="n">Kavindu</div><div class="j">48hr animation</div></div>
+                <div class="th work" style="--t1:#ff3b30;--t2:#1a0507"><div class="dur">0:38</div><div class="play"></div><div class="scrub"><i style="width:52%"></i></div></div>
+              </div>
+              <div class="ptile">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="var(--surface-3)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--ok)" stroke-width="5" stroke-linecap="round" stroke-dasharray="145 145"/></svg><span class="mid"><span class="v" style="font-size:14px;color:var(--ok-ink)">100</span></span></div>
+                <div><div class="n">Sergio</div><div class="j">SAPN release</div></div>
+                <div class="th work" style="--t1:#00a3e0;--t2:#0b2b5c"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="b m"></div></div></div>
+              </div>
+              <div class="ptile">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="var(--surface-3)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--ok)" stroke-width="5" stroke-linecap="round" stroke-dasharray="145 145"/></svg><span class="mid"><span class="v" style="font-size:14px;color:var(--ok-ink)">100</span></span></div>
+                <div><div class="n">Amal</div><div class="j">SAPN brand</div></div>
+                <div class="th work" style="--t1:#00a3e0;--t2:#0b2b5c"><div class="brand"><div class="mark" style="font-size:19px">SAPN</div><div class="sw"><i style="background:#00a3e0"></i><i style="background:#0b2b5c"></i><i style="background:#7fd4f5"></i><i style="background:#eef4f8"></i></div></div></div>
+              </div>
+              <div class="ptile">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="var(--surface-3)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-dasharray="109 145"/></svg><span class="mid"><span class="v" style="font-size:14px">75</span></span></div>
+                <div><div class="n">Rochelle</div><div class="j">Resmed bundles</div></div>
+                <div class="th work" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+              </div>
+              <div class="ptile free">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="rgba(250,178,25,.25)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--warn)" stroke-width="5" stroke-linecap="round" stroke-dasharray="72 145"/></svg><span class="mid"><span class="v" style="font-size:14px;color:var(--warn-ink)">50</span></span></div>
+                <div><div class="n">Elle</div><div class="j" style="color:var(--warn-ink);font-weight:600">4h free</div></div>
+                <div class="th work" style="--t1:#e0407f;--t2:#4a1140"><div class="sheet"><div class="hd"></div><div class="bd"><div class="ln"></div><div class="ln s"></div><div class="ln"></div><div class="ln s"></div></div></div></div>
+              </div>
+              <div class="ptile free">
+                <div class="rings" style="width:56px;height:56px"><svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="rgba(250,178,25,.25)" stroke-width="5"/><circle cx="28" cy="28" r="23" fill="none" stroke="var(--warn)" stroke-width="5" stroke-linecap="round" stroke-dasharray="36 145"/></svg><span class="mid"><span class="v" style="font-size:14px;color:var(--warn-ink)">25</span></span></div>
+                <div><div class="n">Ashley</div><div class="j" style="color:var(--warn-ink);font-weight:600">6h free</div></div>
+                <div class="th work" style="--t1:#4fc3f7;--t2:#1a237e"><div class="slide"><div class="ttl"></div><div class="b s"></div><div class="b m"></div><div class="dot"></div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- needs you -->
+          <div class="bt c7">
+            <div class="bt-hd"><span class="t">Needs you</span><span class="c">2 of 14 events</span></div>
+            <div style="display:grid;gap:10px">
+              <div class="jcard" style="border-color:rgba(208,59,59,.28);background:var(--crit-bg)">
+                <div class="th r169" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="play"></div><div class="scrub"><i style="width:22%"></i></div></div>
+                <div class="meta">
+                  <div class="nm">Maptek — conference video sizing</div>
+                  <div class="sub"><span class="tag crit"><i></i>Blocked 2 days</span><span>Simon asked Monday · 2d of Kavindu behind it</span></div>
+                </div>
+              </div>
+              <div class="jcard" style="border-color:rgba(208,59,59,.28);background:var(--crit-bg)">
+                <div class="th r43" style="--t1:#00a3e0;--t2:#0b2b5c"><div class="brand"><div class="mark" style="font-size:16px">S</div><div class="sw"><i style="background:#00a3e0"></i><i style="background:#0b2b5c"></i><i style="background:#7fd4f5"></i><i style="background:#eef4f8"></i></div></div></div>
+                <div class="meta">
+                  <div class="nm">SAPN — sensitive labels decision</div>
+                  <div class="sub"><span class="tag crit"><i></i>Needs a call</span><span>Templates + press release both wait on it</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- unplaced -->
+          <div class="bt c5">
+            <div class="bt-hd"><span class="t">Unplaced</span><span class="c">7 jobs · 6.25d</span></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+              <div><div class="th r11" style="--t1:#00c2b2;--t2:#06322e"><div class="play"></div><div class="scrub"><i style="width:14%"></i></div></div><div style="font-size:10.5px;color:var(--ink-3);margin-top:5px;line-height:1.25">Aurizn<br><span style="color:var(--crit-ink);font-weight:600">11d stale</span></div></div>
+              <div><div class="th r11" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div><div style="font-size:10.5px;color:var(--ink-3);margin-top:5px;line-height:1.25">Resmed<br>0.5d</div></div>
+              <div><div class="th r11" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="dot"></div></div></div><div style="font-size:10.5px;color:var(--ink-3);margin-top:5px;line-height:1.25">Maptek<br>1.5d</div></div>
+              <div><div class="th r11" style="--t1:#43a047;--t2:#10240f"><div class="poster"><div class="big m"></div><div class="big s"></div><div class="rule"></div></div></div><div style="font-size:10.5px;color:var(--ink-3);margin-top:5px;line-height:1.25">Ilim<br><span style="color:var(--crit-ink);font-weight:600">14d stale</span></div></div>
+            </div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:8px">
+              <span class="tag acc"><i></i>Suggest</span>
+              <span style="font-size:12.5px;color:var(--ink-2)">Aurizn → Ashley fills her afternoon</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>One sentence, then numbers</b>The headline is a plain-English state of the day. Numbers back it up underneath; nobody has to assemble the story from three charts.</div>
+        <div><b>Your KPIs became rings</b>Utilisation, logged-same-day and internal share are the three you already track. Rings show all three, and which is short, in one glance.</div>
+        <div><b>Every job carries its picture</b>You read “Resmed EDM” and “SAPN brand sheet” off the artwork before your eye reaches the words. That is the whole argument for the round.</div>
+      </div>
+    </div>
+  </section>
+  <!-- ================= V2 · THE WALL ================= -->
+  <section id="v2">
+    <div class="col w">
+      <div class="eyebrow">The screen</div>
+      <h2>The wall, in the dark</h2>
+      <p>The studio screen, and the place to be genuinely cinematic — it is the one surface with no controls to fit and no one reading closely. Big type, the work at poster size, and a single sentence anyone can take in while the kettle boils.</p>
+    </div>
+
+    <div class="shot" id="s-v2">
+      <div class="shot-cap"><span class="k">V2</span><span class="t">Studio wall</span><span class="s">dark · ambient · 4m read</span></div>
+      <div class="frame dk">
+        <div style="padding:26px 28px;background:linear-gradient(165deg,#16151c,#0c0b10);color:#f6f5f8">
+          <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:22px">
+            <div>
+              <div style="font-family:var(--fm);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#84808f">Wednesday 26 August · 14:15</div>
+              <div style="font-size:clamp(26px,3.6vw,40px);font-weight:800;letter-spacing:-.04em;line-height:1.06;margin-top:6px">Two clients are waiting on us.</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:30px">
+              <div style="text-align:right"><div style="font-size:38px;font-weight:800;letter-spacing:-.05em;line-height:1;color:#ff9494">2</div><div style="font-family:var(--fm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#84808f;margin-top:6px">Blocked</div></div>
+              <div style="text-align:right"><div style="font-size:38px;font-weight:800;letter-spacing:-.05em;line-height:1">4.75</div><div style="font-family:var(--fm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#84808f;margin-top:6px">On the floor</div></div>
+              <div style="text-align:right"><div style="font-size:38px;font-weight:800;letter-spacing:-.05em;line-height:1;color:#ffcf5c">1.25</div><div style="font-family:var(--fm);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#84808f;margin-top:6px">Unsold</div></div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+            <div style="border-radius:16px;overflow:hidden;background:#1d1b25;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)">
+              <div class="th" style="--t1:#ff3b30;--t2:#1a0507;width:100%;aspect-ratio:4/3;border-radius:0"><div class="dur">0:38</div><div class="play"></div><div class="scrub"><i style="width:52%"></i></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#ff6b6b;--a2:#8b1a1a">KM</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Kavindu</div><div style="font-size:11.5px;color:#ff9494">125% · over</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;overflow:hidden;background:#1d1b25;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)">
+              <div class="th" style="--t1:#00a3e0;--t2:#0b2b5c;width:100%;aspect-ratio:4/3;border-radius:0"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="b m"></div></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#5cc8ff;--a2:#123a6b">SR</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Sergio</div><div style="font-size:11.5px;color:#5fd45f">100% · on target</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;overflow:hidden;background:#1d1b25;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)">
+              <div class="th" style="--t1:#00a3e0;--t2:#0b2b5c;width:100%;aspect-ratio:4/3;border-radius:0"><div class="brand"><div class="mark" style="font-size:24px">SAPN</div><div class="sw"><i style="background:#00a3e0"></i><i style="background:#0b2b5c"></i><i style="background:#7fd4f5"></i><i style="background:#eef4f8"></i></div></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#c99cff;--a2:#3d1a6b">AZ</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Amal</div><div style="font-size:11.5px;color:#5fd45f">100% · on target</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;overflow:hidden;background:#1d1b25;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)">
+              <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:100%;aspect-ratio:4/3;border-radius:0"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#ff8fc4;--a2:#7a1450">RT</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Rochelle</div><div style="font-size:11.5px;color:#b0adba">75%</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;overflow:hidden;background:rgba(250,178,25,.10);box-shadow:inset 0 0 0 1px rgba(250,178,25,.32)">
+              <div class="th" style="--t1:#e0407f;--t2:#4a1140;width:100%;aspect-ratio:4/3;border-radius:0"><div class="sheet"><div class="hd"></div><div class="bd"><div class="ln"></div><div class="ln s"></div><div class="ln"></div></div></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#ffd27a;--a2:#8a5a00">EL</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Elle</div><div style="font-size:11.5px;color:#ffcf5c;font-weight:600">4h free</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;overflow:hidden;background:rgba(250,178,25,.10);box-shadow:inset 0 0 0 1px rgba(250,178,25,.32)">
+              <div class="th" style="--t1:#4fc3f7;--t2:#1a237e;width:100%;aspect-ratio:4/3;border-radius:0"><div class="slide"><div class="ttl"></div><div class="b s"></div><div class="b m"></div><div class="dot"></div></div></div>
+              <div style="padding:11px 12px;display:flex;align-items:center;gap:9px">
+                <div class="avx s" style="--a1:#8fd4ff;--a2:#123a6b">AP</div>
+                <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Ashley</div><div style="font-size:11.5px;color:#ffcf5c;font-weight:600">6h free</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:#b0adba">
+            <span style="color:#ff9494">● Maptek waiting 2 days on a sizing answer</span>
+            <span style="color:#ffcf5c">● Aurizn 1.5d behind promise</span>
+          </div>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>The work is the hero</b>Each person's card is mostly artwork. From across the room you see what the studio is <em>making</em>, which is a far better ambient signal than a number.</div>
+        <div><b>Free time glows</b>Elle and Ashley's cards are tinted amber. The two tiles that need something done about them are the two that draw the eye.</div>
+        <div><b>Colour still only means state</b>The artwork is vivid; the chrome is not. Every coloured UI element on this screen is a status, never a label.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= V3 · GLASS ================= -->
+  <section id="v3">
+    <div class="col w">
+      <div class="eyebrow">The screen</div>
+      <h2>Glass, where it earns its place</h2>
+      <p>Apple's current material language is translucency and depth — real refraction over live content, not a grey panel with opacity turned down. It is genuinely useful in exactly one spot here: a floating layer that sits over the work without hiding it. Everywhere else it costs legibility for nothing.</p>
+    </div>
+
+    <div class="shot" id="s-v3">
+      <div class="shot-cap"><span class="k">V3</span><span class="t">Now playing · floating layer</span><span class="s">translucent material over content</span></div>
+      <div class="frame">
+        <div class="glassbed">
+          <div style="display:grid;gap:14px;max-width:520px">
+            <div class="glass">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="avx l" style="--a1:#ff6b6b;--a2:#8b1a1a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)">KM</div>
+                <div style="min-width:0;flex:1">
+                  <div style="font-weight:750;font-size:16px;letter-spacing:-.02em">Kavindu is over capacity</div>
+                  <div style="font-size:13.5px;opacity:.82">1.25 of 1.0 days · 48hr animation lands on the Resmed screens</div>
+                </div>
+                <div class="rings" style="width:46px;height:46px;flex:none">
+                  <svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="19" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="4.5"/><circle cx="23" cy="23" r="19" fill="none" stroke="#ff9494" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="119 119"/></svg>
+                  <span class="mid"><span class="v" style="font-size:12px;color:#fff">125</span></span>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px">
+                <span style="background:#fff;color:#1a1030;font-weight:650;font-size:13px;padding:6px 14px;border-radius:999px">Move a job</span>
+                <span style="background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);font-weight:600;font-size:13px;padding:6px 14px;border-radius:999px">Leave it</span>
+              </div>
+            </div>
+            <div class="glass" style="display:flex;align-items:center;gap:12px">
+              <div class="th" style="--t1:#ff7a29;--t2:#2b1a0e;width:70px;height:44px"><div class="play"></div></div>
+              <div style="min-width:0;flex:1">
+                <div style="font-weight:700;font-size:14px;letter-spacing:-.018em">Maptek — Vestrex teaser</div>
+                <div style="font-size:12.5px;opacity:.8">Storyboard v3 with the client · 2 days</div>
+              </div>
+              <span style="font-family:var(--fm);font-size:11px;background:rgba(255,255,255,.18);padding:3px 8px;border-radius:6px">0:24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes n2">
+        <div><b>Depth, used once</b>One floating layer over the content it refers to. If every card were glass, nothing would read as on top of anything — which is the mistake most Liquid Glass imitations make.</div>
+        <div><b>The fallback matters</b>Where <span class="tiny">backdrop-filter</span> is unavailable the layer falls back to a solid tinted card. Never let a material be the only thing carrying contrast.</div>
+      </div>
+    </div>
+  </section>
+  <!-- ================= THE KIT ================= -->
+  <section id="kit">
+    <div class="col w">
+      <div class="eyebrow">The design language</div>
+      <h2>The rules that make it look like this</h2>
+      <p>A look is not a mood — it is six decisions applied consistently. Set these once and every future screen inherits the finish for free.</p>
+    </div>
+
+    <div class="pgrid p2" style="margin-top:30px">
+      <div class="pcard">
+        <h4>Type</h4>
+        <p class="small" style="margin-bottom:16px">One family doing everything, the Apple way. Weight and size carry hierarchy; tracking tightens as size grows.</p>
+        <div style="display:grid;gap:11px">
+          <div><div style="font-size:40px;font-weight:800;letter-spacing:-.05em;line-height:1">4.75d</div><div class="tiny">Display · 800 · −0.05em</div></div>
+          <div><div style="font-size:23px;font-weight:700;letter-spacing:-.024em">Two clients are waiting</div><div class="tiny">Headline · 700 · −0.024em</div></div>
+          <div><div style="font-size:15px;font-weight:650;letter-spacing:-.016em">Resmed — bundles rollout</div><div class="tiny">Row title · 650 · −0.016em</div></div>
+          <div><div style="font-size:13px;color:var(--ink-2)">Simon asked on Monday</div><div class="tiny">Body · 400</div></div>
+          <div><div class="tiny" style="font-size:12px">0.75d · 14:15 · 86%</div><div class="tiny">Data · DM Mono · tabular</div></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <h4>Colour</h4>
+        <p class="small" style="margin-bottom:16px">One accent for interactive things. Three reserved status colours. Everything else is a neutral or a tint of the accent. Client colour lives only in artwork.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div><div style="height:52px;border-radius:10px;background:var(--accent)"></div><div class="tiny" style="margin-top:5px">Accent</div></div>
+          <div><div style="height:52px;border-radius:10px;background:var(--ok)"></div><div class="tiny" style="margin-top:5px">On track</div></div>
+          <div><div style="height:52px;border-radius:10px;background:var(--warn)"></div><div class="tiny" style="margin-top:5px">Watch</div></div>
+          <div><div style="height:52px;border-radius:10px;background:var(--crit)"></div><div class="tiny" style="margin-top:5px">Blocked</div></div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:14px">
+          <span class="tag ok"><i></i>On target</span><span class="tag warn"><i></i>Behind</span><span class="tag crit"><i></i>Blocked</span><span class="tag mute"><i></i>With client</span><span class="tag acc"><i></i>Suggested</span>
+        </div>
+        <p class="tiny" style="margin:12px 0 0">Every status ships as colour <em>plus</em> a word, so it survives colour-blindness, projection and print.</p>
+      </div>
+
+      <div class="pcard">
+        <h4>Shape &amp; elevation</h4>
+        <p class="small" style="margin-bottom:16px">Radius grows with the size of the surface — Google's shape system. Separation comes from tone first, shadow second.</p>
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px">
+          <div style="flex:1"><div style="height:44px;border-radius:10px;background:var(--surface-2);border:1px solid var(--hair)"></div><div class="tiny" style="margin-top:5px">10 · chip</div></div>
+          <div style="flex:1"><div style="height:56px;border-radius:16px;background:var(--surface-2);border:1px solid var(--hair)"></div><div class="tiny" style="margin-top:5px">16 · row</div></div>
+          <div style="flex:1"><div style="height:68px;border-radius:22px;background:var(--surface-2);border:1px solid var(--hair)"></div><div class="tiny" style="margin-top:5px">22 · card</div></div>
+          <div style="flex:1"><div style="height:80px;border-radius:30px;background:var(--surface-2);border:1px solid var(--hair)"></div><div class="tiny" style="margin-top:5px">30 · frame</div></div>
+        </div>
+        <div style="display:grid;gap:8px">
+          <div style="padding:9px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);font-size:13px">Flat · a list row</div>
+          <div style="padding:9px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--e2);font-size:13px">Raised · a card that can be picked up</div>
+          <div style="padding:9px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--e3);font-size:13px">Floating · a dialog or drag preview</div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <h4>Density &amp; imagery</h4>
+        <p class="small" style="margin-bottom:16px">Thumbnails have a minimum useful size. Below roughly 40px they stop being pictures and become coloured squares — at which point they cost space and give nothing back.</p>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div><div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:26px;height:26px"><div class="sheet"><div class="hd"></div><div class="bd"></div></div></div><div class="tiny" style="margin-top:6px">26 · too small</div></div>
+          <div><div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:44px;height:44px"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div></div></div></div><div class="tiny" style="margin-top:6px">44 · minimum</div></div>
+          <div><div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:74px;height:52px"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div><div class="tiny" style="margin-top:6px">74×52 · list row</div></div>
+          <div><div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:104px;height:78px"><div class="sheet"><div class="hd"></div><div class="bd"><div class="blob"></div><div class="ln"></div><div class="ln s"></div><div class="cta"></div></div></div></div><div class="tiny" style="margin-top:6px">104×78 · tile</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CLOSE ================= -->
+  <section id="close">
+    <div class="col w">
+      <div class="eyebrow">What to do with this</div>
+      <h2>The look is three changes deep</h2>
+      <p>You do not have to rebuild anything to get most of this. The visual jump from round one to here is carried by three decisions, and the rest is polish that follows on its own.</p>
+    </div>
+
+    <div class="pgrid p3" style="margin-top:28px">
+      <div class="pcard">
+        <div class="stat" style="margin-bottom:10px"><div class="v" style="color:var(--accent)">1</div></div>
+        <h4>Put a picture on every job</h4>
+        <p class="small">The ClickUp cover image, the newest Drive export, or a frame from the edit. This is the whole visual difference, and it is a data-plumbing job rather than a design one.</p>
+      </div>
+      <div class="pcard">
+        <div class="stat" style="margin-bottom:10px"><div class="v" style="color:var(--accent)">2</div></div>
+        <h4>Lift the type and the spacing</h4>
+        <p class="small">One friendly sans, weight 650–800 for anything that matters, negative tracking on big numbers, and roughly double the padding you have now. Costs nothing, changes everything.</p>
+      </div>
+      <div class="pcard">
+        <div class="stat" style="margin-bottom:10px"><div class="v" style="color:var(--accent)">3</div></div>
+        <h4>Lead with a sentence</h4>
+        <p class="small">Every screen opens with plain English — "Two clients are waiting on us." Numbers support it underneath. This is the single biggest clarity win and it needs no new data at all.</p>
+      </div>
+    </div>
+
+    <div class="callout col w" style="margin-top:26px">
+      <p><b>Still just mockups.</b> Nothing here has been built into <span class="tiny">:3100</span> or <span class="tiny">:3200</span>, and I have no route to them from this session. These are pictures of what your data could look like, for you to react to.</p>
+      <p style="margin-top:10px">The structural thinking — capacity model, allocation flow, notification tiers, build order — is unchanged and still lives in <a href="https://claude.ai/code/artifact/04ae9b4b-4237-4298-a634-090b8b61d402">round one</a>. This round replaces how it looks, not what it does.</p>
+    </div>
+
+    <div class="col w" style="margin-top:26px">
+      <p class="small"><strong>Two things would sharpen this further:</strong> a screenshot of the Bonus tab, so this matches a look you already like rather than one I picked; and confirmation of whether ClickUp cover images exist on enough of your tasks to carry the thumbnails, or whether they need to come from Drive instead.</p>
+    </div>
+  </section>
+
+  <footer style="margin-top:80px;padding-top:20px;border-top:1px solid var(--hair)">
+    <div class="tiny" style="display:flex;flex-wrap:wrap;gap:6px 22px">
+      <span>Studio Floor · visual direction, round two</span>
+      <span>Wednesday 26 August 2026</span>
+      <span>Cues: Apple Liquid Glass &amp; Activity rings · Material 3 Expressive · Stripe, Linear, Vercel</span>
+    </div>
+  </footer>
+
+</div>
