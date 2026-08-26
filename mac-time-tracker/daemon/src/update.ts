@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import type { Config } from './types.ts';
-import { expandHome, paths, readJson, writeJsonAtomic } from './paths.ts';
+import { expandHome, onUnmountedVolume, paths, readJson, writeJsonAtomic } from './paths.ts';
 import { log } from './log.ts';
 
 /**
@@ -30,6 +30,9 @@ export function installedVersion(appDir = path.resolve(paths.data(), 'app')): st
 /** Bundle name the server is currently offering, from its LATEST file. */
 export function publishedVersion(channel: string): { bundle: string; version: string } | null {
   if (!channel) return null;
+  // Same reasoning as the fleet report: the update check runs unattended on a
+  // timer, so it must never reach into a share that is not mounted.
+  if (onUnmountedVolume(channel)) return null;
   try {
     const bundle = fs.readFileSync(path.join(expandHome(channel), 'LATEST'), 'utf8').trim();
     if (!bundle) return null;

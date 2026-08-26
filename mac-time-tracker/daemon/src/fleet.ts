@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Config } from './types.ts';
-import { expandHome, paths, writeJsonAtomic } from './paths.ts';
+import { expandHome, onUnmountedVolume, paths, writeJsonAtomic } from './paths.ts';
 import { installedVersion } from './update.ts';
 import { loadDay, localDate } from './store.ts';
 import { log } from './log.ts';
@@ -121,6 +121,13 @@ export function buildStatus(
 export function reportStatus(config: Config, status: FleetStatus): void {
   if (!config.fleet.statusDir) return;
   const dir = expandHome(config.fleet.statusDir);
+  // Never touch a path inside a share that is not mounted. This runs on a
+  // timer in the background, and a stat into a dead SMB mount can hang for
+  // tens of seconds or prompt the person for their server password.
+  if (onUnmountedVolume(config.fleet.statusDir)) {
+    log.debug(`The volume holding ${dir} is not mounted; skipping this report.`);
+    return;
+  }
   try {
     if (!fs.existsSync(dir)) {
       log.debug(`Fleet status directory ${dir} is not reachable; skipping this report.`);
@@ -135,6 +142,7 @@ export function reportStatus(config: Config, status: FleetStatus): void {
 
 export function readFleet(statusDir: string): FleetStatus[] {
   const dir = expandHome(statusDir);
+  if (onUnmountedVolume(statusDir)) return [];
   let files: string[];
   try {
     files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
