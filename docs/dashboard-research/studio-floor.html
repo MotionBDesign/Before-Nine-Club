@@ -1,0 +1,1574 @@
+<title>Studio Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   STUDIO FLOOR — design research for the MBD :3200 Today tab
+   Document chrome is theme-aware. Specimens are fixed-dark:
+   they are depictions of a screen, so they hold one appearance
+   the way a photograph does.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* document ground — cool paper */
+  --paper:        #f5f6f4;
+  --paper-2:      #ffffff;
+  --paper-sunk:   #eceeea;
+
+  /* cool-biased neutrals */
+  --ink:          #14161a;
+  --ink-2:        #4e535c;
+  --ink-3:        #7d848f;
+  --rule:         #dcdfdb;
+  --rule-soft:    #e7e9e5;
+
+  /* accent — registration-mark magenta */
+  --accent:       #d81b7a;
+  --accent-soft:  rgba(216,27,122,0.10);
+  --accent-line:  rgba(216,27,122,0.30);
+
+  /* status (validated, fixed, never themed) */
+  --ok:           #0ca30c;
+  --watch:        #fab219;
+  --watch-ink:    #8a5a00;   /* legible amber for light ground */
+  --over:         #d03b3b;
+
+  --shadow: 0 1px 2px rgba(20,22,26,.05), 0 8px 24px -12px rgba(20,22,26,.16);
+
+  /* specimen screen tokens — CONSTANT across themes */
+  --s-bg:      #16171a;
+  --s-panel:   #1e2024;
+  --s-panel-2: #24272c;
+  --s-rule:    #2f333a;
+  --s-rule-2:  #3c414a;
+  --s-ink:     #f2f4f6;
+  --s-ink-2:   #a7aeb9;
+  --s-ink-3:   #6f7783;
+  --s-accent:  #f0559d;
+  --s-ok:      #0ca30c;
+  --s-watch:   #fab219;
+  --s-over:    #e35555;
+  --s-blue:    #3987e5;
+  --s-blue-d:  #1c5cab;
+  --s-blue-l:  #86b6ef;
+
+  --fd: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --fb: 'Public Sans', -apple-system, 'Segoe UI', sans-serif;
+  --fm: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper:       #101113;
+    --paper-2:     #17191c;
+    --paper-sunk:  #0a0b0c;
+    --ink:         #f0f2f4;
+    --ink-2:       #a8afb9;
+    --ink-3:       #767d88;
+    --rule:        #26292e;
+    --rule-soft:   #1f2226;
+    --accent:      #f0559d;
+    --accent-soft: rgba(240,85,157,0.12);
+    --accent-line: rgba(240,85,157,0.34);
+    --watch-ink:   #fab219;
+    --over:        #e35555;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:       #101113;
+  --paper-2:     #17191c;
+  --paper-sunk:  #0a0b0c;
+  --ink:         #f0f2f4;
+  --ink-2:       #a8afb9;
+  --ink-3:       #767d88;
+  --rule:        #26292e;
+  --rule-soft:   #1f2226;
+  --accent:      #f0559d;
+  --accent-soft: rgba(240,85,157,0.12);
+  --accent-line: rgba(240,85,157,0.34);
+  --watch-ink:   #fab219;
+  --over:        #e35555;
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -14px rgba(0,0,0,.8);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--fb);
+  font-size: 16.5px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- layout ---------- */
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 28px 140px; }
+.col  { max-width: 68ch; }
+.col.wide { max-width: 88ch; }
+
+@media (min-width: 1180px) {
+  .wrap { padding-left: 210px; }
+}
+
+/* sticky timeline-ruler nav */
+.ruler {
+  display: none;
+  position: fixed; left: 0; top: 0; bottom: 0; width: 190px;
+  padding: 40px 0 40px 28px;
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+  z-index: 40;
+  overflow-y: auto;
+}
+@media (min-width: 1180px) { .ruler { display: block; } }
+.ruler-brand {
+  font-family: var(--fm); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 26px;
+}
+.ruler a {
+  display: block; position: relative;
+  font-family: var(--fm); font-size: 11px; letter-spacing: .04em;
+  color: var(--ink-3); text-decoration: none;
+  padding: 7px 0 7px 18px;
+  border-left: 1px solid var(--rule);
+  transition: color .15s, border-color .15s;
+}
+.ruler a::before {
+  content: ""; position: absolute; left: -1px; top: 50%;
+  width: 7px; height: 1px; background: var(--rule);
+}
+.ruler a:hover, .ruler a:focus-visible { color: var(--accent); border-left-color: var(--accent); }
+.ruler a:hover::before, .ruler a:focus-visible::before { background: var(--accent); }
+.ruler a.tick-major { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- type ---------- */
+h1, h2, h3, h4 { font-family: var(--fd); text-wrap: balance; margin: 0; }
+h1 {
+  font-size: clamp(46px, 8vw, 92px); font-weight: 800;
+  letter-spacing: -0.035em; line-height: .96;
+}
+h2 {
+  font-size: clamp(28px, 3.6vw, 40px); font-weight: 800;
+  letter-spacing: -0.028em; line-height: 1.06; margin-bottom: 14px;
+}
+h3 {
+  font-size: 21px; font-weight: 700; letter-spacing: -0.018em;
+  line-height: 1.24; margin-bottom: 8px;
+}
+h4 {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.008em;
+  margin-bottom: 5px;
+}
+p { margin: 0 0 17px; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+strong { font-weight: 600; color: var(--ink); }
+em { font-style: italic; }
+
+.eyebrow {
+  font-family: var(--fm); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 12px;
+}
+.eyebrow.mute { color: var(--ink-3); }
+.lede { font-size: 20px; line-height: 1.55; color: var(--ink-2); }
+.small { font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+.tiny  { font-family: var(--fm); font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+
+section { padding: 78px 0 0; scroll-margin-top: 30px; }
+hr.rule { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+
+/* ---------- hero ---------- */
+.hero { padding: 84px 0 60px; }
+.hero-meta {
+  display: flex; flex-wrap: wrap; gap: 8px 20px;
+  font-family: var(--fm); font-size: 11px; letter-spacing: .05em;
+  color: var(--ink-3); margin-top: 34px;
+  padding-top: 18px; border-top: 1px solid var(--rule);
+}
+.hero-meta b { color: var(--ink-2); font-weight: 500; }
+
+/* colour bars — a motion-studio flourish, used once */
+.bars { display: flex; height: 8px; margin: 30px 0 0; border-radius: 2px; overflow: hidden; }
+.bars i { flex: 1; }
+
+/* ---------- cards / grids ---------- */
+.grid { display: grid; gap: 18px; }
+@media (min-width: 760px)  { .g2 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 980px)  { .g3 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 760px)  { .g4 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1080px) { .g4 { grid-template-columns: repeat(4, 1fr); } }
+
+.card {
+  background: var(--paper-2); border: 1px solid var(--rule);
+  border-radius: 3px; padding: 20px 20px 22px;
+}
+.card .n {
+  font-family: var(--fm); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .12em; color: var(--accent); margin-bottom: 10px;
+}
+.card p:last-child { margin-bottom: 0; }
+
+/* principle list */
+.prin { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; }
+.prin > div { background: var(--paper-2); padding: 18px 20px; display: grid; gap: 3px; }
+@media (min-width: 860px) { .prin > div { grid-template-columns: 128px 1fr; gap: 3px 24px; align-items: baseline; } }
+.prin .k {
+  font-family: var(--fm); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+  padding-top: 4px;
+}
+.prin .t { font-family: var(--fd); font-weight: 700; font-size: 16.5px; letter-spacing: -0.012em; }
+.prin .d { font-size: 14.5px; color: var(--ink-2); line-height: 1.55; grid-column: 1 / -1; }
+@media (min-width: 860px) { .prin .d { grid-column: 2; } }
+
+/* callout */
+.note {
+  border-left: 2px solid var(--accent); background: var(--accent-soft);
+  padding: 16px 20px; border-radius: 0 3px 3px 0; font-size: 15px;
+  color: var(--ink-2);
+}
+.note b { color: var(--ink); }
+.note :last-child { margin-bottom: 0; }
+</style>
+<style>
+/* ============================================================
+   SPECIMEN SYSTEM
+   One primitive set, reused by every concept below.
+   ============================================================ */
+
+.spec { margin: 30px 0 0; }
+.spec { width: 100%; }
+
+/* slate — the caption bar above each screen, like a shot slate */
+.slate {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px;
+  font-family: var(--fm); font-size: 10.5px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding-bottom: 8px; border-bottom: 1px solid var(--rule); margin-bottom: 12px;
+}
+.slate .id { color: var(--accent); font-weight: 600; }
+.slate .nm { color: var(--ink); font-weight: 600; letter-spacing: .07em; }
+.slate .q  { margin-left: auto; text-transform: none; letter-spacing: .02em; font-style: italic; }
+
+/* the screen itself — fixed dark, both themes */
+.scr {
+  background: var(--s-bg); color: var(--s-ink);
+  border: 1px solid var(--s-rule); border-radius: 5px;
+  overflow: hidden; box-shadow: var(--shadow);
+  font-family: var(--fb); font-size: 13px; line-height: 1.45;
+}
+.scr-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px; background: var(--s-panel);
+  border-bottom: 1px solid var(--s-rule);
+  font-family: var(--fm); font-size: 10.5px; letter-spacing: .06em;
+  color: var(--s-ink-3);
+}
+.scr-bar .dots { display: flex; gap: 5px; }
+.scr-bar .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--s-rule-2); }
+.scr-bar .url { color: var(--s-ink-3); }
+.scr-bar .rt { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.scr-body { padding: 16px; }
+.scr-body.flush { padding: 0; }
+
+/* live dot */
+.live { display: inline-flex; align-items: center; gap: 5px; color: var(--s-ok); }
+.live i { width: 6px; height: 6px; border-radius: 50%; background: var(--s-ok); }
+
+/* ---------- pills: colour NEVER carries meaning alone ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--fm); font-size: 9.5px; font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 2px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.pill i { width: 5px; height: 5px; border-radius: 50%; flex: none; }
+.pill.ok    { color: #6ee06e; background: rgba(12,163,12,.13);  border-color: rgba(12,163,12,.34); }
+.pill.ok i    { background: var(--s-ok); }
+.pill.watch { color: #ffcf5c; background: rgba(250,178,25,.13); border-color: rgba(250,178,25,.34); }
+.pill.watch i { background: var(--s-watch); }
+.pill.over  { color: #ff8f8f; background: rgba(227,85,85,.15);  border-color: rgba(227,85,85,.38); }
+.pill.over i  { background: var(--s-over); }
+.pill.idle  { color: var(--s-ink-2); background: rgba(255,255,255,.05); border-color: var(--s-rule-2); }
+.pill.idle i  { background: var(--s-ink-3); }
+.pill.wait  { color: #9dc0f0; background: rgba(57,135,229,.13); border-color: rgba(57,135,229,.34); }
+.pill.wait i  { background: var(--s-blue); }
+
+/* client chip — neutral by design: colour is reserved for state */
+.chip {
+  display: inline-block; font-family: var(--fm); font-size: 9.5px;
+  font-weight: 500; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--s-ink-2); background: rgba(255,255,255,.06);
+  border: 1px solid var(--s-rule-2); border-radius: 2px;
+  padding: 1.5px 5px; white-space: nowrap;
+}
+
+/* avatar */
+.av {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  font-family: var(--fm); font-size: 10px; font-weight: 600; letter-spacing: .02em;
+  background: var(--s-panel-2); color: var(--s-ink-2);
+  border: 1px solid var(--s-rule-2);
+}
+.av.lg { width: 40px; height: 40px; font-size: 13px; }
+.av.xl { width: 54px; height: 54px; font-size: 17px; }
+.av.on { border-color: var(--s-ok); color: var(--s-ink); }
+
+/* ---------- load meter: one blue hue for magnitude, red only past capacity ---------- */
+.meter { position: relative; height: 7px; border-radius: 2px; background: rgba(255,255,255,.07); overflow: hidden; display: flex; }
+.meter .fill  { background: var(--s-blue);   height: 100%; }
+.meter .fill.deep { background: var(--s-blue-d); }
+.meter .wait  { background: repeating-linear-gradient(135deg, rgba(57,135,229,.5) 0 3px, transparent 3px 6px); height: 100%; }
+.meter .spill { background: var(--s-over); height: 100%; }
+.meter .tick {
+  position: absolute; top: -2px; bottom: -2px; width: 1px;
+  background: var(--s-ink-2); opacity: .85;
+}
+.meter.tall { height: 11px; border-radius: 2px; }
+
+/* numbers */
+.num { font-family: var(--fm); font-variant-numeric: tabular-nums; }
+.big {
+  font-family: var(--fd); font-weight: 800; letter-spacing: -0.035em;
+  line-height: .92; font-variant-numeric: tabular-nums;
+}
+
+/* generic row list */
+.rows { display: grid; }
+.rows > * { border-bottom: 1px solid var(--s-rule); }
+.rows > *:last-child { border-bottom: 0; }
+
+/* section head inside a screen */
+.sh {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--fm); font-size: 10px; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--s-ink-3);
+  margin-bottom: 10px;
+}
+.sh .ct {
+  font-size: 9.5px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(255,255,255,.07); color: var(--s-ink-2); letter-spacing: .04em;
+}
+.sh .ln { flex: 1; height: 1px; background: var(--s-rule); }
+
+/* annotation callouts under a specimen */
+.anno { display: grid; gap: 12px; margin-top: 14px; }
+@media (min-width: 820px) { .anno.a2 { grid-template-columns: repeat(2,1fr); } .anno.a3 { grid-template-columns: repeat(3,1fr); } }
+.anno > div {
+  border-top: 2px solid var(--accent-line); padding-top: 9px;
+  font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+}
+.anno b {
+  display: block; font-family: var(--fm); font-size: 10px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 3px;
+}
+
+/* horizontal scroller for wide screens */
+.xscroll { overflow-x: auto; }
+.xscroll::-webkit-scrollbar { height: 8px; }
+.xscroll::-webkit-scrollbar-track { background: var(--s-panel); }
+.xscroll::-webkit-scrollbar-thumb { background: var(--s-rule-2); border-radius: 4px; }
+
+/* ---------- A. allocation board ---------- */
+.board { display: flex; gap: 1px; background: var(--s-rule); min-width: 940px; }
+.lane { background: var(--s-bg); flex: 1 1 0; min-width: 158px; display: flex; flex-direction: column; }
+.lane.pipe { background: var(--s-panel); flex: 0 0 200px; }
+.lane-hd { padding: 10px 11px; border-bottom: 1px solid var(--s-rule); display: grid; gap: 7px; }
+.lane-hd .who { display: flex; align-items: center; gap: 8px; }
+.lane-hd .who .nm { font-weight: 600; font-size: 12.5px; letter-spacing: -.005em; }
+.lane-hd .who .rl { font-family: var(--fm); font-size: 9px; color: var(--s-ink-3); letter-spacing: .05em; text-transform: uppercase; }
+.lane-hd .cap { display: flex; justify-content: space-between; align-items: center; font-family: var(--fm); font-size: 10px; color: var(--s-ink-2); }
+.lane-body { padding: 8px; display: grid; gap: 7px; align-content: start; min-height: 190px; }
+.jc {
+  background: var(--s-panel); border: 1px solid var(--s-rule-2);
+  border-left: 2px solid var(--s-rule-2);
+  border-radius: 3px; padding: 8px 9px; display: grid; gap: 6px; cursor: grab;
+}
+.jc.hot   { border-left-color: var(--s-over); }
+.jc.warm  { border-left-color: var(--s-watch); }
+.jc.calm  { border-left-color: var(--s-ok); }
+.jc.waity { border-left-color: var(--s-blue); opacity: .72; }
+.jc .ttl { font-size: 12px; font-weight: 500; line-height: 1.3; letter-spacing: -.004em; }
+.jc .mt { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.jc .dz { font-family: var(--fm); font-size: 10px; color: var(--s-ink-2); margin-left: auto; }
+.jc.ghost {
+  border-style: dashed; border-left-style: dashed; background: transparent;
+  border-color: var(--s-accent); border-left-color: var(--s-accent);
+  opacity: .95;
+}
+.drop {
+  border: 1px dashed var(--s-accent); border-radius: 3px; padding: 7px 9px;
+  font-family: var(--fm); font-size: 10px; letter-spacing: .05em;
+  color: var(--s-accent); text-align: center; background: rgba(240,85,157,.07);
+}
+</style>
+<style>
+/* ---------- B. capacity rail ---------- */
+.rail-row { display: grid; grid-template-columns: 150px 1fr 108px; gap: 14px; align-items: center; padding: 9px 12px; }
+.rail-row .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.rail-row .who .nm { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-row .rt { text-align: right; font-family: var(--fm); font-size: 11px; color: var(--s-ink-2); }
+.rail-row .rt b { color: var(--s-ink); font-weight: 600; }
+.rail-hd { display: grid; grid-template-columns: 150px 1fr 108px; gap: 14px; padding: 7px 12px; font-family: var(--fm); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--s-ink-3); background: var(--s-panel); }
+.rail-hd .rt { text-align: right; }
+
+/* ---------- C. heat grid ---------- */
+.heat { border-collapse: separate; border-spacing: 2px; min-width: 780px; width: 100%; }
+.heat th {
+  font-family: var(--fm); font-size: 9.5px; font-weight: 500; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--s-ink-3); padding: 4px 2px; text-align: center;
+}
+.heat th.wk { color: var(--s-ink-3); opacity: .45; }
+.heat th.nowcol { color: var(--s-accent); }
+.heat td.who {
+  font-size: 12px; font-weight: 500; text-align: left; padding-right: 8px;
+  white-space: nowrap; width: 118px; color: var(--s-ink);
+}
+.heat td.c {
+  text-align: center; border-radius: 2px; padding: 7px 2px;
+  font-family: var(--fm); font-size: 11px; font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+.heat td.c.idle  { background: rgba(255,255,255,.035); color: var(--s-ink-3); border-color: var(--s-rule); }
+.heat td.c.light { background: rgba(57,135,229,.18);  color: #b7d3f6; border-color: rgba(57,135,229,.3); }
+.heat td.c.full  { background: rgba(12,163,12,.20);   color: #7fe07f; border-color: rgba(12,163,12,.38); }
+.heat td.c.over  { background: rgba(227,85,85,.24);   color: #ffa3a3; border-color: rgba(227,85,85,.5); font-weight: 600; }
+.heat td.c.wknd  { background: transparent; color: var(--s-rule-2); border-color: transparent; }
+.heat td.c.leave {
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 3px, transparent 3px 6px);
+  color: var(--s-ink-3); border-color: var(--s-rule-2);
+}
+.heat td.c.now { box-shadow: inset 0 0 0 1px var(--s-accent); }
+.heat-key { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 11px 12px 2px; font-family: var(--fm); font-size: 10px; color: var(--s-ink-3); }
+.heat-key span { display: inline-flex; align-items: center; gap: 5px; }
+.heat-key i { width: 10px; height: 10px; border-radius: 2px; border: 1px solid transparent; }
+
+/* ---------- D. attention queue ---------- */
+.q-grp {
+  display: flex; align-items: center; gap: 8px; padding: 9px 13px;
+  background: var(--s-panel); border-bottom: 1px solid var(--s-rule);
+  font-family: var(--fm); font-size: 10px; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase;
+}
+.q-grp .ct { margin-left: auto; font-weight: 500; color: var(--s-ink-3); letter-spacing: .04em; }
+.q-row { display: grid; grid-template-columns: 3px 1fr auto; gap: 0; align-items: center; }
+.q-row .bar { align-self: stretch; }
+.q-row .mid { padding: 10px 13px; display: grid; gap: 4px; min-width: 0; }
+.q-row .ttl { font-size: 13px; font-weight: 500; letter-spacing: -.005em; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.q-row .why { font-size: 12px; color: var(--s-ink-2); line-height: 1.4; }
+.q-row .why b { color: var(--s-ink); font-weight: 600; }
+.q-row .act { padding: 10px 13px; display: flex; gap: 6px; align-items: center; }
+.btn {
+  font-family: var(--fm); font-size: 10px; letter-spacing: .05em;
+  padding: 4px 9px; border-radius: 3px; white-space: nowrap;
+  border: 1px solid var(--s-rule-2); background: var(--s-panel-2); color: var(--s-ink-2);
+}
+.btn.pri { background: var(--s-accent); border-color: var(--s-accent); color: #1a0410; font-weight: 600; }
+.btn.gho { background: transparent; }
+.kbd {
+  font-family: var(--fm); font-size: 9.5px; padding: 1.5px 5px; border-radius: 3px;
+  border: 1px solid var(--s-rule-2); background: var(--s-panel-2); color: var(--s-ink-3);
+}
+
+/* ---------- E. staleness / open loops ---------- */
+.stale-row { display: grid; grid-template-columns: 1fr 190px 62px; gap: 12px; align-items: center; padding: 9px 13px; }
+.stale-row .tt { font-size: 12.5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
+.agebar { position: relative; height: 16px; background: rgba(255,255,255,.04); border-radius: 2px; }
+.agebar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+.agebar .thr { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--s-ink-3); }
+.stale-row .dd { text-align: right; font-family: var(--fm); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+/* ---------- F. the studio wall (TV) ---------- */
+.wall { padding: 22px 24px; display: grid; gap: 18px; }
+.wall-top { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
+.wall-top .dt { font-family: var(--fm); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--s-ink-3); }
+.wall-top h5 { margin: 2px 0 0; font-family: var(--fd); font-size: clamp(22px,3.4vw,36px); font-weight: 800; letter-spacing: -.032em; }
+.wall-stat { margin-left: auto; display: flex; gap: 26px; }
+.wall-stat > div { text-align: right; }
+.wall-stat .v { font-family: var(--fd); font-weight: 800; font-size: clamp(26px,4vw,42px); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wall-stat .l { font-family: var(--fm); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--s-ink-3); margin-top: 5px; }
+.wall-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px,1fr)); gap: 10px; }
+.wp { background: var(--s-panel); border: 1px solid var(--s-rule); border-radius: 4px; padding: 12px 11px; display: grid; gap: 8px; justify-items: center; align-content: start; text-align: center; }
+.wp .nm { font-size: 12.5px; font-weight: 600; }
+.wp .jb { font-size: 11px; color: var(--s-ink-2); line-height: 1.32; }
+.ring { position: relative; width: 54px; height: 54px; }
+.ring svg { transform: rotate(-90deg); display: block; }
+.ring .ctr {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: var(--fm); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- G. day timeline ---------- */
+.tl { min-width: 880px; }
+.tl-hd { display: grid; grid-template-columns: 118px 1fr; border-bottom: 1px solid var(--s-rule); }
+.tl-hours { display: grid; grid-template-columns: repeat(10,1fr); }
+.tl-hours span { font-family: var(--fm); font-size: 9.5px; color: var(--s-ink-3); padding: 6px 0 6px 5px; border-left: 1px solid var(--s-rule); }
+.tl-row { display: grid; grid-template-columns: 118px 1fr; border-bottom: 1px solid var(--s-rule); }
+.tl-row:last-child { border-bottom: 0; }
+.tl-who { padding: 9px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; border-right: 1px solid var(--s-rule); }
+.tl-track { position: relative; height: 40px; background-image: repeating-linear-gradient(to right, var(--s-rule) 0 1px, transparent 1px 10%); }
+.blk {
+  position: absolute; top: 6px; bottom: 6px; border-radius: 3px;
+  padding: 0 8px; display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500; overflow: hidden; white-space: nowrap;
+  border: 1px solid; background: var(--s-panel-2);
+}
+.blk.a { border-color: rgba(57,135,229,.55);  background: rgba(57,135,229,.20); color: #cfe2fb; }
+.blk.b { border-color: rgba(12,163,12,.5);    background: rgba(12,163,12,.17);  color: #a5e8a5; }
+.blk.c { border-color: rgba(250,178,25,.5);   background: rgba(250,178,25,.15); color: #ffd97e; }
+.blk.d { border-color: var(--s-rule-2);       background: rgba(255,255,255,.05); color: var(--s-ink-2); }
+.blk.free { border-style: dashed; border-color: var(--s-rule-2); background: transparent; color: var(--s-ink-3); }
+.playhead { position: absolute; top: -1px; bottom: -1px; width: 1px; background: var(--s-accent); z-index: 3; }
+.playhead::before {
+  content: ""; position: absolute; top: -4px; left: -3.5px;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 6px solid var(--s-accent);
+}
+
+/* ---------- H. fairness strip ---------- */
+.fair-row { display: grid; grid-template-columns: 128px 1fr 78px; gap: 14px; align-items: center; padding: 8px 13px; }
+.dotline { position: relative; height: 22px; }
+.dotline .axis { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--s-rule); }
+.dotline .med { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--s-ink-3); }
+.dotline .dot {
+  position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%; border: 1.5px solid var(--s-bg);
+}
+
+/* ---------- I. promise strip ---------- */
+.promise { display: grid; gap: 1px; background: var(--s-rule); }
+.pr-row { background: var(--s-bg); display: grid; grid-template-columns: 128px 1fr auto; gap: 14px; align-items: center; padding: 10px 13px; }
+.sq { display: flex; gap: 3px; }
+.sq i { width: 15px; height: 15px; border-radius: 2px; border: 1px solid; flex: none; }
+.sq i.kept  { background: rgba(12,163,12,.42); border-color: rgba(12,163,12,.7); }
+.sq i.miss  { background: rgba(255,255,255,.03); border-color: var(--s-rule-2); }
+.sq i.part  { background: repeating-linear-gradient(45deg, rgba(12,163,12,.42) 0 3px, transparent 3px 6px); border-color: rgba(12,163,12,.45); }
+.sq i.live  { background: rgba(240,85,157,.2); border-color: var(--s-accent); }
+
+/* ---------- J. sync ribbon ---------- */
+.ribbon {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 13px; border-top: 1px solid var(--s-rule); background: var(--s-panel);
+  font-family: var(--fm); font-size: 10.5px; color: var(--s-ink-2);
+}
+.ribbon .sp { margin-left: auto; }
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--s-panel-2); border: 1px solid var(--s-rule-2);
+  border-left: 2px solid var(--s-ok);
+  border-radius: 3px; padding: 9px 12px; font-size: 12px;
+}
+.toast.bad { border-left-color: var(--s-over); }
+.toast .tx { display: grid; gap: 2px; }
+.toast .tx b { font-weight: 600; font-size: 12px; }
+.toast .tx span { font-size: 11px; color: var(--s-ink-2); }
+
+/* ---------- K. slack digest ---------- */
+.slack { background: #1a1d21; padding: 14px 16px; font-size: 13px; }
+.slack-hd { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.slack-hd .bot { width: 30px; height: 30px; border-radius: 4px; background: var(--s-accent); color: #1a0410; display: grid; place-items: center; font-family: var(--fd); font-weight: 800; font-size: 13px; }
+.slack-hd .nm { font-weight: 700; font-size: 13.5px; }
+.slack-hd .tag { font-family: var(--fm); font-size: 8.5px; letter-spacing: .06em; background: var(--s-rule-2); color: var(--s-ink-2); padding: 1px 4px; border-radius: 2px; text-transform: uppercase; }
+.slack-hd .ts { font-size: 11px; color: var(--s-ink-3); }
+.slack-body { border-left: 3px solid var(--s-accent); padding-left: 12px; display: grid; gap: 9px; }
+.slack-body .ln { font-size: 13px; line-height: 1.45; }
+.slack-body .person { display: grid; gap: 3px; }
+.slack-body .person .p { font-weight: 700; color: #7cc4ff; }
+.slack-body ul { margin: 0; padding-left: 17px; display: grid; gap: 2px; }
+.slack-body li { font-size: 12.5px; color: var(--s-ink-2); }
+.slack-body li b { color: var(--s-ink); font-weight: 500; }
+.slack-acts { display: flex; gap: 7px; margin-top: 4px; flex-wrap: wrap; }
+
+/* ---------- micro-pattern swatch board ---------- */
+.swatch { display: grid; gap: 1px; background: var(--s-rule); }
+.sw { background: var(--s-bg); padding: 13px; display: grid; gap: 9px; align-content: start; }
+.sw .lbl { font-family: var(--fm); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--s-ink-3); }
+.sw .dm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+@media (min-width: 700px) { .swatch { grid-template-columns: repeat(2,1fr); } }
+@media (min-width: 1000px) { .swatch { grid-template-columns: repeat(3,1fr); } }
+
+/* ---------- reference wall ---------- */
+.refs { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; }
+@media (min-width: 780px) { .refs { grid-template-columns: repeat(2,1fr); } }
+.ref { background: var(--paper-2); padding: 15px 17px; display: grid; gap: 4px; }
+.ref .h { display: flex; align-items: baseline; gap: 9px; }
+.ref .h a { font-family: var(--fd); font-weight: 700; font-size: 15px; letter-spacing: -.012em; text-decoration: none; color: var(--ink); }
+.ref .h a:hover { color: var(--accent); }
+.ref .h .w { font-family: var(--fm); font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.ref .d { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+
+/* ---------- build order (a genuine sequence, so numbered) ---------- */
+.steps { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; }
+.step { background: var(--paper-2); padding: 18px 20px; display: grid; gap: 5px; }
+@media (min-width: 800px) { .step { grid-template-columns: 54px 1fr 128px; gap: 5px 20px; align-items: start; } }
+.step .no { font-family: var(--fd); font-weight: 800; font-size: 26px; letter-spacing: -.04em; color: var(--accent); line-height: 1; }
+.step .bd { display: grid; gap: 4px; }
+.step .bd h4 { margin: 0; }
+.step .bd p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+.step .ef {
+  font-family: var(--fm); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); border: 1px solid var(--rule); border-radius: 2px;
+  padding: 3px 7px; justify-self: start; align-self: start;
+}
+@media (min-width: 800px) { .step .ef { justify-self: end; } }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+<nav class="ruler" aria-label="Sections">
+  <div class="ruler-brand">Studio Floor</div>
+  <a class="tick-major" href="#found">What I found</a>
+  <a class="tick-major" href="#read">The read</a>
+  <a class="tick-major" href="#principles">12 principles</a>
+  <a class="tick-major" href="#board">The moodboard</a>
+  <a href="#s-alloc">A · Allocation board</a>
+  <a href="#s-rail">B · Capacity rail</a>
+  <a href="#s-heat">C · Ten-day heat</a>
+  <a href="#s-queue">D · Attention queue</a>
+  <a href="#s-stale">E · Open loops</a>
+  <a href="#s-tl">F · Day timeline</a>
+  <a href="#s-wall">G · Studio wall</a>
+  <a href="#s-fair">H · Fairness</a>
+  <a href="#s-promise">I · Promise strip</a>
+  <a href="#s-sync">J · Sync receipts</a>
+  <a href="#s-slack">K · Slack digest</a>
+  <a class="tick-major" href="#micro">Micro-patterns</a>
+  <a class="tick-major" href="#notify">Notifications</a>
+  <a class="tick-major" href="#refs">Reference wall</a>
+  <a class="tick-major" href="#build">Build order</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Motion By Design · internal ops · <span style="color:var(--ink-3)">10.0.0.87:3200 → Today</span></div>
+    <h1>Who is on the<br>floor today?</h1>
+    <div class="bars" aria-hidden="true">
+      <i style="background:#c0c0c0"></i><i style="background:#c0c000"></i><i style="background:#00c0c0"></i>
+      <i style="background:#00c000"></i><i style="background:#c000c0"></i><i style="background:#c00000"></i>
+      <i style="background:#0000c0"></i><i style="background:var(--accent)"></i>
+    </div>
+    <div class="col" style="margin-top:30px">
+      <p class="lede">That is the only question the Today tab exists to answer, and right now it is being answered by Yami typing a list into Slack at 4pm. This is a moodboard of eleven ways to answer it on screen instead — built as working pixels, not mood images, and populated with your real clients, your real people and your real job names.</p>
+    </div>
+    <div class="hero-meta">
+      <span><b>Scope</b> · Today tab, work distribution, notifications</span>
+      <span><b>Team</b> · 9 on the floor</span>
+      <span><b>Unit</b> · days, not hours</span>
+      <span><b>Specimens</b> · 11 + micro-patterns</span>
+    </div>
+  </header>
+
+  <hr class="rule">
+
+  <!-- ================= WHAT I FOUND ================= -->
+  <section id="found">
+    <div class="col">
+      <div class="eyebrow">Grounding</div>
+      <h2>What I found before designing anything</h2>
+      <p>I could not open <span class="num">10.0.0.87:3200</span> — it is on your LAN and this session is not. So I reconstructed it from your own words: the walkthrough you wrote for Yami on 5 August, her test notes from this morning, and six months of how the studio actually distributes work in Slack and ClickUp. Five things matter for the redesign.</p>
+    </div>
+
+    <div class="grid g2" style="margin-top:26px">
+      <div class="card">
+        <div class="n">01 · THE TAB EXISTS</div>
+        <h4>Today already ships — and it already writes</h4>
+        <p class="small">The trial build has a Today tab with a pipeline you can drag from, plus allocation and status changes. That is further along than a blank page. The redesign is a re-layout, not a rebuild.</p>
+      </div>
+      <div class="card">
+        <div class="n">02 · IT DOESN'T STICK</div>
+        <h4>Yami's test this morning: the writes don't land</h4>
+        <p class="small">She moved <em>Aurizn — Infinite Studio Post</em> out of pipeline onto Sergio. ClickUp still shows it in <span class="num">pipeline</span>, unassigned. Assignees the same. A board that silently lies is worse than no board.</p>
+      </div>
+      <div class="card">
+        <div class="n">03 · THE REAL COMPETITOR</div>
+        <h4>You are not competing with :3100. You are competing with a Slack message</h4>
+        <p class="small">Every afternoon Yami posts <em>Tomorrow's list</em> to #motion-by-design, grouped by person, with priorities in plain English. It works. To win, Today has to be faster to <em>write</em> than that message and easier to <em>read</em> than it.</p>
+      </div>
+      <div class="card">
+        <div class="n">04 · TWO OF YOUR STATUSES AREN'T WORK</div>
+        <h4>Assigned is not the same as active</h4>
+        <p class="small"><span class="num">with the client</span> and <span class="num">feedback alterations</span> are waiting states. They sit on someone's name but consume none of their day. Count them as load and every plate looks full.</p>
+      </div>
+    </div>
+
+    <div class="note col wide" style="margin-top:22px">
+      <p><b>On the bonus dashboard.</b> You said it is far more user-friendly, and I could not open it either — nothing in Slack, Drive, Airtable or ClickUp describes it. So I have treated it as a standard rather than a source: whatever makes it legible is almost certainly that it answers <em>one</em> question, in <em>one</em> number, that the reader already cares about. Every specimen below is held to that bar. If you can send me two screenshots, I will fold its actual language into these.</p>
+    </div>
+  </section>
+
+  <!-- ================= THE READ ================= -->
+  <section id="read">
+    <div class="col">
+      <div class="eyebrow">Diagnosis</div>
+      <h2>Three problems, in the order they have to be fixed</h2>
+      <p>None of these is "it needs to be prettier". The visual problem is downstream of a modelling problem, and fixing the pixels first would just make a confident-looking wrong answer.</p>
+    </div>
+
+    <div class="grid g3" style="margin-top:26px">
+      <div class="card">
+        <div class="n">PROBLEM ONE</div>
+        <h4>Trust comes before beauty</h4>
+        <p class="small">If a drag on the board does not reach ClickUp, people stop dragging and go back to Slack within a week. Nothing else on this page matters until a move on screen is a move in the system — <em>and visibly says so</em>.</p>
+        <p class="tiny">→ Specimen J</p>
+      </div>
+      <div class="card">
+        <div class="n">PROBLEM TWO</div>
+        <h4>It reports state; the job is distributing work</h4>
+        <p class="small">Pace races and rockets are <em>scoreboards</em> — read once a day, then closed. Today is a <em>workbench</em>, opened thirty times a day by one person with a decision to make: who takes this. Those need opposite layouts.</p>
+        <p class="tiny">→ Specimens A, B, C</p>
+      </div>
+      <div class="card">
+        <div class="n">PROBLEM THREE</div>
+        <h4>Everything competes for the same attention</h4>
+        <p class="small">Stale jobs, client waits, overloaded people and FYI noise all arrive at the same visual volume. When everything is bold, the eye picks by position, not importance — so the top-left item wins regardless of whether it should.</p>
+        <p class="tiny">→ Specimens D, E, K</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PRINCIPLES ================= -->
+  <section id="principles">
+    <div class="col">
+      <div class="eyebrow">The rules the specimens obey</div>
+      <h2>Twelve principles</h2>
+      <p>Drawn partly from how the best operations tools behave and partly from constraints specific to a nine-person studio billing in days. Each one is visible in the mockups below.</p>
+    </div>
+
+    <div class="prin" style="margin-top:26px">
+      <div><div class="k">Colour</div><div class="t">Colour means state, never identity</div><div class="d">You have twelve active clients. Twelve client colours is a colour wheel nobody memorises, and it burns the one channel that should scream. Clients get neutral text chips; colour is reserved for <em>over capacity</em>, <em>stale</em>, <em>waiting</em>, <em>on track</em>. This single rule does more visual work than any other on the page.</div></div>
+      <div><div class="k">Never alone</div><div class="t">Colour always ships with a word</div><div class="d">Red-green is the most common colour-vision deficiency and your studio is nine people. Every state is a pill: dot <em>and</em> label. It also survives being photographed, projected, or printed for a client meeting.</div></div>
+      <div><div class="k">Modelling</div><div class="t">Separate booked from parked</div><div class="d">A job sitting in <em>with the client</em> is on Kavindu's name but not in Kavindu's day. Show it as a hatched segment outside the solid fill so his real free capacity stays honest.</div></div>
+      <div><div class="k">Unit</div><div class="t">Days and half-days, because that's the currency</div><div class="d">You quote in days, you sell retainers in days, you argue with clients in days. Hours are an implementation detail. A card reads <span class="num">1.5d</span>, never <span class="num">12h</span>.</div></div>
+      <div><div class="k">Target</div><div class="t">Always draw the line they should be on</div><div class="d">Your pace race already does this and it is the best idea in the current build — a bar alone is a number, a bar with a target tick is a <em>verdict</em>. Carry the dashed "where you should be" mark onto every meter in Today.</div></div>
+      <div><div class="k">Sort</div><div class="t">Sort order is the answer</div><div class="d">When Yami has a job to place, the person who should take it belongs at the top of the list. Default-sort the capacity rail by most-free. The interface answers before she reads.</div></div>
+      <div><div class="k">Queue</div><div class="t">Notifications are a queue to empty, not a stream to watch</div><div class="d">A feed implies you scroll until bored. An inbox implies you finish. Group by severity, give every row exactly one action, and let it reach zero — the day it hits zero is the day people believe it.</div></div>
+      <div><div class="k">Disclosure</div><div class="t">Summary on the surface, detail one click down</div><div class="d">The tile carries the signal; the drawer carries the noise. Nine people on one screen means roughly forty characters per person before it turns to mush — spend them on the name, the load and the one thing that is wrong.</div></div>
+      <div><div class="k">Speed</div><div class="t">Keyboard-first for the person who lives here</div><div class="d">Yami will touch this interface more than everyone else combined. <span class="kbd" style="color:var(--ink-2);border-color:var(--rule);background:var(--paper-sunk)">J</span> <span class="kbd" style="color:var(--ink-2);border-color:var(--rule);background:var(--paper-sunk)">K</span> to move, <span class="kbd" style="color:var(--ink-2);border-color:var(--rule);background:var(--paper-sunk)">1–9</span> to assign to a person, <span class="kbd" style="color:var(--ink-2);border-color:var(--rule);background:var(--paper-sunk)">E</span> to clear. Drag is for visitors; keys are for staff.</div></div>
+      <div><div class="k">Receipts</div><div class="t">Every write shows its receipt</div><div class="d">Optimistic on screen, confirmed against ClickUp, and a visible failure lane with retry. This is the direct fix for what Yami hit this morning, and it is a design problem as much as a sync problem.</div></div>
+      <div><div class="k">Ambient</div><div class="t">One layout is meant to be read from four metres</div><div class="d">A studio has walls and a spare screen. The wall version is not the laptop version scaled up — bigger type, fewer objects, no interaction, and it must be true at a glance from the kitchen.</div></div>
+      <div><div class="k">Empty</div><div class="t">The empty state is the instruction manual</div><div class="d">"Nothing needs you. 6 jobs land tomorrow." beats a shrugging illustration. Empty states are the most-read copy in any ops tool because the good days outnumber the bad ones.</div></div>
+    </div>
+  </section>
+  <!-- ================= THE MOODBOARD ================= -->
+  <section id="board">
+    <div class="col">
+      <div class="eyebrow">The moodboard</div>
+      <h2>Eleven ways to show a Wednesday</h2>
+      <p>Every screen below is real HTML at real density, using Wednesday 26 August — your actual clients, your actual people, your actual job names, drawn from this week's Slack. None of them are stock inspiration images. Read them as eleven <em>competing</em> answers: you would ship three or four, not all of them.</p>
+      <p class="tiny">Screens render dark in both page themes on purpose — they are depictions of a monitor, so they hold one appearance the way a photograph does.</p>
+    </div>
+
+    <!-- ---------- A ---------- -->
+    <div class="col" style="margin-top:54px">
+      <h3>A · The Allocation Board</h3>
+      <p class="small">The one that replaces Yami's Slack post. People are columns, not rows — because the act is <em>placing a card on a person</em>, and columns give each person a droppable target with their own load meter in the header. The pipeline sits hard left as the pile you are trying to empty.</p>
+    </div>
+    <div class="spec" id="s-alloc">
+      <div class="slate"><span class="id">A</span><span class="nm">Allocation Board</span><span>drag · keyboard · writes to ClickUp</span><span class="q">"who takes this?"</span></div>
+      <div class="scr">
+        <div class="scr-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">3200 / today / allocate</span>
+          <span class="rt"><span class="live"><i></i>synced 4s ago</span></span>
+        </div>
+        <div class="scr-body flush">
+          <div class="xscroll">
+            <div class="board">
+
+              <div class="lane pipe">
+                <div class="lane-hd">
+                  <div class="who"><div class="av">↯</div><div><div class="nm">Pipeline</div><div class="rl">unplaced</div></div></div>
+                  <div class="cap"><span>7 jobs · 6.25d</span><span class="pill watch"><i></i>place</span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc hot"><div class="ttl">Aurizn — Infinite Studio Post</div><div class="mt"><span class="chip">Aurizn</span><span class="pill over"><i></i>11d stale</span><span class="dz">1.0d</span></div></div>
+                  <div class="jc warm"><div class="ttl">Resmed — B2B2C feedback</div><div class="mt"><span class="chip">Resmed</span><span class="pill watch"><i></i>Fri</span><span class="dz">0.5d</span></div></div>
+                  <div class="jc"><div class="ttl">Maptek — conference slides</div><div class="mt"><span class="chip">Maptek</span><span class="dz">1.5d</span></div></div>
+                  <div class="jc"><div class="ttl">Ilim — MMS alterations</div><div class="mt"><span class="chip">Ilim</span><span class="dz">0.5d</span></div></div>
+                  <div class="jc"><div class="ttl">Symons — press release design</div><div class="mt"><span class="chip">Symons</span><span class="dz">0.75d</span></div></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-hd">
+                  <div class="who"><div class="av on">KM</div><div><div class="nm">Kavindu</div><div class="rl">motion</div></div></div>
+                  <div class="cap"><span><b style="color:var(--s-over)">1.25</b> / 1.0d</span><span class="pill over"><i></i>over</span></div>
+                  <div class="meter"><span class="fill" style="width:78%"></span><span class="spill" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc hot"><div class="ttl">48hr — opening animation</div><div class="mt"><span class="chip">48hr</span><span class="pill over"><i></i>9 Sep</span><span class="dz">0.75d</span></div></div>
+                  <div class="jc calm"><div class="ttl">Resmed — digi screens</div><div class="mt"><span class="chip">Resmed</span><span class="dz">0.5d</span></div></div>
+                  <div class="jc waity"><div class="ttl">Maptek — Vestrex teaser</div><div class="mt"><span class="chip">Maptek</span><span class="pill wait"><i></i>with client</span></div></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-hd">
+                  <div class="who"><div class="av on">SR</div><div><div class="nm">Sergio</div><div class="rl">design</div></div></div>
+                  <div class="cap"><span><b>1.0</b> / 1.0d</span><span class="pill ok"><i></i>on target</span></div>
+                  <div class="meter"><span class="fill" style="width:78%"></span><span class="tick" style="left:78%"></span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc calm"><div class="ttl">SAPN — press release</div><div class="mt"><span class="chip">SAPN</span><span class="dz">0.5d</span></div></div>
+                  <div class="jc calm"><div class="ttl">Resmed — CPAP promo EDM</div><div class="mt"><span class="chip">Resmed</span><span class="dz">0.5d</span></div></div>
+                  <div class="jc waity"><div class="ttl">Fujifilm — ads</div><div class="mt"><span class="chip">Fuji</span><span class="pill wait"><i></i>awaiting fb</span></div></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-hd">
+                  <div class="who"><div class="av on">RT</div><div><div class="nm">Rochelle</div><div class="rl">design</div></div></div>
+                  <div class="cap"><span><b>0.75</b> / 1.0d</span><span class="pill watch"><i></i>0.25 free</span></div>
+                  <div class="meter"><span class="fill" style="width:58.5%"></span><span class="wait" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc calm"><div class="ttl">Resmed — bundles rollout</div><div class="mt"><span class="chip">Resmed</span><span class="dz">0.75d</span></div></div>
+                  <div class="jc waity"><div class="ttl">Raising Children — reshoot brief</div><div class="mt"><span class="chip">RCH</span><span class="pill wait"><i></i>with client</span></div></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-hd">
+                  <div class="who"><div class="av on">EL</div><div><div class="nm">Elle</div><div class="rl">copy</div></div></div>
+                  <div class="cap"><span><b>0.5</b> / 1.0d</span><span class="pill watch"><i></i>0.5 free</span></div>
+                  <div class="meter"><span class="fill" style="width:39%"></span><span class="tick" style="left:78%"></span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc calm"><div class="ttl">Resmed — Sep newsletter copy</div><div class="mt"><span class="chip">Resmed</span><span class="pill ok"><i></i>draft done</span><span class="dz">0.5d</span></div></div>
+                </div>
+              </div>
+
+              <div class="lane">
+                <div class="lane-hd">
+                  <div class="who"><div class="av on">AP</div><div><div class="nm">Ashley</div><div class="rl">design</div></div></div>
+                  <div class="cap"><span><b style="color:var(--s-watch)">0.25</b> / 1.0d</span><span class="pill watch"><i></i>needs work</span></div>
+                  <div class="meter"><span class="fill" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+                </div>
+                <div class="lane-body">
+                  <div class="jc calm"><div class="ttl">CMAX — priority</div><div class="mt"><span class="chip">CMAX</span><span class="dz">0.25d</span></div></div>
+                  <div class="jc ghost"><div class="ttl">Aurizn — Infinite Studio Post</div><div class="mt"><span class="chip">Aurizn</span><span class="dz">1.0d</span></div></div>
+                  <div class="drop">drop → 1.25 / 1.0d · over by 0.25</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div class="ribbon">
+            <span>⌘K place · <span class="kbd">1–9</span> assign · <span class="kbd">E</span> unassign</span>
+            <span class="sp">pipeline 7 → <b style="color:var(--s-ink)">5</b> since 9am</span>
+          </div>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>The header is the verdict</b>Load meter, number and pill live in the column head, so "who is free" is answered by scanning six headers — not by counting cards.</div>
+        <div><b>Drop tells you the cost</b>The drop zone previews the consequence before you let go: <em>over by 0.25</em>. Most boards let you overload someone silently.</div>
+        <div><b>Waiting work is see-through</b>Fujifilm and Vestrex are dimmed with a hatched meter segment — on the plate, not in the day.</div>
+      </div>
+    </div>
+
+    <!-- ---------- B ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>B · The Capacity Rail</h3>
+      <p class="small">The compressed version of A, for when you only need the answer. Sorted most-free first, so the person who should take the next job is always the top row. This is the single highest-value strip on the page and it costs about 120 pixels of height.</p>
+    </div>
+    <div class="spec" id="s-rail">
+      <div class="slate"><span class="id">B</span><span class="nm">Capacity Rail</span><span>sorted by free capacity</span><span class="q">"who is free right now?"</span></div>
+      <div class="scr">
+        <div class="rail-hd"><span>Person</span><span>Today · booked vs 1.0d capacity</span><span class="rt">Free</span></div>
+        <div class="rows">
+          <div class="rail-row">
+            <div class="who"><div class="av">AP</div><div class="nm">Ashley</div></div>
+            <div class="meter tall"><span class="fill" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><b style="color:var(--s-watch)">0.75d</b> free</div>
+          </div>
+          <div class="rail-row">
+            <div class="who"><div class="av">EL</div><div class="nm">Elle</div></div>
+            <div class="meter tall"><span class="fill" style="width:39%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><b style="color:var(--s-watch)">0.5d</b> free</div>
+          </div>
+          <div class="rail-row">
+            <div class="who"><div class="av">RT</div><div class="nm">Rochelle</div></div>
+            <div class="meter tall"><span class="fill" style="width:58.5%"></span><span class="wait" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><b>0.25d</b> free</div>
+          </div>
+          <div class="rail-row">
+            <div class="who"><div class="av">SR</div><div class="nm">Sergio</div></div>
+            <div class="meter tall"><span class="fill" style="width:78%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><span class="pill ok"><i></i>on target</span></div>
+          </div>
+          <div class="rail-row">
+            <div class="who"><div class="av">AZ</div><div class="nm">Amal</div></div>
+            <div class="meter tall"><span class="fill" style="width:78%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><span class="pill ok"><i></i>on target</span></div>
+          </div>
+          <div class="rail-row">
+            <div class="who"><div class="av">KM</div><div class="nm">Kavindu</div></div>
+            <div class="meter tall"><span class="fill" style="width:78%"></span><span class="spill" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div>
+            <div class="rt"><b style="color:var(--s-over)">−0.25d</b> over</div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span>Hatched = with the client · solid = actually in the day</span>
+          <span class="sp">team today <b style="color:var(--s-ink)">4.75</b> / 6.0d · <span style="color:var(--s-watch)">1.25d unsold</span></span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Sort is the interface</b>No filtering, no reading. The answer to "who takes this" is row one, always.</div>
+        <div><b>The tick is the target</b>One dashed capacity mark turns a length into a judgement — the same trick your pace race already uses.</div>
+        <div><b>Unsold days are the money line</b>1.25 free days at the bottom is a sales signal, not an idle-staff signal. Say it in the language you bill in.</div>
+      </div>
+    </div>
+    <!-- ---------- C ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>C · The Ten-Day Heat</h3>
+      <p class="small">Today is a decision about tomorrow. This is the only view that shows the cliff coming: booked days per person for the next two weeks, so an empty right-hand side becomes a sales conversation on the Monday, not a panic on the Friday.</p>
+    </div>
+    <div class="spec" id="s-heat">
+      <div class="slate"><span class="id">C</span><span class="nm">Ten-Day Heat</span><span>days booked per person</span><span class="q">"where is the cliff?"</span></div>
+      <div class="scr">
+        <div class="scr-body">
+          <div class="xscroll">
+            <table class="heat">
+              <thead>
+                <tr>
+                  <th style="text-align:left"></th>
+                  <th class="nowcol">Wed 26</th><th>Thu 27</th><th>Fri 28</th>
+                  <th class="wk">Sat</th><th class="wk">Sun</th>
+                  <th>Mon 31</th><th>Tue 1</th><th>Wed 2</th><th>Thu 3</th><th>Fri 4</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="who">Kavindu</td>
+                  <td class="c over now">1.25</td><td class="c full">1.0</td><td class="c full">1.0</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c full">1.0</td><td class="c over">1.5</td><td class="c over">1.5</td><td class="c light">0.5</td><td class="c idle">0</td></tr>
+                <tr><td class="who">Sergio</td>
+                  <td class="c full now">1.0</td><td class="c full">1.0</td><td class="c light">0.75</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c light">0.5</td><td class="c light">0.5</td><td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td></tr>
+                <tr><td class="who">Rochelle</td>
+                  <td class="c light now">0.75</td><td class="c full">1.0</td><td class="c full">1.0</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c full">1.0</td><td class="c light">0.5</td><td class="c light">0.25</td><td class="c idle">0</td><td class="c idle">0</td></tr>
+                <tr><td class="who">Amal</td>
+                  <td class="c full now">1.0</td><td class="c full">1.0</td><td class="c full">1.0</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c full">1.0</td><td class="c light">0.75</td><td class="c leave">leave</td><td class="c leave">leave</td><td class="c light">0.5</td></tr>
+                <tr><td class="who">Elle</td>
+                  <td class="c light now">0.5</td><td class="c light">0.5</td><td class="c light">0.25</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td></tr>
+                <tr><td class="who">Ashley</td>
+                  <td class="c light now">0.25</td><td class="c light">0.25</td><td class="c idle">0</td>
+                  <td class="c wknd">·</td><td class="c wknd">·</td>
+                  <td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td><td class="c idle">0</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="heat-key">
+            <span><i style="background:rgba(255,255,255,.035);border-color:var(--s-rule)"></i> idle · 0d</span>
+            <span><i style="background:rgba(57,135,229,.18);border-color:rgba(57,135,229,.3)"></i> light · under 1d</span>
+            <span><i style="background:rgba(12,163,12,.20);border-color:rgba(12,163,12,.38)"></i> on target · 1d</span>
+            <span><i style="background:rgba(227,85,85,.24);border-color:rgba(227,85,85,.5)"></i> over · above 1d</span>
+            <span><i style="background:repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 3px,transparent 3px 6px);border-color:var(--s-rule-2)"></i> leave</span>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span style="color:var(--s-over)">Kavindu over three days running · 48hr deadline 9 Sep</span>
+          <span class="sp"><b style="color:var(--s-watch)">18.75 unsold days</b> in the next 10</span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Four states, not a gradient</b>Idle / light / on target / over, each with a number in the cell. A continuous colour ramp looks scientific and reads as mush; four labelled states can be argued about in a meeting.</div>
+        <div><b>The right-hand side is the story</b>Sixty percent of the grid is empty from Tuesday. That is not a scheduling view, it is next quarter's revenue showing up two weeks early.</div>
+        <div><b>Leave is hatched, not coloured</b>Unavailable is a different kind of nothing from unbooked, and hatching says so without spending a hue.</div>
+      </div>
+    </div>
+
+    <!-- ---------- D ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>D · The Attention Queue</h3>
+      <p class="small">Your notification model. Not a feed — an inbox with a bottom. Grouped by <em>what it costs you</em> rather than what kind of object it is, because "a client is blocked" and "a comment was added" are not the same species of event even when ClickUp emits them identically.</p>
+    </div>
+    <div class="spec" id="s-queue">
+      <div class="slate"><span class="id">D</span><span class="nm">Attention Queue</span><span>severity-grouped · archive to zero</span><span class="q">"what actually needs a human?"</span></div>
+      <div class="scr">
+        <div class="scr-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">3200 / today / attention</span>
+          <span class="rt"><span class="pill over"><i></i>7 open</span></span>
+        </div>
+
+        <div class="q-grp" style="color:#ff8f8f">Blocking a client<span class="ct">2 · oldest 2 days</span></div>
+        <div class="rows">
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-over)"></div>
+            <div class="mid">
+              <div class="ttl">Maptek — conference video sizing <span class="chip">Maptek</span></div>
+              <div class="why">Simon asked whether it is screen-size or 16:9 on <b>Monday</b>. Animation cannot start until someone answers. <b>2 days</b> of Kavindu's week are behind it.</div>
+            </div>
+            <div class="act"><span class="btn pri">Answer</span><span class="btn gho">Snooze</span></div>
+          </div>
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-over)"></div>
+            <div class="mid">
+              <div class="ttl">SAPN — sensitive labels decision <span class="chip">SAPN</span></div>
+              <div class="why">Amal flagged the labels on the brand guidelines and asked to discuss. Templates and the press release both wait on the same call.</div>
+            </div>
+            <div class="act"><span class="btn pri">Decide</span><span class="btn gho">Snooze</span></div>
+          </div>
+        </div>
+
+        <div class="q-grp" style="color:#ffcf5c">Going stale<span class="ct">3 · unburned client days</span></div>
+        <div class="rows">
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-watch)"></div>
+            <div class="mid">
+              <div class="ttl">Aurizn — Infinite Studio Post <span class="chip">Aurizn</span><span class="pill idle"><i></i>unassigned</span></div>
+              <div class="why">In progress, untouched <b>11 days</b>. Aurizn are <b>1.5 days behind</b> their promise this month.</div>
+            </div>
+            <div class="act"><span class="btn pri">Assign</span><span class="btn gho">Close</span></div>
+          </div>
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-watch)"></div>
+            <div class="mid">
+              <div class="ttl">Ilim — MMS alterations <span class="chip">Ilim</span></div>
+              <div class="why">Feedback came back <b>14 days</b> ago and nothing has moved since.</div>
+            </div>
+            <div class="act"><span class="btn pri">Assign</span><span class="btn gho">Close</span></div>
+          </div>
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-watch)"></div>
+            <div class="mid">
+              <div class="ttl">Subnet — retainer, nothing booked <span class="chip">Subnet</span></div>
+              <div class="why">No job opened this month. <b>4 days</b> promised, <b>0 delivered</b>, 3 working days left.</div>
+            </div>
+            <div class="act"><span class="btn pri">Find work</span><span class="btn gho">Close</span></div>
+          </div>
+        </div>
+
+        <div class="q-grp" style="color:var(--s-ink-2)">Needs a decision from you<span class="ct">2</span></div>
+        <div class="rows">
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-rule-2)"></div>
+            <div class="mid">
+              <div class="ttl">Ashley has 0.25d booked today <span class="pill watch"><i></i>0.75d free</span></div>
+              <div class="why">Third day under half capacity. Pipeline has <b>6.25 days</b> unplaced.</div>
+            </div>
+            <div class="act"><span class="btn pri">Open board</span></div>
+          </div>
+          <div class="q-row">
+            <div class="bar" style="background:var(--s-rule-2)"></div>
+            <div class="mid">
+              <div class="ttl">Kavindu over capacity Tue–Wed <span class="pill over"><i></i>1.5d</span></div>
+              <div class="why">48hr opening animation lands against the Resmed digi screens. One has to move.</div>
+            </div>
+            <div class="act"><span class="btn pri">Rebalance</span></div>
+          </div>
+        </div>
+
+        <div class="ribbon">
+          <span><span class="kbd">E</span> archive · <span class="kbd">S</span> snooze · <span class="kbd">⏎</span> open</span>
+          <span class="sp">14 events today → <b style="color:var(--s-ink)">7 shown</b> · 7 rolled into the 4:30 digest</span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Grouped by cost, not by object type</b>ClickUp emits "status changed" fifty times a day. The queue only surfaces the ones with a consequence, and states the consequence in the row.</div>
+        <div><b>Every row has one obvious action</b>Answer, Decide, Assign, Find work. A notification you cannot act on from the notification is just anxiety with a timestamp.</div>
+        <div><b>Half of everything is suppressed</b>Seven of fourteen events roll into an end-of-day digest. Aim for most of what interrupts you being worth it — the rest can wait until 4:30.</div>
+      </div>
+    </div>
+
+    <!-- ---------- E ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>E · Open Loops, aged</h3>
+      <p class="small">You already have Open Loops on <span class="num">:3200</span> and it is the best idea in the trial build. The upgrade is to stop listing them and start <em>ranking</em> them by age against a threshold, so the eye lands on the worst one without reading a single word.</p>
+    </div>
+    <div class="spec" id="s-stale">
+      <div class="slate"><span class="id">E</span><span class="nm">Open Loops</span><span>in progress · nobody has touched it</span><span class="q">"what is rotting?"</span></div>
+      <div class="scr">
+        <div class="scr-body" style="padding-bottom:6px">
+          <div class="sh">Days since anyone touched it<span class="ct">threshold 10d</span><span class="ln"></span><span style="letter-spacing:.04em;text-transform:none">6.25 client days parked</span></div>
+        </div>
+        <div class="rows">
+          <div class="stale-row">
+            <div class="tt">Ilim — MMS alterations <span class="chip">Ilim</span></div>
+            <div class="agebar"><span class="f" style="width:93%;background:var(--s-over)"></span><span class="thr" style="left:66%"></span></div>
+            <div class="dd" style="color:var(--s-over)">14d</div>
+          </div>
+          <div class="stale-row">
+            <div class="tt">Aurizn — Infinite Studio Post <span class="chip">Aurizn</span></div>
+            <div class="agebar"><span class="f" style="width:73%;background:var(--s-over)"></span><span class="thr" style="left:66%"></span></div>
+            <div class="dd" style="color:var(--s-over)">11d</div>
+          </div>
+          <div class="stale-row">
+            <div class="tt">Cole — podcast edit <span class="chip">Cole</span></div>
+            <div class="agebar"><span class="f" style="width:60%;background:var(--s-watch)"></span><span class="thr" style="left:66%"></span></div>
+            <div class="dd" style="color:var(--s-watch)">9d</div>
+          </div>
+          <div class="stale-row">
+            <div class="tt">AOL — recruitment cutdowns <span class="chip">AOL</span></div>
+            <div class="agebar"><span class="f" style="width:40%;background:var(--s-blue)"></span><span class="thr" style="left:66%"></span></div>
+            <div class="dd">6d</div>
+          </div>
+          <div class="stale-row">
+            <div class="tt">Symons — referral posters <span class="chip">Symons</span></div>
+            <div class="agebar"><span class="f" style="width:27%;background:var(--s-blue)"></span><span class="thr" style="left:66%"></span></div>
+            <div class="dd">4d</div>
+          </div>
+        </div>
+      </div>
+      <div class="anno a2">
+        <div><b>One threshold line, drawn once</b>The tick at 10 days is the same device as the capacity target. Past the line is red; the eye does the sorting.</div>
+        <div><b>Priced in the header</b>"6.25 client days parked" turns a housekeeping list into a number Dom cares about. Every list on this dashboard should end in days.</div>
+      </div>
+    </div>
+    <!-- ---------- F ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>F · The Day Timeline</h3>
+      <p class="small">The edit-suite reading of the same data: people as tracks, hours across, a playhead on now. This is the view that makes a shoot bookable — you can see the shape of a hole, not just its size. It is also the most familiar interface in the building, because everyone here stares at a timeline all day.</p>
+    </div>
+    <div class="spec" id="s-tl">
+      <div class="slate"><span class="id">F</span><span class="nm">Day Timeline</span><span>tracks · playhead · 8am–6pm</span><span class="q">"where's the hole?"</span></div>
+      <div class="scr">
+        <div class="scr-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="url">3200 / today / timeline</span>
+          <span class="rt"><span class="num" style="color:var(--s-accent)">14:15</span></span>
+        </div>
+        <div class="xscroll">
+          <div class="tl">
+            <div class="tl-hd">
+              <div style="padding:6px 10px;font-family:var(--fm);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-ink-3)">Wed 26 Aug</div>
+              <div class="tl-hours"><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">KM</div>Kavindu</div>
+              <div class="tl-track">
+                <span class="blk c" style="left:10%;width:30%">48hr opening animation</span>
+                <span class="blk a" style="left:50%;width:40%">Resmed digi screens</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">SR</div>Sergio</div>
+              <div class="tl-track">
+                <span class="blk b" style="left:5%;width:25%">SAPN press release</span>
+                <span class="blk a" style="left:30%;width:30%">Resmed CPAP EDM</span>
+                <span class="blk free" style="left:60%;width:30%">free · 1.5h</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">RT</div>Rochelle</div>
+              <div class="tl-track">
+                <span class="blk a" style="left:10%;width:70%">Resmed bundles rollout</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">AZ</div>Amal</div>
+              <div class="tl-track">
+                <span class="blk b" style="left:0%;width:40%">SAPN templates</span>
+                <span class="blk b" style="left:50%;width:40%">SAPN brand guidelines</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">EL</div>Elle</div>
+              <div class="tl-track">
+                <span class="blk d" style="left:10%;width:30%">Resmed newsletter copy</span>
+                <span class="blk free" style="left:40%;width:50%">free · 4h</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+            <div class="tl-row">
+              <div class="tl-who"><div class="av" style="width:20px;height:20px;font-size:8px">AP</div>Ashley</div>
+              <div class="tl-track">
+                <span class="blk b" style="left:20%;width:20%">CMAX</span>
+                <span class="blk free" style="left:40%;width:50%">free · 4h — could take Aurizn</span>
+                <span class="playhead" style="left:62.5%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span>Dashed = unbooked · drag an edge to re-time · drop a job into any gap</span>
+          <span class="sp"><b style="color:var(--s-watch)">9.5 free hours</b> after the playhead</span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Holes are shapes, not numbers</b>"Ashley has 0.75d free" and "Ashley is free from noon" are different facts. Only one of them lets you book a 2pm shoot.</div>
+        <div><b>The playhead earns its keep</b>Free time <em>before</em> now is spilled; free time after now is sellable. The line separates regret from opportunity.</div>
+        <div><b>It suggests</b>Ashley's gap is labelled with what would fit in it. The interface has already done the matching.</div>
+      </div>
+    </div>
+
+    <!-- ---------- G ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>G · The Studio Wall</h3>
+      <p class="small">A spare screen on the wall, read from four metres while someone makes a coffee. This is not the laptop layout scaled up — it drops to one headline, three numbers and nine faces, and it has no controls at all. Ambient displays fail when they are dashboards with bigger fonts.</p>
+    </div>
+    <div class="spec" id="s-wall">
+      <div class="slate"><span class="id">G</span><span class="nm">Studio Wall</span><span>ambient · no interaction · 4m read</span><span class="q">"is today okay?"</span></div>
+      <div class="scr">
+        <div class="wall">
+          <div class="wall-top">
+            <div>
+              <div class="dt">Wednesday 26 August · 14:15</div>
+              <h5>Two things need a human.</h5>
+            </div>
+            <div class="wall-stat">
+              <div><div class="v" style="color:var(--s-over)">2</div><div class="l">blocked</div></div>
+              <div><div class="v">4.75</div><div class="l">days on the floor</div></div>
+              <div><div class="v" style="color:var(--s-watch)">1.25</div><div class="l">unsold today</div></div>
+            </div>
+          </div>
+          <div class="wall-people">
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#e35555" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#ff8f8f">125</span></div>
+              <div class="nm">Kavindu</div><div class="jb">48hr animation<br>Resmed digi</div>
+            </div>
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#0ca30c" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#6ee06e">100</span></div>
+              <div class="nm">Sergio</div><div class="jb">SAPN release<br>CPAP EDM</div>
+            </div>
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#0ca30c" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#6ee06e">100</span></div>
+              <div class="nm">Amal</div><div class="jb">SAPN templates<br>Brand guides</div>
+            </div>
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#3987e5" stroke-width="4" stroke-dasharray="108.4 144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#9dc0f0">75</span></div>
+              <div class="nm">Rochelle</div><div class="jb">Resmed bundles</div>
+            </div>
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#fab219" stroke-width="4" stroke-dasharray="72.3 144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#ffcf5c">50</span></div>
+              <div class="nm">Elle</div><div class="jb">Newsletter copy<br><span style="color:#ffcf5c">4h free</span></div>
+            </div>
+            <div class="wp">
+              <div class="ring"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="#2f333a" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#fab219" stroke-width="4" stroke-dasharray="36.1 144.5" stroke-dashoffset="0" stroke-linecap="round"/></svg><span class="ctr" style="color:#ffcf5c">25</span></div>
+              <div class="nm">Ashley</div><div class="jb">CMAX<br><span style="color:#ffcf5c">4h free</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span style="color:var(--s-over)">Maptek waiting 2 days on a sizing answer</span>
+          <span class="sp">Aurizn 1.5d behind promise</span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>A sentence, not a metric</b>"Two things need a human" is the headline. Nobody walking past reads an axis label, but everybody reads a sentence.</div>
+        <div><b>Rings, because they survive distance</b>At four metres a bar's endpoint is ambiguous and a ring's is not. The percentage sits inside so the shape is never carrying it alone.</div>
+        <div><b>Names and faces, deliberately</b>Everyone can see everyone's load. That is the point — it makes "I'm slammed" and "I've got room" checkable, and it is why the copy must never read as surveillance.</div>
+      </div>
+    </div>
+    <!-- ---------- H ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>H · The Fairness Strip</h3>
+      <p class="small">The question nobody asks out loud: is the work spread evenly? Four weeks of delivered days per person as a dot per week, against the team median. Weekly totals hide this completely — one person quietly carrying a fifth of the studio looks identical to a balanced month in any monthly roll-up.</p>
+    </div>
+    <div class="spec" id="s-fair">
+      <div class="slate"><span class="id">H</span><span class="nm">Fairness Strip</span><span>4 weeks · days delivered</span><span class="q">"is this spread fairly?"</span></div>
+      <div class="scr">
+        <div class="scr-body" style="padding-bottom:4px">
+          <div class="sh">Days delivered per week<span class="ct">last 4 weeks</span><span class="ln"></span><span style="letter-spacing:.04em;text-transform:none">grey line = team median 3.75d</span></div>
+        </div>
+        <div class="rows">
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">KM</div><span style="font-size:12.5px">Kavindu</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:81.8%;background:var(--s-blue)"></span><span class="dot" style="left:90.9%;background:var(--s-over)"></span>
+              <span class="dot" style="left:86.4%;background:var(--s-blue)"></span><span class="dot" style="left:90.9%;background:var(--s-over)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px;color:var(--s-over)">19.25d</span></div>
+          </div>
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">SR</div><span style="font-size:12.5px">Sergio</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:72.7%;background:var(--s-blue)"></span><span class="dot" style="left:81.8%;background:var(--s-blue)"></span>
+              <span class="dot" style="left:72.7%;background:var(--s-blue)"></span><span class="dot" style="left:63.6%;background:var(--s-blue)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px">16.0d</span></div>
+          </div>
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">RT</div><span style="font-size:12.5px">Rochelle</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:63.6%;background:var(--s-blue)"></span><span class="dot" style="left:72.7%;background:var(--s-blue)"></span>
+              <span class="dot" style="left:81.8%;background:var(--s-blue)"></span><span class="dot" style="left:72.7%;background:var(--s-blue)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px">16.0d</span></div>
+          </div>
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">AZ</div><span style="font-size:12.5px">Amal</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:72.7%;background:var(--s-blue)"></span><span class="dot" style="left:72.7%;background:var(--s-blue)"></span>
+              <span class="dot" style="left:63.6%;background:var(--s-blue)"></span><span class="dot" style="left:81.8%;background:var(--s-blue)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px">16.0d</span></div>
+          </div>
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">EL</div><span style="font-size:12.5px">Elle</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:36.4%;background:var(--s-blue-l)"></span><span class="dot" style="left:45.5%;background:var(--s-blue-l)"></span>
+              <span class="dot" style="left:36.4%;background:var(--s-blue-l)"></span><span class="dot" style="left:27.3%;background:var(--s-blue-l)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px;color:var(--s-watch)">8.0d</span></div>
+          </div>
+          <div class="fair-row">
+            <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:20px;height:20px;font-size:8px">AP</div><span style="font-size:12.5px">Ashley</span></div>
+            <div class="dotline"><span class="axis"></span><span class="med" style="left:68.2%"></span>
+              <span class="dot" style="left:27.3%;background:var(--s-blue-l)"></span><span class="dot" style="left:36.4%;background:var(--s-blue-l)"></span>
+              <span class="dot" style="left:18.2%;background:var(--s-blue-l)"></span><span class="dot" style="left:27.3%;background:var(--s-blue-l)"></span></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:12px;color:var(--s-watch)">6.0d</span></div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span>Every dot is one week. Left of the line is under the median.</span>
+          <span class="sp">Kavindu carries <b style="color:var(--s-ink)">24%</b> of delivered days</span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Dots, not bars</b>Four bars per person is a chart nobody reads. Four dots is a <em>spread</em> — you see consistency and outliers in the same glance.</div>
+        <div><b>The median is the only reference</b>No target here, because there is no correct number. The honest question is "compared to everyone else", and the line says exactly that.</div>
+        <div><b>It cuts both ways</b>Kavindu at 24% is a burnout risk. Ashley at 6 days is an under-used person and a margin problem. Same chart, two conversations.</div>
+      </div>
+    </div>
+
+    <!-- ---------- I ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>I · The Promise Strip</h3>
+      <p class="small">Your promise-kept squares from <span class="num">:3200</span>, given room to breathe and moved next to the month number they explain. Eight weeks, one square each, plus the week in progress. As you already put it: a client with a lot of empty squares feels underserved even when the month total catches up.</p>
+    </div>
+    <div class="spec" id="s-promise">
+      <div class="slate"><span class="id">I</span><span class="nm">Promise Strip</span><span>8 weeks · weekly days delivered vs promised</span><span class="q">"who feels neglected?"</span></div>
+      <div class="scr">
+        <div class="promise">
+          <div class="pr-row" style="background:var(--s-panel)">
+            <div class="tiny" style="font-family:var(--fm);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-ink-3)">Client</div>
+            <div class="tiny" style="font-family:var(--fm);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-ink-3)">Jul 1 → this week</div>
+            <div class="tiny" style="font-family:var(--fm);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-ink-3)">August</div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">Resmed</div>
+            <div class="sq"><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px">11.5</span><span class="tiny" style="font-family:var(--fm)">/12d</span> <span class="pill ok"><i></i>on track</span></div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">SAPN</div>
+            <div class="sq"><i class="kept"></i><i class="kept"></i><i class="part"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="part"></i><i class="kept"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px">7.0</span><span class="tiny" style="font-family:var(--fm)">/8d</span> <span class="pill ok"><i></i>on track</span></div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">Maptek</div>
+            <div class="sq"><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="part"></i><i class="kept"></i><i class="kept"></i><i class="kept"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px">5.5</span><span class="tiny" style="font-family:var(--fm)">/6d</span> <span class="pill ok"><i></i>on track</span></div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">Ilim</div>
+            <div class="sq"><i class="kept"></i><i class="part"></i><i class="miss"></i><i class="kept"></i><i class="miss"></i><i class="part"></i><i class="miss"></i><i class="miss"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px;color:var(--s-watch)">2.0</span><span class="tiny" style="font-family:var(--fm)">/4d</span> <span class="pill watch"><i></i>behind</span></div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">Aurizn</div>
+            <div class="sq"><i class="kept"></i><i class="miss"></i><i class="miss"></i><i class="part"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px;color:var(--s-over)">1.5</span><span class="tiny" style="font-family:var(--fm)">/3d</span> <span class="pill over"><i></i>1.5d behind</span></div>
+          </div>
+          <div class="pr-row">
+            <div style="font-size:12.5px;font-weight:500">Subnet</div>
+            <div class="sq"><i class="part"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="miss"></i><i class="live"></i></div>
+            <div class="rt" style="text-align:right"><span class="num" style="font-size:11.5px;color:var(--s-over)">0</span><span class="tiny" style="font-family:var(--fm)">/4d</span> <span class="pill over"><i></i>nothing booked</span></div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span>Filled = week's days delivered · hatched = partial · empty = missed · outlined = this week, live</span>
+          <span class="sp"><b style="color:var(--s-over)">2 clients</b> with 4+ empty squares</span>
+        </div>
+      </div>
+      <div class="anno a2">
+        <div><b>Sorted worst-last, deliberately</b>The eye finishes on Subnet. A strip sorted best-first lets you stop reading before you reach the problem.</div>
+        <div><b>Two clients are the whole message</b>Six rows, and only Aurizn and Subnet need action. Everything above them is there to make that contrast visible — that is what the healthy rows are <em>for</em>.</div>
+      </div>
+    </div>
+
+    <!-- ---------- J ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>J · Sync Receipts</h3>
+      <p class="small">The direct fix for what Yami hit this morning. Not a sync feature — a <em>design</em> for uncertainty: three states shown honestly, and a failure that is loud, specific and recoverable rather than silent. Build this before anything else on this page.</p>
+    </div>
+    <div class="spec" id="s-sync">
+      <div class="slate"><span class="id">J</span><span class="nm">Sync Receipts</span><span>optimistic → confirmed → failed</span><span class="q">"did that actually save?"</span></div>
+      <div class="scr">
+        <div class="scr-body" style="display:grid;gap:14px">
+          <div>
+            <div class="sh">The three states of a move<span class="ln"></span></div>
+            <div style="display:grid;gap:8px;max-width:520px">
+              <div class="jc calm" style="cursor:default"><div class="ttl">Resmed — bundles rollout → Rochelle</div><div class="mt"><span class="pill ok"><i></i>in ClickUp</span><span class="dz">confirmed 14:12</span></div></div>
+              <div class="jc" style="cursor:default;opacity:.75;border-left-color:var(--s-blue)"><div class="ttl">Aurizn — Infinite Studio Post → Sergio</div><div class="mt"><span class="pill wait"><i></i>saving…</span><span class="dz">optimistic</span></div></div>
+              <div class="jc hot" style="cursor:default"><div class="ttl">Ilim — MMS alterations → Ashley</div><div class="mt"><span class="pill over"><i></i>not saved</span><span class="dz">ClickUp 403</span></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="sh">What the person sees<span class="ln"></span></div>
+            <div style="display:grid;gap:8px;max-width:520px">
+              <div class="toast"><span style="color:var(--s-ok);font-size:14px">✓</span><div class="tx"><b>Moved to Sergio</b><span>ClickUp updated · status pipeline → in progress</span></div></div>
+              <div class="toast bad"><span style="color:var(--s-over);font-size:14px">!</span><div class="tx"><b>Could not move Ilim — MMS alterations</b><span>ClickUp rejected the status change. The board has been put back.</span></div><span class="btn pri" style="margin-left:auto">Retry</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon">
+          <span><span class="live"><i></i>synced 4s ago</span></span>
+          <span>·</span><span>1 saving</span>
+          <span>·</span><span style="color:var(--s-over)">1 failed</span>
+          <span class="sp"><span class="btn gho">Retry all</span></span>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Roll back, visibly</b>On failure the card returns to where it was. A board that keeps a change it did not save is the exact bug from this morning, and it costs you the user permanently.</div>
+        <div><b>Name the system that refused</b>"ClickUp rejected the status change" beats "Something went wrong". Yami can act on the first one.</div>
+        <div><b>A permanent last-synced clock</b>Bottom right, always. It converts "is this current?" from a worry into a glance.</div>
+      </div>
+    </div>
+
+    <!-- ---------- K ---------- -->
+    <div class="col" style="margin-top:64px">
+      <h3>K · The Slack Digest</h3>
+      <p class="small">The dashboard should write Yami's afternoon post for her. Same shape she already uses — grouped by person, priorities in plain English — generated from the board at 4:30pm, editable before it sends. This is how the tool earns the studio's trust: by removing a job someone is already doing by hand.</p>
+    </div>
+    <div class="spec" id="s-slack">
+      <div class="slate"><span class="id">K</span><span class="nm">Slack Digest</span><span>4:30pm → #motion-by-design</span><span class="q">"what's tomorrow?"</span></div>
+      <div class="scr">
+        <div class="slack">
+          <div class="slack-hd">
+            <div class="bot">SF</div>
+            <div><span class="nm">Studio Floor</span> <span class="tag">app</span> <span class="ts">4:30 PM</span></div>
+          </div>
+          <div class="slack-body">
+            <div class="ln"><b>Tomorrow — Thursday 27 August.</b> 5.0 of 6.0 days placed. Ashley still has 0.75d free.</div>
+            <div class="person"><div class="p">@Kavindu</div>
+              <ul><li><b>48hr</b> — opening animation · 0.75d · <span style="color:#ffcf5c">deadline 9 Sep</span></li><li><b>Resmed</b> — digi screens · 0.25d</li></ul></div>
+            <div class="person"><div class="p">@Sergio</div>
+              <ul><li><b>SAPN</b> — press release · sensitive labels still undecided</li><li><b>Resmed</b> — CPAP promo EDM · 0.5d</li></ul></div>
+            <div class="person"><div class="p">@Rochelle</div>
+              <ul><li><b>Resmed</b> — bundles rollout, finish print files · 1.0d</li></ul></div>
+            <div class="person"><div class="p">@Elle</div>
+              <ul><li><b>Symons</b> — press release, second draft · 0.5d</li></ul></div>
+            <div class="person"><div class="p">@Ashley</div>
+              <ul><li><b>CMAX</b> — priority · 0.25d</li><li style="color:#ffcf5c">0.75d free — Aurizn or Ilim could land here</li></ul></div>
+            <div class="ln" style="color:var(--s-ink-2);font-size:12px">⚠︎ Maptek have waited 2 days on the conference video sizing answer.</div>
+            <div class="slack-acts"><span class="btn pri">Send</span><span class="btn">Edit</span><span class="btn gho">Open board</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="anno a3">
+        <div><b>Copy her format, not yours</b>The team already reads this shape. Changing the layout <em>and</em> the author at once is how good tools get ignored.</div>
+        <div><b>Draft, never auto-send</b>Yami approves it. She keeps the editorial call, loses the typing — and the message stays hers, which is why people keep reading it.</div>
+        <div><b>Ends on the open question</b>The unfilled 0.75d and the blocked client are the last thing in the message, where a reader actually lands.</div>
+      </div>
+    </div>
+  </section>
+  <!-- ================= MICRO-PATTERNS ================= -->
+  <section id="micro">
+    <div class="col">
+      <div class="eyebrow">The kit</div>
+      <h2>The parts every screen is made from</h2>
+      <p>Eleven layouts, one component set. If you build these nine primitives properly, every specimen above is an arrangement rather than a project — and the whole dashboard starts to feel like one thing instead of eleven experiments.</p>
+    </div>
+    <div class="spec">
+      <div class="slate"><span class="nm">Component kit</span><span>the shared vocabulary</span></div>
+      <div class="scr">
+        <div class="swatch">
+          <div class="sw"><div class="lbl">State pill · never colour alone</div><div class="dm"><span class="pill ok"><i></i>on target</span><span class="pill watch"><i></i>behind</span><span class="pill over"><i></i>over</span><span class="pill wait"><i></i>with client</span><span class="pill idle"><i></i>unassigned</span></div></div>
+          <div class="sw"><div class="lbl">Client chip · always neutral</div><div class="dm"><span class="chip">Resmed</span><span class="chip">SAPN</span><span class="chip">Maptek</span><span class="chip">48hr</span><span class="chip">Aurizn</span></div></div>
+          <div class="sw"><div class="lbl">Load meter · fill, wait, spill, target</div><div style="display:grid;gap:7px"><div class="meter tall"><span class="fill" style="width:39%"></span><span class="tick" style="left:78%"></span></div><div class="meter tall"><span class="fill" style="width:58.5%"></span><span class="wait" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div><div class="meter tall"><span class="fill" style="width:78%"></span><span class="spill" style="width:19.5%"></span><span class="tick" style="left:78%"></span></div></div></div>
+          <div class="sw"><div class="lbl">Job card · left edge carries urgency</div><div class="jc hot" style="cursor:default"><div class="ttl">48hr — opening animation</div><div class="mt"><span class="chip">48hr</span><span class="pill over"><i></i>9 Sep</span><span class="dz">0.75d</span></div></div></div>
+          <div class="sw"><div class="lbl">Age bar · value against a threshold</div><div style="display:grid;gap:7px"><div class="agebar"><span class="f" style="width:40%;background:var(--s-blue)"></span><span class="thr" style="left:66%"></span></div><div class="agebar"><span class="f" style="width:93%;background:var(--s-over)"></span><span class="thr" style="left:66%"></span></div></div></div>
+          <div class="sw"><div class="lbl">Promise squares · 8 weeks</div><div class="sq"><i class="kept"></i><i class="kept"></i><i class="part"></i><i class="miss"></i><i class="kept"></i><i class="miss"></i><i class="miss"></i><i class="kept"></i><i class="live"></i></div></div>
+          <div class="sw"><div class="lbl">Person · avatar, load, one job</div><div class="dm"><div class="av lg on">KM</div><div><div style="font-size:12.5px;font-weight:600">Kavindu</div><div class="num" style="font-size:10.5px;color:var(--s-over)">1.25 / 1.0d</div></div></div></div>
+          <div class="sw"><div class="lbl">Keys · for the person who lives here</div><div class="dm"><span class="kbd">J</span><span class="kbd">K</span><span class="kbd">1–9</span><span class="kbd">E</span><span class="kbd">S</span><span class="kbd">⌘K</span></div></div>
+          <div class="sw"><div class="lbl">Empty state · says what happens next</div><div style="border:1px dashed var(--s-rule-2);border-radius:3px;padding:14px;text-align:center"><div style="font-size:13px;font-weight:600;margin-bottom:3px">Nothing needs you.</div><div style="font-size:11.5px;color:var(--s-ink-2)">6 jobs land tomorrow · 1.25d still unsold</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= NOTIFICATIONS ================= -->
+  <section id="notify">
+    <div class="col">
+      <div class="eyebrow">Notifications</div>
+      <h2>Four tiers, and only one of them may interrupt</h2>
+      <p>ClickUp already fires a message into <span class="num">#new-project-to-work-on</span> for every status change and every assignee edit — this morning alone that channel took roughly forty machine posts before lunch. Nobody reads it, which means the useful events in it are invisible too. The fix is not fewer notifications; it is <em>ranked</em> notifications, where each tier gets a different delivery route.</p>
+    </div>
+    <div class="prin" style="margin-top:26px">
+      <div><div class="k" style="color:var(--over)">Tier 1 · Now</div><div class="t">A client is blocked on us</div><div class="d">Slack DM to the one person who can unblock it, plus a red row in the queue. Rough guide: no more than two of these a day. Example — Maptek have waited two days on the video sizing answer.</div></div>
+      <div><div class="k" style="color:var(--watch-ink)">Tier 2 · Today</div><div class="t">Money is leaking</div><div class="d">Queue row, no interrupt. Work going stale past 10 days, a retainer with nothing booked, someone under half capacity for a third day. Read when the queue is opened, not when the event fires.</div></div>
+      <div><div class="k">Tier 3 · 4:30pm</div><div class="t">Everything else that has a consequence</div><div class="d">Rolled into the digest (specimen K). Reassignments, jobs completing, tomorrow's shape. One message, one time, one place.</div></div>
+      <div><div class="k">Tier 4 · Never</div><div class="t">Machine chatter</div><div class="d">Status transitions, assignee edits, task-created events. It belongs in the record, not in anyone's day. Turn the ClickUp Slack integration down to the events a human would actually mention out loud.</div></div>
+    </div>
+    <div class="note col wide" style="margin-top:22px">
+      <p><b>The number to watch:</b> what share of notifications got acted on. Ops teams generally treat anything under about a third as a broken alerting system — below that, people stop reading, and you cannot tell the difference between a quiet day and an ignored one. Log every dismiss so you can actually measure this rather than guess.</p>
+    </div>
+  </section>
+
+  <!-- ================= REFERENCES ================= -->
+  <section id="refs">
+    <div class="col">
+      <div class="eyebrow">Reference wall</div>
+      <h2>Where these ideas come from</h2>
+      <p>Products worth twenty minutes each, and the specific thing to take from them. Everything here is directly relevant to a studio scheduling in days.</p>
+    </div>
+    <div class="refs" style="margin-top:26px">
+      <div class="ref"><div class="h"><a href="https://resourceguruapp.com/blog/product-updates/heatmap-views">Resource Guru — heatmap views</a><span class="w">steal: the grid</span></div><div class="d">The cleanest expression of person × day capacity anywhere, including the totals-per-week toggle. Specimen C is essentially this, in days.</div></div>
+      <div class="ref"><div class="h"><a href="https://www.runn.io/blog/resource-heatmap">Runn — resource heatmaps</a><span class="w">steal: the thresholds</span></div><div class="d">Good writing on where to put the boundaries between under, at, and over capacity, and why a continuous ramp fails.</div></div>
+      <div class="ref"><div class="h"><a href="https://meisterplan.com/blog/resource-management/allocation-heatmaps-for-capacity-planning/">Meisterplan — allocation heatmaps</a><span class="w">steal: the argument</span></div><div class="d">The case for showing over-allocation as a first-class state rather than clipping bars at 100%.</div></div>
+      <div class="ref"><div class="h"><a href="https://linear.app">Linear</a><span class="w">steal: density + keys</span></div><div class="d">The benchmark for how much information fits on a row without clutter, and for an inbox you can actually empty. Your Today tab should feel this fast.</div></div>
+      <div class="ref"><div class="h"><a href="https://incident.io/blog/alert-fatigue-solutions-for-dev-ops-teams-in-2025-what-works">incident.io — alert fatigue</a><span class="w">steal: the tiers</span></div><div class="d">The severity ladder above is adapted from on-call practice. Their signal-to-noise metric is the one to track on your queue.</div></div>
+      <div class="ref"><div class="h"><a href="https://rootly.com/on-call-software/alert-fatigue">Rootly — reducing alert fatigue</a><span class="w">steal: the metric</span></div><div class="d">Concrete targets for how much should interrupt a person per shift, and how to measure whether your alerts are earning their place.</div></div>
+      <div class="ref"><div class="h"><a href="https://www.smashingmagazine.com/2025/09/ux-strategies-real-time-dashboards/">Smashing — real-time dashboard UX</a><span class="w">steal: the staleness rules</span></div><div class="d">How to show live data honestly, including what to do while a value is uncertain. Directly relevant to specimen J.</div></div>
+      <div class="ref"><div class="h"><a href="https://www.saasframe.io/blog/designing-bento-grids-that-actually-work-a-2026-practical-guide">SaaSFrame — bento grids that work</a><span class="w">steal: progressive disclosure</span></div><div class="d">Summary tile on the surface, detail one click down. The discipline that keeps a nine-person overview from turning to mush.</div></div>
+      <div class="ref"><div class="h"><a href="https://workflowmax.com/blog/resource-utilisation-heatmaps-for-capacity-planning">WorkflowMax — utilisation heatmaps</a><span class="w">steal: the vocabulary</span></div><div class="d">Written for agencies specifically, in the billable/non-billable language your Team tab already uses.</div></div>
+      <div class="ref"><div class="h"><a href="https://thedigitalprojectmanager.com/tools/agency-resource-management-software/">DPM — agency resource tools, tested</a><span class="w">steal: the shortlist</span></div><div class="d">If any of this looks like more than you want to build, this is the honest comparison of what you would be buying instead.</div></div>
+      <div class="ref"><div class="h"><a href="https://muz.li/blog/best-dashboard-design-examples-inspirations-for-2026/">Muzli — 50 dashboard examples</a><span class="w">steal: nothing, browse</span></div><div class="d">Pure visual inspiration, most of it not applicable. Useful for finding a look, useless for finding a model.</div></div>
+      <div class="ref"><div class="h"><a href="https://float.com">Float</a><span class="w">steal: the scheduling grammar</span></div><div class="d">The closest commercial product to what you are building. Worth a trial purely to see how they handle part-days and tentative bookings.</div></div>
+    </div>
+  </section>
+
+  <!-- ================= BUILD ORDER ================= -->
+  <section id="build">
+    <div class="col">
+      <div class="eyebrow">If you build one thing</div>
+      <h2>The order I would do it in</h2>
+      <p>This is a genuine sequence — each step is worth less if the one above it is missing. Steps 1 to 3 are the whole product; everything after is upside.</p>
+    </div>
+    <div class="steps" style="margin-top:26px">
+      <div class="step"><div class="no">1</div><div class="bd"><h4>Make the writes land, and show the receipt</h4><p>Specimen J. Until a drag reaches ClickUp and says so, nothing else is worth building — and Yami has already found the bug, so you have a test case waiting.</p></div><div class="ef">must · blocking</div></div>
+      <div class="step"><div class="no">2</div><div class="bd"><h4>Ship the capacity rail above the fold</h4><p>Specimen B. Six rows, sorted most-free first, hatched segments for waiting work. Highest value per pixel on the entire dashboard and it fits in a strip.</p></div><div class="ef">must · small</div></div>
+      <div class="step"><div class="no">3</div><div class="bd"><h4>Turn Today into the allocation board</h4><p>Specimen A. People as columns, pipeline hard left, cost previewed on drop. This is the one that retires the Slack post.</p></div><div class="ef">must · large</div></div>
+      <div class="step"><div class="no">4</div><div class="bd"><h4>Rank the noise into a queue</h4><p>Specimens D and E. Four tiers, one action per row, aged open loops. Then turn the ClickUp Slack firehose down to tier 1 only.</p></div><div class="ef">high value</div></div>
+      <div class="step"><div class="no">5</div><div class="bd"><h4>Let it write the 4:30 post</h4><p>Specimen K. Drafted from the board, edited by Yami, sent by her. The moment the team stops noticing where the list came from, the tool has won.</p></div><div class="ef">high value · small</div></div>
+      <div class="step"><div class="no">6</div><div class="bd"><h4>Add the ten-day heat</h4><p>Specimen C. Moves you from reacting to today into seeing the cliff. This is the one that changes sales conversations rather than studio ones.</p></div><div class="ef">medium</div></div>
+      <div class="step"><div class="no">7</div><div class="bd"><h4>Put it on the wall</h4><p>Specimen G. Cheap to build once the data model exists, and it does more for shared awareness than any amount of reporting.</p></div><div class="ef">cheap · visible</div></div>
+      <div class="step"><div class="no">8</div><div class="bd"><h4>Then the slow-burn views</h4><p>Fairness (H), the promise strip (I), the day timeline (F). Monthly and quarterly instruments — real value, but none of them change what happens on a Wednesday.</p></div><div class="ef">later</div></div>
+    </div>
+
+    <div class="note col wide" style="margin-top:26px">
+      <p><b>One thing to decide before step 3.</b> Does the board plan <em>today</em> or <em>tomorrow</em>? Yami's Slack post is written in the afternoon for the next day, so the studio's real planning horizon is tomorrow — but the tab is called Today. Pick one and name the tab after it. Trying to be both is how these screens end up ambiguous, and it is the single most likely reason a good build still gets ignored.</p>
+    </div>
+  </section>
+
+  <footer style="margin-top:90px;padding-top:22px;border-top:1px solid var(--rule)">
+    <div class="tiny" style="display:flex;flex-wrap:wrap;gap:6px 22px">
+      <span>Studio Floor · design research for 10.0.0.87:3200</span>
+      <span>Wednesday 26 August 2026</span>
+      <span>Built from Slack, ClickUp and the walkthrough written for Yami on 5 Aug</span>
+    </div>
+  </footer>
+
+</div>
