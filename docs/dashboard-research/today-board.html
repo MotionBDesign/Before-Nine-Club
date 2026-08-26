@@ -201,6 +201,32 @@ section{padding:80px 0 0;scroll-margin-top:24px}
 .jc2 .th{width:52px;height:40px}
 .jc2.wide .th{width:76px;height:54px}
 
+/* ---- allocation (dish-out) ---- */
+.alloc{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+@media(min-width:1000px){.alloc{grid-template-columns:1.15fr 1fr}}
+.pilecard{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:8px;display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;box-shadow:var(--e1);cursor:grab}
+.pilecard .bd{display:grid;gap:4px;min-width:0}
+.pilecard .nm{font-weight:650;font-size:13.5px;letter-spacing:-.018em;line-height:1.25}
+.pilecard .mt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-3)}
+.pilecard .th{width:52px;height:40px}
+.pilecard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--tint-2),var(--e1)}
+.prow2{display:grid;grid-template-columns:auto 1fr 92px;gap:11px;align-items:center;padding:9px 10px;border-radius:12px;border:1px solid transparent}
+.prow2:hover{background:var(--surface-2)}
+.prow2.drop{border-color:var(--accent);border-style:dashed;background:var(--tint)}
+.prow2 .n{font-weight:650;font-size:13.5px;letter-spacing:-.016em}
+.prow2 .j{font-size:11.5px;color:var(--ink-3)}
+.prow2 .rt{text-align:right;font-family:var(--fm);font-size:11.5px;color:var(--ink-2)}
+.keycap{font-family:var(--fm);font-size:10px;padding:1px 5px;border-radius:5px;border:1px solid var(--hair-2);background:var(--surface-2);color:var(--ink-3)}
+.runbox{background:var(--surface-2);border:1px solid var(--hair);border-radius:var(--r-l);padding:16px}
+.stepr{display:grid;grid-template-columns:auto 1fr 68px auto;gap:9px;align-items:center;background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:7px 9px}
+.stepr .lbl{font-size:12.5px;font-weight:600}
+.stepr .hrs{font-family:var(--fm);font-size:12px;text-align:right;color:var(--ink-2)}
+.ghostbtn{border:1px dashed var(--hair-2);border-radius:10px;padding:7px 9px;font-size:12.5px;color:var(--ink-3);text-align:center}
+.whopick{display:flex;gap:6px;flex-wrap:wrap}
+.whopick .w{display:flex;align-items:center;gap:6px;border:1px solid var(--hair-2);background:var(--surface);border-radius:999px;padding:4px 10px 4px 4px;font-size:12.5px;font-weight:600}
+.whopick .w.free{border-color:rgba(250,178,25,.5);background:var(--warn-bg)}
+.whopick .w.full{opacity:.5}
+.whopick .w.on{border-color:var(--accent);background:var(--tint-2);color:var(--accent)}
 /* production layout */
 .prod{display:grid;gap:12px;grid-template-columns:1fr}
 @media(min-width:1000px){.prod{grid-template-columns:1.62fr 1fr}}
@@ -565,6 +591,251 @@ section{padding:80px 0 0;scroll-margin-top:24px}
         <div><b>Feedback sits above the day</b>The one thing that should reorder a morning is a client changing their mind overnight. It gets the top module and the only red on the page.</div>
         <div><b>The quote is the brief</b>Kavindu does not need to open ClickUp to learn what changed — the actual sentence is on the card. That is the difference between a notification and an instruction.</div>
         <div><b>Over-capacity is his to raise</b>He sees 125% and gets one button to push it back to Yami. The person carrying too much should not have to notice it themselves.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DATA REALITY ============ -->
+  <section id="reality">
+    <div class="col w">
+      <div class="eyebrow">What your ClickUp actually holds</div>
+      <h2>No, you will not be uploading screenshots</h2>
+      <p>I went and looked at the real tasks rather than guessing. The answer to the thumbnail question is straightforward — but I found something more important while I was in there.</p>
+    </div>
+
+    <div class="pgrid p2" style="margin-top:26px">
+      <div class="pcard">
+        <h4>On the pictures</h4>
+        <p class="small">Every task I opened has <strong>zero attachments</strong> and an empty description. So thumbnails cannot come from ClickUp — but they were never going to come from you by hand either. Your artwork already lives in two places a machine can reach: the Drive folders you paste into Slack all day, and the studio share at <span class="tiny">MBD/homes/admin/Clients/…</span>. Drive hands out thumbnails through its own API; the share needs a small watcher that grabs the newest file in a job folder. Either way it is a plumbing job, done once.</p>
+        <p class="small" style="margin-bottom:0">And the board never depends on it. Where no image exists you get the generated placeholder — client plus deliverable type — which is exactly what every thumbnail in these mockups already is.</p>
+      </div>
+      <div class="pcard" style="border-color:rgba(250,178,25,.4);background:var(--warn-bg)">
+        <h4>The thing that actually matters</h4>
+        <p class="small"><strong>Most of your tasks have no assignee and no due date.</strong> Resmed's Tiered Bundles EDMs, the ATL + OOH ads, the Service days EDMs, the comorbidity artwork — all unassigned. Allocation is happening in Slack and never landing in ClickUp.</p>
+        <p class="small" style="margin-bottom:0">That flips the point of the dish-out screen below. It is not a nicer way to do something you already do — it is the thing that finally <em>captures</em> the allocation you are currently only saying out loud.</p>
+      </div>
+    </div>
+
+    <div class="callout col w" style="margin-top:22px">
+      <p><b>Three things I can now use exactly instead of approximately.</b> A day is <strong>6.5 hours</strong> in your own formula, not 8. Work is typed <span class="tiny">Retainer / Quoted / Non Billable / Sponsored</span>. And you already have a health scale — <span class="tiny">On Track → Close to Short Time → Time for Review → Overtime</span> — so the board should use those four words rather than inventing new ones. The screens below do.</p>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN C · DISH OUT ============ -->
+  <section id="dishout">
+    <div class="col w">
+      <div class="eyebrow">Screen three</div>
+      <h2>Dishing it out</h2>
+      <p>For you, Yami and Andrea. The act is not "browse the studio" — it is <em>empty this pile onto these people without overloading anyone</em>. That is a different interface from the two above, and it wants two modes: a board when you want to see balance, and a run when you just want it done.</p>
+    </div>
+
+    <div class="shot" id="s-dish">
+      <div class="shot-cap"><span class="k">C1</span><span class="t">Place the work</span><span class="s">the pile, and the people</span></div>
+      <div class="bed">
+        <div class="app">
+          <aside class="side">
+            <div class="me"><span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">YR</span><span><span class="nm">Yamileth</span><br><span class="st">● Online</span></span></div>
+            <nav class="nav">
+              <a href="#dishout" class="on"><span class="ic">◧</span>Today</a>
+              <a href="#dishout"><span class="ic">▤</span>Projects</a>
+              <a href="#dishout"><span class="ic">◑</span>Retainers</a>
+              <a href="#dishout"><span class="ic">▦</span>Months</a>
+              <a href="#dishout"><span class="ic">◍</span>Team</a>
+              <a href="#dishout"><span class="ic">◆</span>Bonus</a>
+              <a href="#dishout"><span class="ic">▷</span>Meetings</a>
+            </nav>
+            <div class="grp">Placing for</div>
+            <div class="cli" style="color:var(--accent);font-weight:650">Thu 27 Aug</div>
+            <div class="cli">Fri 28 Aug</div>
+            <div class="cli">Next week</div>
+          </aside>
+
+          <main class="main">
+            <div class="hd">
+              <div>
+                <div class="dt">Placing work for Thursday 27 August</div>
+                <h5>9 jobs to place</h5>
+                <div class="sub">40.5 hours of work · 39 hours of team capacity · Kavindu already over.</div>
+              </div>
+              <div class="rt"><span class="btn">Place all suggested</span><span class="btn pri">Start assign run</span></div>
+            </div>
+
+            <div class="seg"><span>Accounts<span class="n">16</span></span><span>Production<span class="n">12</span></span><span class="on">Dish out<span class="n">9</span></span></div>
+
+            <div class="alloc">
+              <!-- THE PILE -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--tint-2);color:var(--accent)">↯</span><span class="t">The pile</span><span class="n">9 · 40.5h</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+                  <div class="pilecard sel">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+                    <div class="bd"><div class="nm">Sep 2026 Newsletter</div><div class="mt"><span style="font-weight:650;color:var(--ink-2)">Resmed</span><span>·</span><span class="tag mute"><i></i>Retainer</span><span>copy + design</span></div></div>
+                    <div style="text-align:right"><div class="tiny" style="font-size:12px;color:var(--ink)">7h</div><div class="tiny">1.1d</div></div>
+                  </div>
+                  <div class="pilecard">
+                    <div class="th" style="--t1:#00c2b2;--t2:#06322e"><div class="play"></div><div class="scrub"><i style="width:18%"></i></div></div>
+                    <div class="bd"><div class="nm">Infinite Studio Post</div><div class="mt"><span style="font-weight:650;color:var(--ink-2)">Aurizn</span><span>·</span><span class="tag crit"><i></i>11d stale</span></div></div>
+                    <div style="text-align:right"><div class="tiny" style="font-size:12px;color:var(--ink)">6.5h</div><div class="tiny">1.0d</div></div>
+                  </div>
+                  <div class="pilecard">
+                    <div class="th" style="--t1:#43a047;--t2:#10240f"><div class="poster"><div class="big m"></div><div class="big s"></div></div></div>
+                    <div class="bd"><div class="nm">MMS alterations</div><div class="mt"><span style="font-weight:650;color:var(--ink-2)">Ilim</span><span>·</span><span class="tag crit"><i></i>14d stale</span></div></div>
+                    <div style="text-align:right"><div class="tiny" style="font-size:12px;color:var(--ink)">3.25h</div><div class="tiny">0.5d</div></div>
+                  </div>
+                  <div class="pilecard">
+                    <div class="th" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="dot"></div></div></div>
+                    <div class="bd"><div class="nm">Conference slides</div><div class="mt"><span style="font-weight:650;color:var(--ink-2)">Maptek</span><span>·</span><span class="tag mute"><i></i>Retainer</span></div></div>
+                    <div style="text-align:right"><div class="tiny" style="font-size:12px;color:var(--ink)">9.75h</div><div class="tiny">1.5d</div></div>
+                  </div>
+                  <div class="pilecard">
+                    <div class="th" style="--t1:#ff3b30;--t2:#1a0507"><div class="poster"><div class="big m"></div><div class="big s"></div><div class="rule"></div></div></div>
+                    <div class="bd"><div class="nm">Award category slides</div><div class="mt"><span style="font-weight:650;color:var(--ink-2)">48hr</span><span>·</span><span class="tag mute"><i></i>Sponsored</span></div></div>
+                    <div style="text-align:right"><div class="tiny" style="font-size:12px;color:var(--ink)">3.25h</div><div class="tiny">0.5d</div></div>
+                  </div>
+                  <div class="more">+ 4 more · 11.25h</div>
+                </div>
+              </div>
+
+              <!-- THE PEOPLE -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--surface-2);color:var(--ink-2)">◍</span><span class="t">Thursday capacity</span><span class="n">6.5h = 1 day</span><span class="rt">···</span></div>
+                <div class="mod-bd" style="padding:0 10px 10px">
+                  <div class="prow2 drop">
+                    <span class="avx" style="--a1:#8fd4ff;--a2:#123a6b">AP</span>
+                    <span><span class="n">Ashley</span> <span class="keycap">1</span><br><span class="j">CMAX · 1.5h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f warn" style="width:23%"></span><span class="tick" style="left:100%"></span></span></span>
+                    <span class="rt"><b style="color:var(--warn-ink)">5h free</b></span>
+                  </div>
+                  <div class="prow2">
+                    <span class="avx" style="--a1:#ffd27a;--a2:#8a5a00">EL</span>
+                    <span><span class="n">Elle</span> <span class="keycap">2</span><br><span class="j">Newsletter copy · 3.25h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f warn" style="width:50%"></span><span class="tick" style="left:100%"></span></span></span>
+                    <span class="rt"><b style="color:var(--warn-ink)">3.25h free</b></span>
+                  </div>
+                  <div class="prow2">
+                    <span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">RT</span>
+                    <span><span class="n">Rochelle</span> <span class="keycap">3</span><br><span class="j">Resmed bundles · 5h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f" style="width:77%"></span><span class="tick" style="left:100%"></span></span></span>
+                    <span class="rt"><b>1.5h free</b></span>
+                  </div>
+                  <div class="prow2">
+                    <span class="avx" style="--a1:#5cc8ff;--a2:#123a6b">SR</span>
+                    <span><span class="n">Sergio</span> <span class="keycap">4</span><br><span class="j">SAPN release · 6.5h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f ok" style="width:100%"></span><span class="tick" style="left:100%"></span></span></span>
+                    <span class="rt"><span class="tag ok"><i></i>On track</span></span>
+                  </div>
+                  <div class="prow2">
+                    <span class="avx" style="--a1:#c99cff;--a2:#3d1a6b">AZ</span>
+                    <span><span class="n">Amal</span> <span class="keycap">5</span><br><span class="j">SAPN brand · 6.5h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f ok" style="width:100%"></span><span class="tick" style="left:100%"></span></span></span>
+                    <span class="rt"><span class="tag ok"><i></i>On track</span></span>
+                  </div>
+                  <div class="prow2">
+                    <span class="avx" style="--a1:#ff6b6b;--a2:#8b1a1a">KM</span>
+                    <span><span class="n">Kavindu</span> <span class="keycap">6</span><br><span class="j">48hr + Resmed digi · 8h booked</span>
+                      <span class="pbar" style="margin-top:5px"><span class="f" style="width:77%"></span><span class="f crit" style="width:23%"></span><span class="tick" style="left:77%"></span></span></span>
+                    <span class="rt"><span class="tag crit"><i></i>Overtime</span></span>
+                  </div>
+                  <div style="margin-top:8px;padding:9px 10px;border-radius:10px;background:var(--tint);display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                    <span class="tag acc"><i></i>Suggest</span>
+                    <span style="font-size:12.5px;color:var(--ink-2)">Aurizn and Ilim both fit Ashley's day. Maptek slides need to wait or split.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>Capacity updates as you drag</b>The bar and the free-hours number move while the card is still in the air. You find out you are overloading someone <em>before</em> you let go, not after.</div>
+        <div><b>Your own words on the meter</b>On track, Time for review, Overtime — lifted straight from the TIME HEALTH formula already in your ClickUp, so the board agrees with the reports.</div>
+        <div><b>Sorted most-free first</b>Ashley is top because Ashley has the most room. When you are placing nine things quickly, the order of the list is doing half the thinking.</div>
+      </div>
+    </div>
+
+    <!-- C2 -->
+    <div class="col w" style="margin-top:56px">
+      <h3>C2 · The assign run</h3>
+      <p class="small">The mode for the actual afternoon. One job at a time, filling the screen, with the team as one-tap targets. Nine jobs should take about ninety seconds — and this is where the briefing happens too, because your Slack posts already split work into steps with an hour budget each.</p>
+    </div>
+    <div class="shot" id="s-run">
+      <div class="shot-cap"><span class="k">C2</span><span class="t">Assign run</span><span class="s">focused · keyboard · 3 of 9</span></div>
+      <div class="bed">
+        <div class="app" style="grid-template-columns:1fr">
+          <main class="main">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+              <span style="font-weight:800;font-size:17px;letter-spacing:-.028em">Assign run</span>
+              <span class="pbar" style="width:150px"><span class="f" style="width:33%"></span></span>
+              <span class="tiny">3 of 9 placed · 22h left</span>
+              <span class="btn s" style="margin-left:auto">Esc to stop</span>
+            </div>
+
+            <div class="runbox">
+              <div style="display:grid;gap:14px;grid-template-columns:1fr">
+                <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+                  <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a;width:132px;height:99px"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="ln s"></div><div class="cta"></div></div></div></div>
+                  <div style="min-width:220px;flex:1">
+                    <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;line-height:1.15">Resmed — Sep 2026 Newsletter</div>
+                    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">
+                      <span class="tag mute"><i></i>Retainer</span><span class="tag acc"><i></i>7h budget</span><span class="tag warn"><i></i>Final file 10 Sep</span>
+                    </div>
+                    <div style="font-size:13.5px;color:var(--ink-2);margin-top:9px;line-height:1.45">Brief from Trish. Bestsellers to follow from ecommerce. Copy first, then design in Figma once approved.</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="font-size:12.5px;font-weight:700;letter-spacing:-.01em;margin-bottom:7px">Split it into steps</div>
+                  <div style="display:grid;gap:7px">
+                    <div class="stepr">
+                      <span class="avx" style="--a1:#ffd27a;--a2:#8a5a00">EL</span>
+                      <span class="lbl">Copy — first draft <span class="tiny" style="font-weight:400">· Elle</span></span>
+                      <span class="hrs">3h</span>
+                      <span class="tiny">✓</span>
+                    </div>
+                    <div class="stepr">
+                      <span class="avx" style="--a1:#8fd4ff;--a2:#123a6b">AP</span>
+                      <span class="lbl">Design in Figma <span class="tiny" style="font-weight:400">· after copy</span></span>
+                      <span class="hrs">4h</span>
+                      <span class="tiny">✓</span>
+                    </div>
+                    <div class="ghostbtn">+ add a step</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="font-size:12.5px;font-weight:700;letter-spacing:-.01em;margin-bottom:7px">Who takes the design step?</div>
+                  <div class="whopick">
+                    <span class="w on"><span class="avx" style="--a1:#8fd4ff;--a2:#123a6b">AP</span>Ashley <span class="keycap">1</span></span>
+                    <span class="w free"><span class="avx" style="--a1:#ffd27a;--a2:#8a5a00">EL</span>Elle <span class="keycap">2</span></span>
+                    <span class="w"><span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">RT</span>Rochelle <span class="keycap">3</span></span>
+                    <span class="w full"><span class="avx" style="--a1:#5cc8ff;--a2:#123a6b">SR</span>Sergio <span class="keycap">4</span></span>
+                    <span class="w full"><span class="avx" style="--a1:#c99cff;--a2:#3d1a6b">AZ</span>Amal <span class="keycap">5</span></span>
+                    <span class="w full"><span class="avx" style="--a1:#ff6b6b;--a2:#8b1a1a">KM</span>Kavindu <span class="keycap">6</span></span>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--hair)">
+                  <span style="font-size:13.5px;font-weight:650">Puts Ashley at <span style="color:var(--ok-ink)">5.5h of 6.5h</span> — still on track.</span>
+                  <span style="margin-left:auto;display:flex;gap:7px">
+                    <span class="btn">Skip <span class="keycap">S</span></span>
+                    <span class="btn pri">Place &amp; next <span class="keycap" style="border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff">⏎</span></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)">
+              <span class="tag ok"><i></i>Writing to ClickUp</span>
+              <span>3 placed · assignee, hours and status all landed</span>
+              <span class="tiny" style="margin-left:auto">Posts to #motion-by-design at 4:30 as “Tomorrow’s list”</span>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>Steps, because that is how you brief</b>“Copy — Elle, 3h. Design — once copy is done, 4h.” Your Slack briefs already have this shape; the run just captures it instead of retyping it.</div>
+        <div><b>Full people are dimmed, not hidden</b>Sergio and Amal stay on screen greyed out. You can still override — it is your studio — but the default answer is the one that does not break anyone.</div>
+        <div><b>It ends by writing the Slack post</b>Nine placements become the 4:30 message Yami types by hand today. That is the payoff that makes the run worth doing at all.</div>
       </div>
     </div>
   </section>
