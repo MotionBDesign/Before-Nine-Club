@@ -1,0 +1,611 @@
+<title>The Today Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* ============================================================
+   THE TODAY BOARD — draft for 10.0.0.87:3200
+   Studio Floor visual direction, applied to a morning page.
+   Two sections: Accounts (the client boundary) and
+   Production (inside the studio).
+   ============================================================ */
+:root{
+  color-scheme: light;
+  --paper:#faf9f7; --surface:#fff; --surface-2:#f4f2ef; --surface-3:#eae7e3;
+  --bed:#ded9fb;
+  --tint:rgba(67,56,202,.05); --tint-2:rgba(67,56,202,.10);
+  --ink:#17161a; --ink-2:#55535e; --ink-3:#8b8894;
+  --hair:#e7e4e0; --hair-2:#d9d5d0;
+  --accent:#4338ca; --accent-2:#6366f1; --accent-ink:#fff;
+  --ok:#0ca30c; --ok-bg:rgba(12,163,12,.10); --ok-ink:#056b05;
+  --warn:#fab219; --warn-bg:rgba(250,178,25,.15); --warn-ink:#8a5a00;
+  --crit:#d03b3b; --crit-bg:rgba(208,59,59,.10); --crit-ink:#a32626;
+  --r-s:10px; --r-m:16px; --r-l:22px; --r-xl:28px;
+  --e1:0 1px 2px rgba(23,22,26,.04);
+  --e2:0 2px 4px rgba(23,22,26,.04),0 8px 20px -8px rgba(23,22,26,.10);
+  --e3:0 6px 12px rgba(23,22,26,.06),0 26px 54px -20px rgba(23,22,26,.22);
+  --f:'Figtree',-apple-system,'Segoe UI',sans-serif;
+  --fm:'DM Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --paper:#0f0e12; --surface:#1a1920; --surface-2:#232029; --surface-3:#2c2934;
+  --bed:#1d1a33;
+  --tint:rgba(129,140,248,.08); --tint-2:rgba(129,140,248,.14);
+  --ink:#f6f5f8; --ink-2:#b0adba; --ink-3:#7d7a88;
+  --hair:#2a2833; --hair-2:#383544;
+  --accent:#818cf8; --accent-2:#a5b0ff; --accent-ink:#14121f;
+  --ok-bg:rgba(12,163,12,.17); --ok-ink:#5fd45f;
+  --warn-bg:rgba(250,178,25,.17); --warn-ink:#ffcf5c;
+  --crit-bg:rgba(208,59,59,.19); --crit-ink:#ff9494;
+  --e1:0 1px 2px rgba(0,0,0,.4);
+  --e2:0 2px 6px rgba(0,0,0,.45),0 10px 24px -10px rgba(0,0,0,.6);
+  --e3:0 8px 16px rgba(0,0,0,.5),0 30px 60px -22px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0f0e12; --surface:#1a1920; --surface-2:#232029; --surface-3:#2c2934;
+  --bed:#1d1a33;
+  --tint:rgba(129,140,248,.08); --tint-2:rgba(129,140,248,.14);
+  --ink:#f6f5f8; --ink-2:#b0adba; --ink-3:#7d7a88;
+  --hair:#2a2833; --hair-2:#383544;
+  --accent:#818cf8; --accent-2:#a5b0ff; --accent-ink:#14121f;
+  --ok-bg:rgba(12,163,12,.17); --ok-ink:#5fd45f;
+  --warn-bg:rgba(250,178,25,.17); --warn-ink:#ffcf5c;
+  --crit-bg:rgba(208,59,59,.19); --crit-ink:#ff9494;
+  --e1:0 1px 2px rgba(0,0,0,.4);
+  --e2:0 2px 6px rgba(0,0,0,.45),0 10px 24px -10px rgba(0,0,0,.6);
+  --e3:0 8px 16px rgba(0,0,0,.5),0 30px 60px -22px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1260px;margin:0 auto;padding:0 24px 120px}
+.col{max-width:66ch}.col.w{max-width:78ch}
+h1,h2,h3,h4{margin:0;font-family:var(--f);text-wrap:balance}
+h1{font-size:clamp(42px,7vw,80px);font-weight:800;letter-spacing:-.042em;line-height:1}
+h2{font-size:clamp(28px,3.8vw,42px);font-weight:800;letter-spacing:-.034em;line-height:1.07;margin-bottom:13px}
+h3{font-size:22px;font-weight:700;letter-spacing:-.024em;margin-bottom:7px}
+h4{font-size:16px;font-weight:700;letter-spacing:-.014em;margin-bottom:5px}
+p{margin:0 0 15px}
+a{color:var(--accent)}
+.eyebrow{font-family:var(--fm);font-size:11px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.lede{font-size:20px;line-height:1.5;color:var(--ink-2);letter-spacing:-.01em}
+.small{font-size:15px;color:var(--ink-2);line-height:1.55}
+.tiny{font-family:var(--fm);font-size:12px;color:var(--ink-3)}
+section{padding:80px 0 0;scroll-margin-top:24px}
+.pcard{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-l);padding:22px;box-shadow:var(--e1)}
+.pgrid{display:grid;gap:16px}
+@media(min-width:740px){.p2{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.p3{grid-template-columns:repeat(3,1fr)}}
+.callout{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-m);padding:18px 22px;font-size:15.5px;color:var(--ink-2)}
+.callout b{color:var(--ink)}.callout :last-child{margin-bottom:0}
+.notes{display:grid;gap:14px;margin-top:16px}
+@media(min-width:820px){.notes.n2{grid-template-columns:repeat(2,1fr)}.notes.n3{grid-template-columns:repeat(3,1fr)}}
+.notes>div{font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.notes b{display:block;font-family:var(--fm);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.shot{margin:26px 0 0}
+.shot-cap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.shot-cap .k{font-family:var(--fm);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:3px 8px}
+.shot-cap .t{font-weight:700;font-size:17px;letter-spacing:-.02em}
+.shot-cap .s{font-size:14px;color:var(--ink-3)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<style>
+/* ===================== THE APP SHELL ===================== */
+.bed{background:var(--bed);padding:22px;border-radius:var(--r-xl)}
+.app{background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:var(--e3);display:grid;grid-template-columns:1fr}
+@media(min-width:900px){.app{grid-template-columns:196px 1fr}}
+.side{background:var(--surface-2);border-right:1px solid var(--hair);padding:14px 12px;display:none}
+@media(min-width:900px){.side{display:block}}
+.side .me{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:12px;background:var(--surface);box-shadow:var(--e1);margin-bottom:16px}
+.side .me .nm{font-weight:700;font-size:13px;letter-spacing:-.018em;line-height:1.2}
+.side .me .st{font-size:11px;color:var(--ok-ink)}
+.nav{display:grid;gap:1px;margin-bottom:18px}
+.nav a{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;font-size:13.5px;font-weight:550;color:var(--ink-2);text-decoration:none}
+.nav a.on{background:var(--tint-2);color:var(--accent);font-weight:700}
+.nav a .ic{width:15px;text-align:center;opacity:.85;font-size:13px}
+.side .grp{font-family:var(--fm);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);padding:0 9px;margin:0 0 7px}
+.side .cli{display:flex;align-items:center;gap:8px;padding:5px 9px;font-size:12.5px;color:var(--ink-2)}
+.side .cli i{width:8px;height:8px;border-radius:3px;flex:none}
+.main{padding:18px 20px 22px;min-width:0;background:var(--surface)}
+
+/* header */
+.hd{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.hd .dt{font-family:var(--fm);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.hd h5{margin:3px 0 0;font-size:27px;font-weight:800;letter-spacing:-.036em;line-height:1.12}
+.hd .sub{font-size:15px;color:var(--ink-2);margin-top:5px}
+.hd .rt{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.btn{font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;border:1px solid var(--hair-2);background:var(--surface);color:var(--ink-2);white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.s{font-size:12px;padding:4px 10px}
+
+/* segmented control — the split */
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--hair);border-radius:999px;padding:3px;gap:2px;margin-bottom:16px}
+.seg span{font-size:13.5px;font-weight:650;padding:6px 16px;border-radius:999px;color:var(--ink-3);white-space:nowrap}
+.seg span.on{background:var(--surface);color:var(--ink);box-shadow:var(--e1)}
+.seg span .n{font-family:var(--fm);font-size:11px;opacity:.65;margin-left:5px}
+
+/* module card */
+.mod{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-m);display:flex;flex-direction:column;min-width:0}
+.mod-hd{display:flex;align-items:center;gap:8px;padding:12px 13px 10px}
+.mod-hd .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11px;flex:none}
+.mod-hd .t{font-weight:700;font-size:14px;letter-spacing:-.02em}
+.mod-hd .n{font-family:var(--fm);font-size:11px;color:var(--ink-3);background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.mod-hd .rt{margin-left:auto;color:var(--ink-3);font-size:14px;letter-spacing:.06em}
+.mod-bd{padding:0 10px 10px;display:grid;gap:7px;align-content:start}
+.mod.crit{background:var(--crit-bg);border-color:rgba(208,59,59,.26)}
+.mod.warn{background:var(--warn-bg);border-color:rgba(250,178,25,.3)}
+
+/* board columns */
+.board{display:grid;gap:12px;grid-template-columns:1fr;align-items:start}
+@media(min-width:620px){.board{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1050px){.board{grid-template-columns:repeat(4,1fr)}}
+
+/* job card */
+.jc2{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:8px;display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;box-shadow:var(--e1);min-width:0}
+.jc2 .bd{display:grid;gap:5px;min-width:0}
+.jc2 .nm{font-weight:650;font-size:13.5px;letter-spacing:-.018em;line-height:1.25}
+.jc2 .mt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-3)}
+.jc2 .cl{font-weight:650;color:var(--ink-2)}
+.jc2.wide{grid-template-columns:76px 1fr;padding:9px}
+.jc2.wide .nm{font-size:15px}
+.jc2.plain{grid-template-columns:1fr}
+.more{font-size:12.5px;font-weight:600;color:var(--accent);padding:5px 4px 2px}
+
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag i{width:5px;height:5px;border-radius:50%;flex:none}
+.tag.ok{background:var(--ok-bg);color:var(--ok-ink)}.tag.ok i{background:var(--ok)}
+.tag.warn{background:var(--warn-bg);color:var(--warn-ink)}.tag.warn i{background:var(--warn)}
+.tag.crit{background:var(--crit-bg);color:var(--crit-ink)}.tag.crit i{background:var(--crit)}
+.tag.mute{background:var(--surface-2);color:var(--ink-2)}.tag.mute i{background:var(--ink-3)}
+.tag.acc{background:var(--tint-2);color:var(--accent)}.tag.acc i{background:var(--accent)}
+
+.avx{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:9.5px;background:linear-gradient(140deg,var(--a1,#6366f1),var(--a2,#312e81));box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+.avx.l{width:36px;height:36px;font-size:12px}
+.avstack{display:flex}.avstack .avx{margin-left:-8px;box-shadow:0 0 0 2px var(--surface)}.avstack .avx:first-child{margin-left:0}
+
+.pbar{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;display:flex;position:relative}
+.pbar .f{background:var(--accent)}.pbar .f.ok{background:var(--ok)}.pbar .f.warn{background:var(--warn)}.pbar .f.crit{background:var(--crit)}
+.pbar .tick{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px;background:var(--ink-2)}
+
+.rings{position:relative;flex:none}.rings svg{display:block;transform:rotate(-90deg)}
+.rings .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1}
+.rings .mid .v{font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+
+/* ===================== THUMBNAILS ===================== */
+.th{position:relative;flex:none;overflow:hidden;border-radius:8px;background:linear-gradient(145deg,var(--t1,#6366f1),var(--t2,#1e1b4b));box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
+.th::after{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,0) 42%);pointer-events:none}
+.th .sheet{position:absolute;inset:11% 13%;background:#fff;border-radius:2px;overflow:hidden;display:grid;grid-template-rows:26% 1fr}
+.th .sheet .hd2{background:var(--t1)}
+.th .sheet .bd2{padding:7% 9%;display:flex;flex-direction:column;gap:5%}
+.th .sheet .ln{flex:0 0 2.5px;border-radius:2px;background:#ddd9d5}
+.th .sheet .ln.s{width:55%}
+.th .sheet .cta{flex:0 0 6px;width:45%;border-radius:3px;background:var(--t1);margin-top:auto}
+.th .sheet .blob{flex:0 0 38%;border-radius:2px;background:linear-gradient(135deg,var(--t2),var(--t1));opacity:.55}
+.th .play{position:absolute;left:50%;top:50%;width:28%;aspect-ratio:1;margin:-14% 0 0 -14%;border-radius:50%;background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 1.4px rgba(255,255,255,.6);display:grid;place-items:center}
+.th .play::before{content:"";border-left:6px solid #fff;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-left:2px}
+.th .scrub{position:absolute;left:8%;right:8%;bottom:9%;height:2.5px;border-radius:2px;background:rgba(255,255,255,.3)}
+.th .scrub i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#fff}
+.th .poster{position:absolute;inset:0;padding:12%;display:flex;flex-direction:column;justify-content:flex-end;gap:6%}
+.th .poster .big{flex:0 0 13%;border-radius:2px;background:#fff;opacity:.95}
+.th .poster .big.s{width:62%}.th .poster .big.m{width:86%}
+.th .slide{position:absolute;inset:9%;background:#fff;border-radius:2px;padding:8%;display:flex;flex-direction:column;gap:7%}
+.th .slide .ttl{flex:0 0 5px;width:62%;border-radius:2px;background:var(--t2)}
+.th .slide .b{flex:0 0 3px;border-radius:2px;background:#dedad6}
+.th .slide .b.s{width:70%}.th .slide .b.m{width:88%}
+.th .slide .dot{position:absolute;right:8%;bottom:8%;width:13%;aspect-ratio:1;border-radius:50%;background:var(--t1);opacity:.85}
+.th .brand{position:absolute;inset:0;display:grid;grid-template-rows:1fr 24%}
+.th .brand .mark{display:grid;place-items:center;font-weight:900;letter-spacing:-.05em;color:#fff;font-size:15px;text-shadow:0 2px 10px rgba(0,0,0,.2)}
+.th .brand .sw{display:flex}.th .brand .sw i{flex:1}
+.jc2 .th{width:52px;height:40px}
+.jc2.wide .th{width:76px;height:54px}
+
+/* production layout */
+.prod{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:1000px){.prod{grid-template-columns:1.62fr 1fr}}
+.mini{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:7px 4px}
+.mini .n{font-weight:650;font-size:13px;letter-spacing:-.016em}
+.mini .j{font-size:11.5px;color:var(--ink-3);line-height:1.25}
+.wk{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;padding:7px 4px;border-top:1px solid var(--hair)}
+.wk:first-child{border-top:0}
+.wk .d{font-family:var(--fm);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.wk .n{font-size:13px;font-weight:600;letter-spacing:-.014em}
+</style>
+<div class="wrap">
+
+  <header style="padding:76px 0 40px">
+    <div class="eyebrow">Draft · 10.0.0.87:3200 → Today</div>
+    <h1>The Today<br>Board</h1>
+    <div class="col" style="margin-top:26px">
+      <p class="lede">A morning page, not a database. You open it, you find out what you have to do, you close it. Everything that is <em>detail</em> — burn rates, project histories, retainer maths — stays on Projects and Retainers where it belongs.</p>
+    </div>
+  </header>
+
+  <!-- ============ THE MODEL ============ -->
+  <section id="model" style="padding-top:20px">
+    <div class="col w">
+      <div class="eyebrow">The split</div>
+      <h2>Two sections, because there are two jobs</h2>
+      <p>Accounts is the <strong>client boundary</strong> — work arriving, work going out, work waiting on someone else. Production is <strong>inside the studio</strong> — what to make today. Yami and Andrea live in the first; everyone else lives in the second.</p>
+    </div>
+
+    <div class="pgrid p2" style="margin-top:26px">
+      <div class="pcard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="width:22px;height:22px;border-radius:7px;background:var(--tint-2);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700">A</span>
+          <h4 style="margin:0">Accounts</h4>
+          <span class="tiny">Yami · Andrea · Dom</span>
+        </div>
+        <p class="small" style="margin-bottom:14px">Reads left to right as a flow: in the door, checked, out the door, waiting.</p>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="tag acc"><i></i>New in — to brief</span><span class="tiny">→</span>
+          <span class="tag mute"><i></i>Needs review</span><span class="tiny">→</span>
+          <span class="tag ok"><i></i>Ready to go off</span><span class="tiny">→</span>
+          <span class="tag warn"><i></i>With the client</span>
+        </div>
+      </div>
+      <div class="pcard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="width:22px;height:22px;border-radius:7px;background:var(--tint-2);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700">P</span>
+          <h4 style="margin:0">Production</h4>
+          <span class="tiny">Kavindu · Sergio · Rochelle · Amal · Elle · Ashley</span>
+        </div>
+        <p class="small" style="margin-bottom:14px">Reads top to bottom by urgency: what changed overnight, then today, then the rest of the week.</p>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="tag crit"><i></i>Fresh feedback in</span><span class="tiny">then</span>
+          <span class="tag acc"><i></i>My day</span><span class="tiny">then</span>
+          <span class="tag mute"><i></i>Rest of the week</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout col w" style="margin-top:22px">
+      <p><b>The rule that keeps it a morning page:</b> nothing on Today is here because it is <em>true</em> — only because someone has to <em>do</em> something about it before they go home. If a card has no action, it belongs on Projects.</p>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN A · ACCOUNTS ============ -->
+  <section id="accounts">
+    <div class="col w">
+      <div class="eyebrow">Screen one</div>
+      <h2>Accounts</h2>
+      <p>Four columns, and each one is a question with an answer at the bottom of it: what do I brief, what do I check, what do I send, who do I chase.</p>
+    </div>
+
+    <div class="shot" id="s-acc">
+      <div class="shot-cap"><span class="k">A</span><span class="t">Today · Accounts</span><span class="s">the client boundary</span></div>
+      <div class="bed">
+        <div class="app">
+          <aside class="side">
+            <div class="me">
+              <span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">YR</span>
+              <span><span class="nm">Yamileth</span><br><span class="st">● Online</span></span>
+            </div>
+            <nav class="nav">
+              <a href="#accounts" class="on"><span class="ic">◧</span>Today</a>
+              <a href="#accounts"><span class="ic">▤</span>Projects</a>
+              <a href="#accounts"><span class="ic">◑</span>Retainers</a>
+              <a href="#accounts"><span class="ic">▦</span>Months</a>
+              <a href="#accounts"><span class="ic">◍</span>Team</a>
+              <a href="#accounts"><span class="ic">◆</span>Bonus</a>
+              <a href="#accounts"><span class="ic">▷</span>Meetings</a>
+            </nav>
+            <div class="grp">Clients</div>
+            <div class="cli">Resmed</div><div class="cli">SAPN</div><div class="cli">Maptek</div>
+            <div class="cli">Aurizn</div><div class="cli">Ilim</div><div class="cli">Symons Clark</div>
+            <div class="cli" style="color:var(--ink-3)">+ 6 more</div>
+          </aside>
+
+          <main class="main">
+            <div class="hd">
+              <div>
+                <div class="dt">Wednesday 26 August</div>
+                <h5>Morning, Yami</h5>
+                <div class="sub">3 jobs are ready to go off, and 3 clients have been waiting too long.</div>
+              </div>
+              <div class="rt"><span class="btn">Brief new work</span><span class="btn pri">Send off 3</span></div>
+            </div>
+
+            <div class="seg"><span class="on">Accounts<span class="n">16</span></span><span>Production<span class="n">12</span></span></div>
+
+            <div class="board">
+              <!-- NEW IN -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--tint-2);color:var(--accent)">↓</span><span class="t">New in</span><span class="n">3</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+                    <div class="bd"><div class="nm">September newsletter</div><div class="mt"><span class="cl">Resmed</span><span>·</span><span>9:30am</span></div><div class="mt"><span class="tag acc"><i></i>Needs brief</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="ln"></div><div class="ln s"></div><div class="cta"></div></div></div></div>
+                    <div class="bd"><div class="nm">AS10 bundle added to promo</div><div class="mt"><span class="cl">Resmed</span><span>·</span><span>11:30am</span></div><div class="mt"><span class="tag acc"><i></i>Needs brief</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#4fc3f7;--t2:#1a237e"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="dot"></div></div></div>
+                    <div class="bd"><div class="nm">SEO + video proposal deck</div><div class="mt"><span class="cl">Newealth</span><span>·</span><span>from Dom</span></div><div class="mt"><span class="tag acc"><i></i>Needs brief</span></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- NEEDS REVIEW -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--surface-2);color:var(--ink-2)">◉</span><span class="t">Needs review</span><span class="n">4</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+                    <div class="bd"><div class="nm">Bundle roll-outs</div><div class="mt"><span class="cl">Resmed</span><span>·</span><span class="avx" style="width:16px;height:16px;font-size:7px;--a1:#ff8fc4;--a2:#7a1450">RT</span><span>Rochelle</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#00a3e0;--t2:#0b2b5c"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div><div class="b m"></div></div></div>
+                    <div class="bd"><div class="nm">Press release</div><div class="mt"><span class="cl">SAPN</span><span>·</span><span class="avx" style="width:16px;height:16px;font-size:7px;--a1:#5cc8ff;--a2:#123a6b">SR</span><span>Sergio</span></div><div class="mt"><span class="tag warn"><i></i>Labels flagged</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ffb300;--t2:#2b2418"><div class="slide"><div class="ttl"></div><div class="b m"></div><div class="b s"></div></div></div>
+                    <div class="bd"><div class="nm">Press release draft</div><div class="mt"><span class="cl">Symons</span><span>·</span><span class="avx" style="width:16px;height:16px;font-size:7px;--a1:#ffd27a;--a2:#8a5a00">EL</span><span>Elle</span></div></div>
+                  </div>
+                  <div class="more">+ 1 more</div>
+                </div>
+              </div>
+
+              <!-- READY TO GO OFF -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--ok-bg);color:var(--ok-ink)">↗</span><span class="t">Ready to go off</span><span class="n">3</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div></div></div></div>
+                    <div class="bd"><div class="nm">Digi screens</div><div class="mt"><span class="cl">Resmed</span><span>·</span><span>2 sizes</span></div><div class="mt"><span class="tag ok"><i></i>Approved</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="play"></div><div class="scrub"><i style="width:62%"></i></div></div>
+                    <div class="bd"><div class="nm">Hillgrove stills — 40 shortlisted</div><div class="mt"><span class="cl">Maptek</span></div><div class="mt"><span class="tag ok"><i></i>Approved</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="poster"><div class="big m"></div><div class="big s"></div></div></div>
+                    <div class="bd"><div class="nm">A4 strut cards</div><div class="mt"><span class="cl">Resmed</span><span>·</span><span>print files up</span></div><div class="mt"><span class="tag ok"><i></i>Approved</span></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- WITH THE CLIENT -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--warn-bg);color:var(--warn-ink)">◷</span><span class="t">With the client</span><span class="n">6</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+                  <div class="jc2" style="border-color:rgba(208,59,59,.3)">
+                    <div class="th" style="--t1:#43a047;--t2:#10240f"><div class="poster"><div class="big m"></div><div class="big s"></div></div></div>
+                    <div class="bd"><div class="nm">MMS alterations</div><div class="mt"><span class="cl">Ilim</span><span>·</span><span>waiting 14 days</span></div><div class="mt"><span class="tag crit"><i></i>Bump today</span></div></div>
+                  </div>
+                  <div class="jc2" style="border-color:rgba(208,59,59,.3)">
+                    <div class="th" style="--t1:#00c2b2;--t2:#06322e"><div class="play"></div><div class="scrub"><i style="width:20%"></i></div></div>
+                    <div class="bd"><div class="nm">Infinite Studio Post</div><div class="mt"><span class="cl">Aurizn</span><span>·</span><span>waiting 11 days</span></div><div class="mt"><span class="tag crit"><i></i>Bump today</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff3b30;--t2:#1a0507"><div class="poster"><div class="big m"></div><div class="big s"></div></div></div>
+                    <div class="bd"><div class="nm">Poster working files</div><div class="mt"><span class="cl">48hr</span><span>·</span><span>waiting 3 days</span></div><div class="mt"><span class="tag warn"><i></i>Bump</span></div></div>
+                  </div>
+                  <div class="jc2">
+                    <div class="th" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="play"></div><div class="scrub"><i style="width:34%"></i></div></div>
+                    <div class="bd"><div class="nm">Conference video sizing</div><div class="mt"><span class="cl">Maptek</span><span>·</span><span>waiting 2 days</span></div></div>
+                  </div>
+                  <div class="more">+ 2 waiting under 2 days</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;background:var(--surface-2);border:1px solid var(--hair);border-radius:var(--r-m);padding:11px 13px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <span style="font-weight:700;font-size:13.5px;letter-spacing:-.02em">Client calls today</span>
+              <span class="tag mute"><i></i>10:00 Maptek — Simon</span>
+              <span class="tag mute"><i></i>14:30 Resmed — Trish</span>
+              <span class="tiny" style="margin-left:auto">2 of 2 have agendas</span>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>Each column ends in a verb</b>Brief it, review it, send it, chase it. A card that cannot be actioned from this screen does not belong on this screen.</div>
+        <div><b>Bumps are computed, not remembered</b>Days-waiting comes from the last client touch. Past your threshold it turns red and asks to be chased — nobody has to keep a mental list.</div>
+        <div><b>Counts are capped</b>Four cards per column, then "+2 more". Six clients waiting is a fact; six cards of detail is a wall.</div>
+      </div>
+    </div>
+  </section>
+  <!-- ============ SCREEN B · PRODUCTION ============ -->
+  <section id="production">
+    <div class="col w">
+      <div class="eyebrow">Screen two</div>
+      <h2>Production</h2>
+      <p>Same page, other tab. This is what Kavindu sees at 9am. It answers one question — what am I making today — and puts the thing that changed overnight above it, because fresh client feedback is the only thing that should reorder a day.</p>
+    </div>
+
+    <div class="shot" id="s-prod">
+      <div class="shot-cap"><span class="k">B</span><span class="t">Today · Production</span><span class="s">inside the studio</span></div>
+      <div class="bed">
+        <div class="app">
+          <aside class="side">
+            <div class="me">
+              <span class="avx" style="--a1:#ff6b6b;--a2:#8b1a1a">KM</span>
+              <span><span class="nm">Kavindu</span><br><span class="st">● Online</span></span>
+            </div>
+            <nav class="nav">
+              <a href="#production" class="on"><span class="ic">◧</span>Today</a>
+              <a href="#production"><span class="ic">▤</span>Projects</a>
+              <a href="#production"><span class="ic">◑</span>Retainers</a>
+              <a href="#production"><span class="ic">▦</span>Months</a>
+              <a href="#production"><span class="ic">◍</span>Team</a>
+              <a href="#production"><span class="ic">◆</span>Bonus</a>
+              <a href="#production"><span class="ic">▷</span>Meetings</a>
+            </nav>
+            <div class="grp">My clients</div>
+            <div class="cli">48hr Film</div><div class="cli">Resmed</div><div class="cli">Maptek</div><div class="cli">Fujifilm</div>
+          </aside>
+
+          <main class="main">
+            <div class="hd">
+              <div>
+                <div class="dt">Wednesday 26 August</div>
+                <h5>Morning, Kavindu</h5>
+                <div class="sub">Two jobs today, and the Resmed screens came back with feedback overnight.</div>
+              </div>
+              <div class="rt"><span class="btn">Log time</span><span class="btn pri">Start the day</span></div>
+            </div>
+
+            <div class="seg"><span>Accounts<span class="n">16</span></span><span class="on">Production<span class="n">12</span></span></div>
+
+            <div class="prod">
+              <div style="display:grid;gap:12px;align-content:start;min-width:0">
+
+                <!-- FRESH FEEDBACK -->
+                <div class="mod crit">
+                  <div class="mod-hd"><span class="ic" style="background:rgba(208,59,59,.16);color:var(--crit-ink)">↺</span><span class="t">Fresh feedback in</span><span class="n" style="background:rgba(208,59,59,.14)">2</span><span class="rt">···</span></div>
+                  <div class="mod-bd">
+                    <div class="jc2 wide">
+                      <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+                      <div class="bd">
+                        <div class="nm">Resmed — digi screens</div>
+                        <div class="mt" style="font-size:12.5px;color:var(--ink-2)">“CTA fonts differ between the two sizes — should be Plus Jakarta.”</div>
+                        <div class="mt"><span class="avx" style="width:17px;height:17px;font-size:7px;--a1:#ff8fc4;--a2:#7a1450">YR</span><span>Yami · 1h ago</span><span class="tag crit"><i></i>Redo today</span></div>
+                      </div>
+                    </div>
+                    <div class="jc2 wide">
+                      <div class="th" style="--t1:#ff7a29;--t2:#2b1a0e"><div class="play"></div><div class="scrub"><i style="width:34%"></i></div></div>
+                      <div class="bd">
+                        <div class="nm">Maptek — Vestrex teaser</div>
+                        <div class="mt" style="font-size:12.5px;color:var(--ink-2)">“Show that there is more beyond the list” — storyboard slide 4.</div>
+                        <div class="mt"><span>Simon · yesterday</span><span class="tag warn"><i></i>Blocked on sizing</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MY DAY -->
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--tint-2);color:var(--accent)">▶</span><span class="t">My day</span><span class="n">2 jobs · 1.25d</span><span class="rt">···</span></div>
+                  <div class="mod-bd">
+                    <div class="jc2 wide">
+                      <div class="th" style="--t1:#ff3b30;--t2:#1a0507"><div class="poster"><div class="big m"></div><div class="big s"></div><div class="rule"></div></div></div>
+                      <div class="bd">
+                        <div class="nm">48hr — opening animation</div>
+                        <div class="mt"><span class="cl">48hr Film</span><span>·</span><span>0.75d booked</span><span>·</span><span>storyboard first</span></div>
+                        <div class="mt"><span class="tag warn"><i></i>Due 9 Sep</span><span class="tag mute"><i></i>Waiting on poster files</span></div>
+                      </div>
+                    </div>
+                    <div class="jc2 wide">
+                      <div class="th" style="--t1:#ff2d78;--t2:#6a1b6a"><div class="sheet"><div class="hd2"></div><div class="bd2"><div class="blob"></div><div class="ln"></div><div class="cta"></div></div></div></div>
+                      <div class="bd">
+                        <div class="nm">Resmed — digi screens</div>
+                        <div class="mt"><span class="cl">Resmed</span><span>·</span><span>0.25d booked</span><span>·</span><span>2 sizes</span></div>
+                        <div class="mt"><span class="tag crit"><i></i>Feedback in</span></div>
+                      </div>
+                    </div>
+                    <div style="padding:6px 4px 2px;display:flex;align-items:center;gap:9px">
+                      <span style="font-size:12.5px;color:var(--crit-ink);font-weight:650">1.25 of 1.0 days — you are over</span>
+                      <span class="btn s" style="margin-left:auto">Ask Yami to move one</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- REST OF WEEK -->
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--surface-2);color:var(--ink-2)">▦</span><span class="t">Rest of the week</span><span class="n">3</span><span class="rt">···</span></div>
+                  <div class="mod-bd">
+                    <div class="wk"><span class="d">Thu</span><span><span class="n">Maptek — conference slides</span> <span class="tiny">· 1.5d</span></span></div>
+                    <div class="wk"><span class="d">Fri</span><span><span class="n">48hr — award category slides</span> <span class="tiny">· 0.5d</span></span></div>
+                    <div class="wk"><span class="d">Mon</span><span><span class="n">Fujifilm — ads, if feedback lands</span> <span class="tiny">· 0.5d</span></span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT RAIL -->
+              <div style="display:grid;gap:12px;align-content:start;min-width:0">
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--crit-bg);color:var(--crit-ink)">◔</span><span class="t">My load today</span><span class="rt">···</span></div>
+                  <div class="mod-bd" style="padding:0 13px 14px">
+                    <div style="display:flex;align-items:center;gap:14px">
+                      <div class="rings" style="width:72px;height:72px">
+                        <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--surface-3)" stroke-width="7"/><circle cx="36" cy="36" r="30" fill="none" stroke="var(--crit)" stroke-width="7" stroke-linecap="round" stroke-dasharray="188 188"/></svg>
+                        <span class="mid"><span class="v" style="font-size:17px;color:var(--crit-ink)">125%</span></span>
+                      </div>
+                      <div style="font-size:13px;color:var(--ink-2);line-height:1.45">
+                        <strong style="color:var(--ink)">1.25 days booked</strong><br>against 1.0 capacity.<br><span style="color:var(--crit-ink);font-weight:650">0.25d over.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--surface-2);color:var(--ink-2)">◍</span><span class="t">Who else is on today</span><span class="rt">···</span></div>
+                  <div class="mod-bd" style="padding:0 13px 12px">
+                    <div class="mini"><span class="avx" style="--a1:#5cc8ff;--a2:#123a6b">SR</span><span><span class="n">Sergio</span><br><span class="j">SAPN press release</span></span><span class="tag ok"><i></i>100%</span></div>
+                    <div class="mini" style="border-top:1px solid var(--hair)"><span class="avx" style="--a1:#c99cff;--a2:#3d1a6b">AZ</span><span><span class="n">Amal</span><br><span class="j">SAPN brand guidelines</span></span><span class="tag ok"><i></i>100%</span></div>
+                    <div class="mini" style="border-top:1px solid var(--hair)"><span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">RT</span><span><span class="n">Rochelle</span><br><span class="j">Resmed bundles</span></span><span class="tag mute"><i></i>75%</span></div>
+                    <div class="mini" style="border-top:1px solid var(--hair)"><span class="avx" style="--a1:#ffd27a;--a2:#8a5a00">EL</span><span><span class="n">Elle</span><br><span class="j">Newsletter copy</span></span><span class="tag warn"><i></i>4h free</span></div>
+                    <div class="mini" style="border-top:1px solid var(--hair)"><span class="avx" style="--a1:#8fd4ff;--a2:#123a6b">AP</span><span><span class="n">Ashley</span><br><span class="j">CMAX</span></span><span class="tag warn"><i></i>6h free</span></div>
+                  </div>
+                </div>
+
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--tint-2);color:var(--accent)">▷</span><span class="t">My meetings</span><span class="n">1</span><span class="rt">···</span></div>
+                  <div class="mod-bd" style="padding:0 13px 14px">
+                    <div style="background:var(--surface-2);border-radius:12px;padding:11px 12px">
+                      <div style="font-weight:700;font-size:13.5px;letter-spacing:-.018em">Studio stand-up</div>
+                      <div class="tiny" style="margin:3px 0 8px">Today · 9:30 – 9:45am</div>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span class="tag mute"><i></i>Google Meet</span>
+                        <span class="avstack" style="margin-left:auto"><span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">YR</span><span class="avx" style="--a1:#5cc8ff;--a2:#123a6b">SR</span><span class="avx" style="--a1:#c99cff;--a2:#3d1a6b">AZ</span><span class="avx" style="--a1:#8b8894;--a2:#3d3b45">+4</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>Feedback sits above the day</b>The one thing that should reorder a morning is a client changing their mind overnight. It gets the top module and the only red on the page.</div>
+        <div><b>The quote is the brief</b>Kavindu does not need to open ClickUp to learn what changed — the actual sentence is on the card. That is the difference between a notification and an instruction.</div>
+        <div><b>Over-capacity is his to raise</b>He sees 125% and gets one button to push it back to Yami. The person carrying too much should not have to notice it themselves.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESTRAINT ============ -->
+  <section id="restraint">
+    <div class="col w">
+      <div class="eyebrow">What is deliberately missing</div>
+      <h2>The things I left off</h2>
+      <p>A morning page earns its keep by what it refuses to show. Each of these was tempting and each one belongs somewhere else.</p>
+    </div>
+    <div class="pgrid p3" style="margin-top:26px">
+      <div class="pcard"><h4>Retainer burn and pace</h4><p class="small">Days delivered against promised, the pace race, the months view. It is the best thing on <span class="tiny">:3100</span> and it is a <em>Retainers</em> question, not a this-morning question.</p></div>
+      <div class="pcard"><h4>Full project detail</h4><p class="small">Task trees, dependencies, file lists, history. A card here carries a title, a client, a size and one status. Clicking it opens Projects.</p></div>
+      <div class="pcard"><h4>Everything under threshold</h4><p class="small">Clients waiting under two days, jobs due beyond this week, anything with no action. It exists, it is fine, it does not need a person this morning.</p></div>
+    </div>
+
+    <div class="callout col w" style="margin-top:24px">
+      <p><b>A test for anything you are tempted to add:</b> would someone do something different today because they saw it? If not, it is a Projects or Retainers row. The Today tab is allowed to be the smallest page in the app.</p>
+    </div>
+  </section>
+
+  <!-- ============ OPEN ============ -->
+  <section id="open">
+    <div class="col w">
+      <div class="eyebrow">Before this gets built</div>
+      <h2>Four things I had to assume</h2>
+      <p class="small" style="margin-bottom:18px">All four change the build, and all four are yours to answer.</p>
+      <div class="pgrid" style="gap:12px">
+        <div class="pcard"><h4>Does “ready to go off” exist as a status?</h4><p class="small">Your ClickUp has <span class="tiny">with the client</span> and <span class="tiny">feedback alterations</span>, but nothing that means “approved internally, not yet sent”. Column three needs one, or it has to be inferred.</p></div>
+        <div class="pcard"><h4>What is the bump threshold?</h4><p class="small">I used 3 days to amber and 7 to red. It probably differs by client — Resmed answer in hours, Ilim in weeks.</p></div>
+        <div class="pcard"><h4>Where does “new in” come from?</h4><p class="small">Right now briefs arrive as Slack messages in client channels. Something has to turn those into cards, or Yami keeps doing it by hand and the column is just a nicer inbox.</p></div>
+        <div class="pcard"><h4>Do people get their own view, or one shared one?</h4><p class="small">I drew Production personalised to Kavindu. The alternative is one floor-wide board everyone reads. Personalised is better for the team, worse for Yami — she may want both.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin-top:76px;padding-top:20px;border-top:1px solid var(--hair)">
+    <div class="tiny" style="display:flex;flex-wrap:wrap;gap:6px 22px">
+      <span>The Today Board · draft</span><span>Wednesday 26 August 2026</span><span>Studio Floor visual direction</span>
+    </div>
+  </footer>
+
+</div>
