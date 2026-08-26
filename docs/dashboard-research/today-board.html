@@ -227,6 +227,33 @@ section{padding:80px 0 0;scroll-margin-top:24px}
 .whopick .w.free{border-color:rgba(250,178,25,.5);background:var(--warn-bg)}
 .whopick .w.full{opacity:.5}
 .whopick .w.on{border-color:var(--accent);background:var(--tint-2);color:var(--accent)}
+/* ---- day plan / publish ---- */
+.plan{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:1050px){.plan{grid-template-columns:1.5fr 1fr;align-items:start}}
+.planrow{border:1px solid var(--hair);border-radius:12px;padding:10px 11px;background:var(--surface);display:grid;gap:7px}
+.planrow.over{border-color:rgba(208,59,59,.3);background:var(--crit-bg)}
+.planrow.light{border-color:rgba(250,178,25,.36);background:var(--warn-bg)}
+.planrow .top{display:flex;align-items:center;gap:9px}
+.planrow .top .n{font-weight:700;font-size:14px;letter-spacing:-.02em}
+.planrow .top .rt{margin-left:auto;font-family:var(--fm);font-size:11.5px;color:var(--ink-2)}
+.jobline{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:start;padding:6px 7px;border-radius:9px;background:var(--surface-2)}
+.jobline.pri{background:var(--tint-2);box-shadow:inset 0 0 0 1px var(--accent-2)}
+.jobline .ord{font-family:var(--fm);font-size:11px;color:var(--ink-3);padding-top:2px;text-align:center}
+.jobline .nm2{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.012em;line-height:1.3}
+.jobline .rte{display:block;font-family:var(--fm);font-size:10px;color:var(--ink-3);margin-top:3px}
+.jobline .rt{display:flex;align-items:center;gap:6px;padding-top:1px}
+.cuchip{font-family:var(--fm);font-size:9.5px;border:1px solid var(--hair-2);border-radius:5px;padding:1px 4px;color:var(--ink-3);white-space:nowrap}
+.star{color:var(--accent);font-size:12px}
+.noteline{display:flex;align-items:center;gap:7px;border:1px dashed var(--hair-2);border-radius:9px;padding:6px 9px;font-size:12.5px;color:var(--ink-2);font-style:italic}
+.slackprev{background:#1a1d21;border-radius:14px;padding:14px 15px;color:#e8e8ea}
+.slackprev .hd3{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.slackprev .bot{width:28px;height:28px;border-radius:6px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:11px}
+.slackprev .who2{font-weight:700;font-size:13px}
+.slackprev .body{border-left:3px solid var(--accent-2);padding-left:11px;display:grid;gap:8px;font-size:12.5px;line-height:1.45}
+.slackprev .p{font-weight:700;color:#7cc4ff;font-size:12.5px}
+.slackprev ul{margin:2px 0 0;padding-left:16px;display:grid;gap:2px}
+.slackprev li{font-size:12px;color:#b9b8bf}
+.slackprev li b{color:#e8e8ea;font-weight:600}
 /* production layout */
 .prod{display:grid;gap:12px;grid-template-columns:1fr}
 @media(min-width:1000px){.prod{grid-template-columns:1.62fr 1fr}}
@@ -837,6 +864,155 @@ section{padding:80px 0 0;scroll-margin-top:24px}
         <div><b>Full people are dimmed, not hidden</b>Sergio and Amal stay on screen greyed out. You can still override — it is your studio — but the default answer is the one that does not break anyone.</div>
         <div><b>It ends by writing the Slack post</b>Nine placements become the 4:30 message Yami types by hand today. That is the payoff that makes the run worth doing at all.</div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN C3 · THE DAY PLAN ============ -->
+  <section id="dayplan">
+    <div class="col w">
+      <div class="eyebrow">The missing screen</div>
+      <h2>Setting the day, then publishing it</h2>
+      <p>Placing a job on a person is not the same as telling them what to do. Between the assign run and everyone's morning there was no moment where Yami puts the day <em>in order</em>, marks the one thing that must happen, and says it in her own words. That gap is why the hand-off still felt unclear — the jobs were allocated but nobody had been <em>briefed</em>.</p>
+      <p>This screen is that moment, and it is the last thing Yami touches before going home. Everything the team reads tomorrow is written here.</p>
+    </div>
+
+    <div class="shot" id="s-plan">
+      <div class="shot-cap"><span class="k">C3</span><span class="t">The day plan</span><span class="s">order · priority · note · publish</span></div>
+      <div class="bed">
+        <div class="app">
+          <aside class="side">
+            <div class="me"><span class="avx" style="--a1:#ff8fc4;--a2:#7a1450">YR</span><span><span class="nm">Yamileth</span><br><span class="st">● Online</span></span></div>
+            <nav class="nav">
+              <a href="#dayplan" class="on"><span class="ic">◧</span>Today</a>
+              <a href="#dayplan"><span class="ic">▤</span>Projects</a>
+              <a href="#dayplan"><span class="ic">◑</span>Retainers</a>
+              <a href="#dayplan"><span class="ic">▦</span>Months</a>
+              <a href="#dayplan"><span class="ic">◍</span>Team</a>
+              <a href="#dayplan"><span class="ic">◆</span>Bonus</a>
+              <a href="#dayplan"><span class="ic">▷</span>Meetings</a>
+            </nav>
+            <div class="grp">Plan for</div>
+            <div class="cli" style="color:var(--accent);font-weight:650">Thu 27 Aug</div>
+            <div class="cli">Fri 28 Aug</div>
+          </aside>
+
+          <main class="main">
+            <div class="hd">
+              <div>
+                <div class="dt">Thursday 27 August · not yet published</div>
+                <h5>Tomorrow's plan</h5>
+                <div class="sub">9 jobs placed on 6 people. Drag to reorder, star the must-do, add a note.</div>
+              </div>
+              <div class="rt"><span class="btn">Preview</span><span class="btn pri">Publish to the team</span></div>
+            </div>
+
+            <div class="seg"><span>Accounts<span class="n">16</span></span><span>Production<span class="n">12</span></span><span>Dish out<span class="n">0</span></span><span class="on">Day plan</span></div>
+
+            <div class="plan">
+              <!-- EDITOR -->
+              <div class="mod">
+                <div class="mod-hd"><span class="ic" style="background:var(--tint-2);color:var(--accent)">☰</span><span class="t">The plan</span><span class="n">6 people · 39h</span><span class="rt">···</span></div>
+                <div class="mod-bd">
+
+                  <div class="planrow over">
+                    <div class="top"><span class="avx" style="--a1:#ff6b6b;--a2:#8b1a1a">KM</span><span class="n">Kavindu</span><span class="tag crit"><i></i>Overtime</span><span class="rt">8h / 6.5h</span></div>
+                    <div class="jobline pri">
+                      <span class="ord">1</span>
+                      <span><span class="nm2">48hr Film Project — Opening animation,<br>storyboard first</span><span class="rte">Retainer ▸ 48hr Film ▸ 48hr Retainer List 2026</span></span>
+                      <span class="rt"><span class="star">★</span><span class="cuchip">4h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="jobline">
+                      <span class="ord">2</span>
+                      <span><span class="nm2">Resmed — Digi screens, CTA font fix</span><span class="rte">Retainer ▸ Resmed ▸ Resmed Retainer List 2026 ▸ subtask</span></span>
+                      <span class="rt"><span class="cuchip">2h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="noteline"><span class="tiny" style="font-style:normal">Note</span> Poster working files still not in — start on the storyboard regardless.</div>
+                  </div>
+
+                  <div class="planrow">
+                    <div class="top"><span class="avx" style="--a1:#5cc8ff;--a2:#123a6b">SR</span><span class="n">Sergio</span><span class="tag ok"><i></i>On track</span><span class="rt">6.5h / 6.5h</span></div>
+                    <div class="jobline pri">
+                      <span class="ord">1</span>
+                      <span><span class="nm2">SAPN — Press release artwork</span><span class="rte">Retainer ▸ SAPN ▸ SAPN Retainer Projects 2026</span></span>
+                      <span class="rt"><span class="star">★</span><span class="cuchip">3h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="jobline">
+                      <span class="ord">2</span>
+                      <span><span class="nm2">Resmed — CPAP promo EDM</span><span class="rte">Retainer ▸ Resmed ▸ Resmed Retainer List 2026</span></span>
+                      <span class="rt"><span class="cuchip">3.5h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="noteline"><span class="tiny" style="font-style:normal">Note</span> Sensitive labels — do not send until Dom and I have talked.</div>
+                  </div>
+
+                  <div class="planrow light">
+                    <div class="top"><span class="avx" style="--a1:#8fd4ff;--a2:#123a6b">AP</span><span class="n">Ashley</span><span class="tag warn"><i></i>1.5h free</span><span class="rt">5h / 6.5h</span></div>
+                    <div class="jobline pri">
+                      <span class="ord">1</span>
+                      <span><span class="nm2">CMAX — Conference wrap assets</span><span class="rte">Retainer ▸ CMAX ▸ CMAX Retainer List</span></span>
+                      <span class="rt"><span class="star">★</span><span class="cuchip">1.5h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="jobline">
+                      <span class="ord">2</span>
+                      <span><span class="nm2">Resmed — Sep 2026 Newsletter, design in Figma</span><span class="rte">Retainer ▸ Resmed ▸ Resmed Retainer List 2026 ▸ after copy</span></span>
+                      <span class="rt"><span class="cuchip">3.5h</span><span class="cuchip">CU ↗</span></span>
+                    </div>
+                    <div class="noteline"><span class="tiny" style="font-style:normal">Note</span> CMAX is the priority. Only start the newsletter once Elle's copy is approved.</div>
+                  </div>
+
+                  <div class="more">Rochelle, Amal and Elle — 3 more people, 17h</div>
+                </div>
+              </div>
+
+              <!-- PUBLISH -->
+              <div style="display:grid;gap:12px;align-content:start">
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--surface-2);color:var(--ink-2)">▷</span><span class="t">What the team will get</span><span class="rt">···</span></div>
+                  <div class="mod-bd" style="padding:0 11px 12px">
+                    <div class="slackprev">
+                      <div class="hd3"><span class="bot">SF</span><span><span class="who2">Studio Floor</span> <span class="tiny" style="color:#87868f">4:32 PM</span></span></div>
+                      <div class="body">
+                        <div><b>Tomorrow — Thursday 27 August.</b></div>
+                        <div><span class="p">@Kavindu</span>
+                          <ul><li>★ <b>48hr Film Project — Opening animation</b>, storyboard first · 4h</li><li><b>Resmed — Digi screens</b>, CTA font fix · 2h</li><li style="color:#ffcf5c">Poster working files still not in — start on the storyboard regardless.</li></ul></div>
+                        <div><span class="p">@Sergio</span>
+                          <ul><li>★ <b>SAPN — Press release artwork</b> · 3h</li><li><b>Resmed — CPAP promo EDM</b> · 3.5h</li><li style="color:#ffcf5c">Sensitive labels — do not send until Dom and I have talked.</li></ul></div>
+                        <div><span class="p">@Ashley</span>
+                          <ul><li>★ <b>CMAX — Conference wrap assets</b> · 1.5h</li><li><b>Resmed — Sep Newsletter</b>, design in Figma · 3.5h</li><li style="color:#ffcf5c">CMAX is the priority. Newsletter only once Elle's copy is approved.</li></ul></div>
+                        <div class="tiny" style="color:#87868f;font-style:normal">★ = the one thing that has to happen. Every job links to ClickUp.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mod">
+                  <div class="mod-hd"><span class="ic" style="background:var(--ok-bg);color:var(--ok-ink)">↗</span><span class="t">Publish does three things</span><span class="rt">···</span></div>
+                  <div class="mod-bd" style="padding:0 13px 14px">
+                    <div style="display:grid;gap:8px;font-size:13px;color:var(--ink-2)">
+                      <div style="display:flex;gap:8px;align-items:flex-start"><span class="tag ok"><i></i>1</span><span>Writes assignee, hours and status to <strong>ClickUp</strong> — the part that silently fails today.</span></div>
+                      <div style="display:flex;gap:8px;align-items:flex-start"><span class="tag ok"><i></i>2</span><span>Fills each person's <strong>Production tab</strong>, in this order, with the star and the note.</span></div>
+                      <div style="display:flex;gap:8px;align-items:flex-start"><span class="tag ok"><i></i>3</span><span>Posts the message above to <strong>#motion-by-design</strong> — editable before it sends.</span></div>
+                    </div>
+                    <div style="margin-top:12px;padding-top:11px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                      <span class="tag warn"><i></i>Not published</span>
+                      <span class="tiny">Last published Tue 4:41pm</span>
+                      <span class="btn pri s" style="margin-left:auto">Publish</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="notes n3">
+        <div><b>One star per person</b>Not five priorities. The single thing that has to happen if the day goes sideways — which is the question people are actually asking at 9am.</div>
+        <div><b>The note is Yami's voice</b>“CMAX is the priority.” “Do not send until Dom and I have talked.” That instruction is the real content of the hand-off, and no status field can carry it.</div>
+        <div><b>Full names, route and hours</b>Two-line task names, the ClickUp path so you can see if it is a subtask, a link on every job, and budgets in hours — the four things Yami asked for in the chat on the 24th and 25th.</div>
+      </div>
+    </div>
+
+    <div class="callout col w" style="margin-top:24px">
+      <p><b>Why this fixes the hand-off.</b> Production (screen B) was showing people a <em>list of jobs</em>. What they needed was a <em>plan</em> — ordered, with one thing starred and a sentence of context. Same data, but somebody has now made a decision about it. That decision is what Yami has been supplying in Slack all along, and it is the only part of her afternoon the dashboard had not replaced.</p>
     </div>
   </section>
 
