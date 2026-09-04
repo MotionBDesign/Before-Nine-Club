@@ -17,7 +17,7 @@ import { LOW_CONFIDENCE } from './matcher.ts';
 import { applyUpdate, checkForUpdate, installedVersion } from './update.ts';
 import { assess, readFleet } from './fleet.ts';
 import { readMemory, DAEMON_RSS_WARN_MB } from './health.ts';
-import { applyDeploySettings, type DeploySettings } from './deploy.ts';
+import { applyDeploySettings, LOCAL_ONLY, type DeploySettings } from './deploy.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
@@ -342,7 +342,10 @@ async function main(): Promise<void> {
       // how five of them end up right.
       const flags = process.argv.slice(3);
       const settings: DeploySettings = {};
+      // A switch, not a pair — handled before the flag/value walk below.
+      if (flags.includes('--local-only')) Object.assign(settings, LOCAL_ONLY);
       for (let i = 0; i < flags.length; i += 2) {
+        if (flags[i] === '--local-only') { i -= 1; continue; }
         const value = flags[i + 1];
         if (value === undefined) break;
         if (flags[i] === '--channel') settings.channel = value;
@@ -366,6 +369,9 @@ async function main(): Promise<void> {
                    Updates are picked up from here automatically.
     --status-dir   folder this Mac writes its health file into, so the studio
                    can see whether tracking is actually working.
+    --local-only   cut both of the above. Nothing is read from or written to
+                   the server, ever. The tracker's own data was always local;
+                   this only gives up updates and studio-wide health.
     --workspace    ClickUp workspace id.
     --round-minutes  the grid time is logged on, e.g. 15. Sets both the
                    rounding and the shortest entry, which have to agree.
@@ -377,14 +383,24 @@ async function main(): Promise<void> {
       }
 
       const result = applyDeploySettings(settings);
+      const localOnly = result.applied.channel === '' && result.applied.statusDir === '';
       console.log('');
       if (result.unchanged) {
         console.log(`  Already set that way in ${result.configPath}`);
       } else {
         for (const [key, value] of Object.entries(result.applied)) {
-          console.log(`  ${green('OK')} ${key} = ${value}`);
+          console.log(`  ${green('OK')} ${key} = ${value === '' ? dim('(none)') : value}`);
         }
         console.log(`\n  Written to ${result.configPath}`);
+      }
+      if (localOnly) {
+        console.log('');
+        console.log('  This Mac now reads and writes nothing outside:');
+        console.log(`    ${paths.data()}`);
+        console.log('  and speaks to nothing but api.clickup.com.');
+        console.log('');
+        console.log(`  ${amber('Giving up:')} updates have to be installed by hand, and this Mac`);
+        console.log('  will not appear in the studio-wide health view.');
       }
       for (const missing of result.unreachable) {
         console.log(`  ${amber(' !')} ${missing} is not reachable right now — mount the share, or check the path.`);

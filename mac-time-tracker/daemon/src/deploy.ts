@@ -28,6 +28,17 @@ export interface DeploySettings {
   roundMinutes?: number;
 }
 
+/**
+ * Cut every tie to the studio share.
+ *
+ * The tracker's own data was always local — config, raw activity, the day
+ * files, the cached ClickUp catalog, all of it under Application Support. The
+ * share only ever supplied updates and received a health file. Clearing both
+ * leaves a Mac that reads and writes nothing outside its own home folder, and
+ * speaks to nothing but the ClickUp API.
+ */
+export const LOCAL_ONLY: DeploySettings = { channel: '', statusDir: '' };
+
 export interface DeployResult {
   applied: DeploySettings;
   unchanged: boolean;

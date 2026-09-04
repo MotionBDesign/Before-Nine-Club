@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { applyDeploySettings, deriveChannel, readPackagedDeploy } from '../src/deploy.ts';
+import { applyDeploySettings, deriveChannel, readPackagedDeploy, LOCAL_ONLY } from '../src/deploy.ts';
 
 function tempConfig(contents: unknown): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mbdtt-deploy-'));
@@ -60,6 +60,34 @@ describe('deploy settings', () => {
     assert.equal(after.capture.sampleIntervalSeconds, 5, 'the sampling rate is unrelated');
     assert.equal(after.capture.dayStartHour, 7);
     assert.equal(after.quickLog.length, 1);
+  });
+
+  it('cuts every tie to the share without touching anything else', () => {
+    // The tracker's own data was always local. The share only ever supplied
+    // updates and received a health file, so clearing those two leaves a Mac
+    // that reads and writes nothing outside its own home folder.
+    const file = tempConfig({
+      clickup: { workspaceId: '9003163669' },
+      capture: { roundToMinutes: 15, minEntryMinutes: 15 },
+      update: { channel: '/Volumes/MBD Server/Software/TimeTracker', checkEveryHours: 6, autoApply: true },
+      fleet: { statusDir: '/Volumes/MBD Server/Software/TimeTracker/status', reportEveryMinutes: 30 },
+      projectRoots: [{ path: '/Volumes/Projects/Clients', clientSegment: 0 }],
+      quickLog: [{ label: 'MBD Meeting', taskId: '86d2c5302', minutes: 30, billable: false }],
+    });
+
+    applyDeploySettings(LOCAL_ONLY, file);
+    const after = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.equal(after.update.channel, '');
+    assert.equal(after.fleet.statusDir, '');
+
+    // Everything else survives, including projectRoots — those are matched as
+    // strings against the paths the observer reports and are never read from
+    // disk, so a server path there costs nothing and still names the client.
+    assert.equal(after.projectRoots[0].path, '/Volumes/Projects/Clients');
+    assert.equal(after.capture.roundToMinutes, 15);
+    assert.equal(after.clickup.workspaceId, '9003163669');
+    assert.equal(after.quickLog.length, 1);
+    assert.equal(after.update.checkEveryHours, 6);
   });
 
   it('does not write defaults into the file', () => {

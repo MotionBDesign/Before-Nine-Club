@@ -5,7 +5,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { onUnmountedVolume } from '../src/paths.ts';
 import { publishedVersion } from '../src/update.ts';
-import { readFleet } from '../src/fleet.ts';
+import { readFleet, reportStatus } from '../src/fleet.ts';
 
 /**
  * The tracker reaches the studio share twice: to look for an update, and to
@@ -48,6 +48,17 @@ describe('touching the studio share', () => {
 
   it('reads an empty fleet rather than reaching into an unmounted share', () => {
     assert.deepEqual(readFleet('/Volumes/DefinitelyNotMounted/TimeTracker/status'), []);
+  });
+
+  it('does nothing at all with no channel and no status folder', () => {
+    // What `configure --local-only` leaves behind. There must be no path at
+    // all from here to a network volume.
+    assert.equal(publishedVersion(''), null);
+    assert.deepEqual(readFleet(''), []);
+    // reportStatus returns before touching anything; the assertion is that it
+    // neither throws nor creates a directory somewhere unexpected.
+    assert.doesNotThrow(() =>
+      reportStatus({ fleet: { statusDir: '', reportEveryMinutes: 30 } } as never, {} as never));
   });
 
   it('still works normally on a folder that is actually there', () => {
