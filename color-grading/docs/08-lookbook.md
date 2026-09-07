@@ -70,7 +70,7 @@ A neutral, true-to-life grade with a light punch -- the default 'just make it lo
 
 **Recipe (in order):**
 
-1. Contrast 1.05 around pivot 0.43 (soft clip above 0.85, below 0.06)
+1. Contrast 1.05 around pivot 0.43 (soft clip above 0.92, below 0.06)
 2. Film density 0.03 (subtractive darkening of saturated colours)
 3. Vibrance × 1.04 (protects already-saturated colours)
 

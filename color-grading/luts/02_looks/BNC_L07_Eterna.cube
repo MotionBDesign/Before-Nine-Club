@@ -1,5 +1,5 @@
 TITLE "BNC L07 Eterna"
-# BNC Grade v1.0 — Fujifilm Eterna-style flat, low-contrast cinema stock emulation with soft highlights and gentle desaturation.
+# BNC Grade v1.0 - Fujifilm Eterna-style flat, low-contrast cinema stock emulation with soft highlights and gentle desaturation.
 # Input: Rec.709 Gamma 2.4 | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

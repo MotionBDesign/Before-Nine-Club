@@ -1,5 +1,5 @@
 TITLE "BNC SLog3 L13 Airy"
-# BNC Grade v1.0 — S-Log3/S-Gamut3.Cine -> BNC Base -> Bright, airy, lifted-shadow look with a soft top end and gentle overall desaturation.
+# BNC Grade v1.0 - S-Log3/S-Gamut3.Cine -> BNC Base -> Bright, airy, lifted-shadow look with a soft top end and gentle overall desaturation.
 # Input: S-Log3 / S-Gamut3.Cine | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

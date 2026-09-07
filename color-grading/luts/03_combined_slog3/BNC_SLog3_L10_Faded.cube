@@ -1,5 +1,5 @@
 TITLE "BNC SLog3 L10 Faded"
-# BNC Grade v1.0 — S-Log3/S-Gamut3.Cine -> BNC Base -> Faded, lifted-black low-contrast look with a soft highlight shoulder, like a sun-faded print.
+# BNC Grade v1.0 - S-Log3/S-Gamut3.Cine -> BNC Base -> Faded, lifted-black low-contrast look with a soft highlight shoulder, like a sun-faded print.
 # Input: S-Log3 / S-Gamut3.Cine | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

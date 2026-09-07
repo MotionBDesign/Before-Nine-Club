@@ -44,7 +44,7 @@ LOOKS: List[Look] = [
         use_for="General-purpose delivery and client review cuts that "
                 "should read as graded without looking stylised.",
         ops=[
-            contrast(1.05),
+            contrast(1.05, hi=0.92),  # narrow soft clip so white stays white
             density(0.03),
             vibrance(1.04),
         ],

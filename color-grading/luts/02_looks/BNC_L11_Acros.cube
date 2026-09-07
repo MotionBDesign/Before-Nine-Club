@@ -1,5 +1,5 @@
 TITLE "BNC L11 Acros"
-# BNC Grade v1.0 — Fujifilm Acros-style fine-grain black & white with punchy contrast and a gentle toe.
+# BNC Grade v1.0 - Fujifilm Acros-style fine-grain black & white with punchy contrast and a gentle toe.
 # Input: Rec.709 Gamma 2.4 | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

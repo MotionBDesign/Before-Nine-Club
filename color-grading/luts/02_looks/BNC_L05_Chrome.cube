@@ -1,5 +1,5 @@
 TITLE "BNC L05 Chrome"
-# BNC Grade v1.0 — Muted, cross-processed 'chrome' look: rotated primaries, reduced saturation and cool highlights.
+# BNC Grade v1.0 - Muted, cross-processed 'chrome' look: rotated primaries, reduced saturation and cool highlights.
 # Input: Rec.709 Gamma 2.4 | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

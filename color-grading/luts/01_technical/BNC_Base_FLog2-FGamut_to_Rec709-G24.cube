@@ -1,5 +1,5 @@
 TITLE "BNC Base FLog2-FGamut to Rec709-G24"
-# BNC Grade v1.0 — Fujifilm F-Log2/F-Gamut (X-T5) to Rec.709 Gamma 2.4, filmic highlight roll-off
+# BNC Grade v1.0 - Fujifilm F-Log2/F-Gamut (X-T5) to Rec.709 Gamma 2.4, filmic highlight roll-off
 # Input: F-Log2 / F-Gamut | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

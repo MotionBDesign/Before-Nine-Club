@@ -1,5 +1,5 @@
 TITLE "BNC L08 Bleach"
-# BNC Grade v1.0 — Bleach-bypass emulation: heavy contrast, a crushed toe, and cool-leaning desaturation.
+# BNC Grade v1.0 - Bleach-bypass emulation: heavy contrast, a crushed toe, and cool-leaning desaturation.
 # Input: Rec.709 Gamma 2.4 | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

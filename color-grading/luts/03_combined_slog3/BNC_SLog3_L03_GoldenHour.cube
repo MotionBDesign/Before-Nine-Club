@@ -1,5 +1,5 @@
 TITLE "BNC SLog3 L03 GoldenHour"
-# BNC Grade v1.0 — S-Log3/S-Gamut3.Cine -> BNC Base -> Warm, golden-hour glow with an amber split-tone and a soft top end.
+# BNC Grade v1.0 - S-Log3/S-Gamut3.Cine -> BNC Base -> Warm, golden-hour glow with an amber split-tone and a soft top end.
 # Input: S-Log3 / S-Gamut3.Cine | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

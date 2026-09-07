@@ -262,7 +262,7 @@ hue-shift sign convention: Oklab hue increases red 29° → yellow 110° → gre
 cyan 195° → blue 264° → magenta 328°, so "greens toward yellow" is a negative shift.)
 
 ```
-L01 Clean       : contrast(amount=1.05, pivot=0.43, hi=0.85, lo=0.06); density(k=0.03); vibrance(amount=1.04)
+L01 Clean       : contrast(amount=1.05, pivot=0.43, hi=0.92, lo=0.06); density(k=0.03); vibrance(amount=1.04)
 L02 Print2383   : white_balance(warm=0.01, tint=0); contrast(amount=1.2, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.4, range=0.3); hue_shift(centre=264, width=45, shift=-6); hue_shift(centre=110, width=30, shift=-8); hue_sat(centre=29, width=30, mult=0.9); hue_sat(centre=142, width=40, mult=0.9); density(k=0.14); split_tone(sh_hue=195, sh_amt=0.014, hi_hue=75, hi_amt=0.014, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); saturation(amount=0.9); softclip(hi=0.86, lo=0.0)
 L03 GoldenHour  : white_balance(warm=0.05, tint=-0.01); contrast(amount=1.1, pivot=0.43, hi=0.85, lo=0.06); split_tone(sh_hue=40, sh_amt=0.008, hi_hue=65, hi_amt=0.026, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_sat(centre=60, width=35, mult=1.08); density(k=0.06); lift_blacks(amount=0.008); vibrance(amount=1.06); softclip(hi=0.88, lo=0.0)
 L04 TealOrange  : contrast(amount=1.12, pivot=0.43, hi=0.85, lo=0.06); split_tone(sh_hue=210, sh_amt=0.042, hi_hue=55, hi_amt=0.02, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_shift(centre=264, width=45, shift=-16); hue_shift(centre=142, width=40, shift=20); hue_sat(centre=142, width=40, mult=0.85); hue_sat(centre=60, width=25, mult=1.06); density(k=0.08); softclip(hi=0.88, lo=0.0)

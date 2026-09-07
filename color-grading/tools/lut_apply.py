@@ -36,7 +36,7 @@ def write_cube(
     flat = np.clip(lattice, 0.0, 1.0).reshape(-1, 3)
     with open(path, "w", newline="\n") as f:
         f.write(f'TITLE "{title}"\n')
-        f.write(f"# BNC Grade v1.0 — {description}\n")
+        f.write(f"# BNC Grade v1.0 - {description}\n")
         f.write(f"# Input: {input_space} | Output: {output_space}\n")
         f.write(f"LUT_3D_SIZE {n}\n")
         f.write("DOMAIN_MIN 0.0 0.0 0.0\n")

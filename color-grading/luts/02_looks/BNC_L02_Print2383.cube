@@ -1,5 +1,5 @@
 TITLE "BNC L02 Print2383"
-# BNC Grade v1.0 — Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off.
+# BNC Grade v1.0 - Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off.
 # Input: Rec.709 Gamma 2.4 | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

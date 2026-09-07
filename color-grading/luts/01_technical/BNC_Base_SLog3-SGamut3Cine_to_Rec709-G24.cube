@@ -1,5 +1,5 @@
 TITLE "BNC Base SLog3-SGamut3Cine to Rec709-G24"
-# BNC Grade v1.0 — Sony S-Log3/S-Gamut3.Cine (FX30) to Rec.709 Gamma 2.4, filmic highlight roll-off
+# BNC Grade v1.0 - Sony S-Log3/S-Gamut3.Cine (FX30) to Rec.709 Gamma 2.4, filmic highlight roll-off
 # Input: S-Log3 / S-Gamut3.Cine | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0

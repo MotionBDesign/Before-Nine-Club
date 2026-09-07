@@ -1,5 +1,5 @@
 TITLE "BNC SLog3 L06 Nostalgic"
-# BNC Grade v1.0 — S-Log3/S-Gamut3.Cine -> BNC Base -> Soft vintage look: lifted blacks, warm greens, cyan-leaning shadows and a gentle highlight shoulder.
+# BNC Grade v1.0 - S-Log3/S-Gamut3.Cine -> BNC Base -> Soft vintage look: lifted blacks, warm greens, cyan-leaning shadows and a gentle highlight shoulder.
 # Input: S-Log3 / S-Gamut3.Cine | Output: Rec.709 Gamma 2.4
 LUT_3D_SIZE 33
 DOMAIN_MIN 0.0 0.0 0.0
