@@ -38,11 +38,15 @@ color-grading/
 ## The pipeline (same in every app)
 
 ```
-camera log ──▶ 1. NORMALISE ──▶ 2. BALANCE ──▶ 3. PRIMARIES ──▶ 4. SECONDARIES ──▶ 5. LOOK ──▶ 6. OUTPUT
-              base LUT / CST     WB, exposure    contrast/pivot   windows, masks,     look LUT      Rec.709
-              (or Camera Raw     before any LUT  saturation       skin, sky, relight  (opacity to   gamma 2.4
-              for RAF photos)                                                         taste)
+camera log ─▶ 1. BALANCE ─▶ 2. PRIMARIES ─▶ 3. SECONDARIES ─▶ 4. DISPLAY TRANSFORM ─▶ 5. LOOK ─▶ 6. TRIM + TEXTURE ─▶ Rec.709
+              exposure, WB   contrast/pivot   windows, masks,    base LUT or CST         look LUT     soft clip, grain      gamma 2.4
+              in log          saturation       skin, sky, relight (scene → display)      (opacity to
+                                                                                          taste)
 ```
+
+Everything before the display transform is scene-referred (log); everything
+after it is display-referred. The look LUTs are display-referred, so they
+always sit after the base LUT / CST. For photos, Camera Raw *is* steps 1–4.
 
 * **FX30 footage** — S-Log3 / S-Gamut3.Cine. Normalise with
   `luts/01_technical/BNC_Base_SLog3-SGamut3Cine_to_Rec709-G24.cube` or
@@ -58,7 +62,7 @@ camera log ──▶ 1. NORMALISE ──▶ 2. BALANCE ──▶ 3. PRIMARIES �
 
 | App | Steps |
 |---|---|
-| DaVinci Resolve | Copy `luts/` into your LUT folder → Update Lists. Node 1: base LUT (or CST). Nodes 2–4: balance, primaries, windows. Node 5: look LUT; lower the node's Key Output Gain for a lighter dose. Details: `docs/05-resolve-workflow-fx30.md`. |
+| DaVinci Resolve | Copy `luts/` into your LUT folder → Refresh LUT List. Nodes 1–4: balance, primaries, skin, windows (in log). Node 5: base LUT (or CST). Node 6: look LUT; lower that node's Key Output Gain for a lighter dose. Node 7–8: trims, grain. Details: `docs/05-resolve-workflow-fx30.md`. |
 | Photoshop | Camera Raw: neutral, un-clipped development → open as 16-bit → Layer → New Adjustment Layer → Color Lookup → Load 3D LUT → pick a look → set opacity → mask if needed. Details: `docs/06-photoshop-workflow-xt5.md`. |
 | After Effects | Interpret S-Log3 footage → Lumetri Color: Basic → Input LUT = base LUT; Creative → Look = look LUT (Intensity slider). Or one combined LUT from `luts/03_combined_slog3/`. Details: `docs/07-after-effects-workflow.md`. |
 
