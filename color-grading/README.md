@@ -81,7 +81,25 @@ Lightroom (as profiles), After Effects, Premiere and most camera monitors.
 
 ## The looks
 
-See `docs/08-lookbook.md` and `lookbook/index.html`.
+Full recipes and previews: `docs/08-lookbook.md` and `lookbook/index.html`.
+
+<!-- LOOKS_TABLE -->
+| Look | Character | Use for |
+|---|---|---|
+| L01 Clean | A neutral, true-to-life grade with a light punch -- the default 'just make it look intentional' pass. | General-purpose delivery and client review cuts that should read as graded without looking stylised. |
+| L02 Print2383 | Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off. | Cinematic narrative work and trailers wanting a classic release-print look. |
+| L03 GoldenHour | Warm, golden-hour glow with an amber split-tone and a soft top end. | Sunset and outdoor lifestyle footage, weddings and travel work shot near golden hour. |
+| L04 TealOrange | Complementary teal shadows against warm orange skin tones -- the modern high-contrast blockbuster look. | Action, travel and commercial work wanting a punchy, contemporary grade. |
+| L05 Chrome | Muted, cross-processed 'chrome' look: rotated primaries, reduced saturation and cool highlights. | Music videos, fashion and moody narrative pieces. |
+| L06 Nostalgic | Soft vintage look: lifted blacks, warm greens, cyan-leaning shadows and a gentle highlight shoulder. | Home-movie style memory pieces and documentary retrospectives. |
+| L07 Eterna | Fujifilm Eterna-style flat, low-contrast cinema stock emulation with soft highlights and gentle desaturation. | Naturalistic drama and documentary work that needs to sit gently rather than pop. |
+| L08 Bleach | Bleach-bypass emulation: heavy contrast, a crushed toe, and cool-leaning desaturation. | War/thriller and other gritty narrative work, high-contrast promos. |
+| L09 Nocturne | Cool, blue-leaning night grade with deep, protected shadows. | Night exteriors, moody low-key interiors, thriller/noir work. |
+| L10 Faded | Faded, lifted-black low-contrast look with a soft highlight shoulder, like a sun-faded print. | Retro/nostalgic edits and lifestyle content wanting an undone, filmic look. |
+| L11 Acros | Fujifilm Acros-style fine-grain black & white with punchy contrast and a gentle toe. | Black & white delivery, timeless/classic edits. |
+| L12 Vivid | High-punch, high-vibrance grade with cool blue shadows lifted in luminance for extra pop. | Social and commercial content wanting maximum pop and saturation. |
+| L13 Airy | Bright, airy, lifted-shadow look with a soft top end and gentle overall desaturation. | Lifestyle, wedding and portrait work wanting a soft, bright aesthetic. |
+<!-- /LOOKS_TABLE -->
 
 ## Rebuilding or renaming the pack
 
