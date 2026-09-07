@@ -50,7 +50,7 @@ LOOKS: List[Look] = [
         ],
     ),
     Look(
-        id="L02", name="Print2383", slug="Print2383",
+        id="L02", name="Print 2383", slug="Print2383",
         intent="Kodak 2383 print-stock emulation: punchy contrast, a "
                "crushed toe, cool-leaning shadows against warm highlights, "
                "and an overall desaturated, filmic roll-off.",
@@ -71,7 +71,7 @@ LOOKS: List[Look] = [
         ],
     ),
     Look(
-        id="L03", name="GoldenHour", slug="GoldenHour",
+        id="L03", name="Golden Hour", slug="GoldenHour",
         intent="Warm, golden-hour glow with an amber split-tone and a soft "
                "top end.",
         use_for="Sunset and outdoor lifestyle footage, weddings and travel "
@@ -88,7 +88,7 @@ LOOKS: List[Look] = [
         ],
     ),
     Look(
-        id="L04", name="TealOrange", slug="TealOrange",
+        id="L04", name="Teal & Orange", slug="TealOrange",
         intent="Complementary teal shadows against warm orange skin tones "
                "-- the modern high-contrast blockbuster look.",
         use_for="Action, travel and commercial work wanting a punchy, "

@@ -74,7 +74,7 @@ A neutral, true-to-life grade with a light punch -- the default 'just make it lo
 2. Film density 0.03 (subtractive darkening of saturated colours)
 3. Vibrance × 1.04 (protects already-saturated colours)
 
-### L02 Print2383
+### L02 Print 2383
 
 Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off.
 
@@ -96,7 +96,7 @@ Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning s
 10. Saturation × 0.90
 11. Soft clip highlights above 0.86
 
-### L03 GoldenHour
+### L03 Golden Hour
 
 Warm, golden-hour glow with an amber split-tone and a soft top end.
 
@@ -115,7 +115,7 @@ Warm, golden-hour glow with an amber split-tone and a soft top end.
 7. Vibrance × 1.06 (protects already-saturated colours)
 8. Soft clip highlights above 0.88
 
-### L04 TealOrange
+### L04 Teal & Orange
 
 Complementary teal shadows against warm orange skin tones -- the modern high-contrast blockbuster look.
 

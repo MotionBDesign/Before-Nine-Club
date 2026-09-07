@@ -1,0 +1,406 @@
+// BNC_L09_Nocturne.dctl
+//
+// BNC Grade look "Nocturne" (L09) -- GENERATED FILE, do not hand-edit.
+// Produced by tools/gen_look_dctls.py from the "L09" entry in
+// tools/bnc_looks.LOOKS; re-run that script after any recipe change instead
+// of editing this file (it is re-runnable and idempotent -- it always
+// regenerates every look DCTL from the current recipes).
+//
+// Intent:
+// Cool, blue-leaning night grade with deep, protected shadows.
+// Use for:
+// Night exteriors, moody low-key interiors, thriller/noir work.
+//
+// Recipe (spec section 5 ops, in order, as tools/bnc_looks.describe() renders
+// them from tools/bnc_looks.py):
+//   White balance cooler (-0.060)
+//   Contrast 1.15 around pivot 0.43 (soft clip above 0.85, below 0.06)
+//   Shadow toe: strength 0.30 over the bottom 0.25 of range
+//   Shadows toned toward blue (240°) by 0.038, highlights toward orange (60°) by 0.012
+//   Saturation of orange (60° ±30°) × 1.05
+//   Saturation of green (142° ±40°) × 0.80
+//   Saturation × 0.90
+//   Film density 0.10 (subtractive darkening of saturated colours)
+//   Soft clip highlights above 0.88
+//
+// Input/output: Rec.709 (or sRGB-treated-as-Rec.709) gamma 2.4 code in
+// [0,1]. Apply on a node after BNC_Base_Display_Transform.dctl or any
+// Rec.709 graded plate.
+//
+// Install: copy this file into your DaVinci Resolve LUT folder (macOS:
+// /Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT;
+// Windows: %PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\LUT;
+// Linux: /opt/resolve/LUT), then in Resolve: Preferences > General > Look
+// Up Tables > "Update Lists" (or restart Resolve). Add it from the Color
+// page's OpenFX / DCTL panel, or drag it onto a node from the LUTs panel
+// under the DCTL category.
+//
+// Parameters: Strength (0..1, default 1.0) -- linear blend in code space
+// between the untouched input (0.0) and the full graded look (1.0); every
+// other value in this look is a baked-in constant from the recipe above.
+//
+// Honest note: this DCTL has been verified only against the
+// tools/bnc_color.py / tools/bnc_looks.py reference maths (apply_look() with
+// this exact recipe), evaluated with a small gcc-based emulation of the DCTL
+// environment (tools/dctl_test/), on 5,000 random inputs, a full grey ramp
+// and reference points. It has NOT been run or visually checked inside
+// DaVinci Resolve itself -- confirm on a real timeline before using it for
+// delivery.
+
+DEFINE_UI_PARAMS(strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+
+// ---------------------------------------------------------------------------
+// Shared look-toolbox helpers (spec sections 4-5). This exact block is
+// duplicated into every look-toolbox DCTL (BNC_Look_Toolbox.dctl and every
+// generated resolve/dctl/looks/*.dctl) because DCTL cannot reliably #include
+// across files; tools/gen_look_dctls.py keeps one Python string template as
+// the single source of truth for the generated files, matching this block.
+// ---------------------------------------------------------------------------
+
+__CONSTANT__ float BNC_PI = 3.14159265358979f;
+
+// Cube root that handles negative inputs (DCTL has no cbrtf).
+__DEVICE__ float bnc_cbrt(float x)
+{
+    return _copysignf(_powf(_fabs(x), 1.0f / 3.0f), x);
+}
+
+// Section 1: Rec.709/sRGB-like display encode/decode, clamped before power.
+__DEVICE__ float bnc_to_code(float lin)
+{
+    return _powf(_clampf(lin, 0.0f, 1.0f), 1.0f / 2.4f);
+}
+
+__DEVICE__ float bnc_to_lin(float code)
+{
+    return _powf(_clampf(code, 0.0f, 1.0f), 2.4f);
+}
+
+__DEVICE__ float bnc_smoothstep(float e0, float e1, float x)
+{
+    float u = _clampf((x - e0) / (e1 - e0), 0.0f, 1.0f);
+    return u * u * (3.0f - 2.0f * u);
+}
+
+// Section 4: Oklab.
+__DEVICE__ float3 bnc_lin_to_oklab(float3 lin)
+{
+    float l = 0.4122214708f * lin.x + 0.5363325363f * lin.y + 0.0514459929f * lin.z;
+    float m = 0.2119034982f * lin.x + 0.6806995451f * lin.y + 0.1073969566f * lin.z;
+    float s = 0.0883024619f * lin.x + 0.2817188376f * lin.y + 0.6299787005f * lin.z;
+
+    float l_ = bnc_cbrt(l);
+    float m_ = bnc_cbrt(m);
+    float s_ = bnc_cbrt(s);
+
+    float L = 0.2104542553f * l_ + 0.7936177850f * m_ + -0.0040720468f * s_;
+    float A = 1.9779984951f * l_ + -2.4285922050f * m_ + 0.4505937099f * s_;
+    float B = 0.0259040371f * l_ + 0.7827717662f * m_ + -0.8086757660f * s_;
+    return make_float3(L, A, B);
+}
+
+__DEVICE__ float3 bnc_oklab_to_lin(float3 lab)
+{
+    float l_ = lab.x + 0.3963377774f * lab.y + 0.2158037573f * lab.z;
+    float m_ = lab.x + -0.1055613458f * lab.y + -0.0638541728f * lab.z;
+    float s_ = lab.x + -0.0894841775f * lab.y + -1.2914855480f * lab.z;
+
+    float l = l_ * l_ * l_;
+    float m = m_ * m_ * m_;
+    float s = s_ * s_ * s_;
+
+    float r = 4.0767416621f * l + -3.3077115913f * m + 0.2309699292f * s;
+    float g = -1.2684380046f * l + 2.6097574011f * m + -0.3413193965f * s;
+    float b = -0.0041960863f * l + -0.7034186147f * m + 1.7076147010f * s;
+    return make_float3(r, g, b);
+}
+
+__DEVICE__ float bnc_chroma(float3 lab)
+{
+    return _sqrtf(lab.y * lab.y + lab.z * lab.z);
+}
+
+// hue = degrees(atan2(b, a)) mod 360, in [0, 360).
+__DEVICE__ float bnc_hue_deg(float3 lab)
+{
+    float h = _atan2f(lab.z, lab.y) * (180.0f / BNC_PI);
+    return h - 360.0f * _floorf(h / 360.0f);
+}
+
+// Raised-cosine hue window w(h; centre, width): 0 beyond +-width degrees.
+__DEVICE__ float bnc_hue_window(float h, float centre, float width)
+{
+    float diff = h - centre;
+    diff = diff - 360.0f * _floorf((diff + 180.0f) / 360.0f);
+    float d = _fabs(diff);
+    if (d >= width) return 0.0f;
+    return 0.5f * (1.0f + _cosf(BNC_PI * d / width));
+}
+
+// Section 5, gamut_clip: clamp Oklab L to [0,1]; if the round-tripped linear
+// colour falls outside [-1e-6, 1+1e-6] on any channel, bisect (10 iters) the
+// largest chroma scale s in [0,1] that brings it back in range.
+__DEVICE__ float3 bnc_gamut_clip(float3 lin)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float L = _clampf(lab.x, 0.0f, 1.0f);
+    float a = lab.y;
+    float b = lab.z;
+
+    float3 full = bnc_oklab_to_lin(make_float3(L, a, b));
+    int out_of_gamut = (full.x < -1e-6f || full.x > 1.0f + 1e-6f ||
+                         full.y < -1e-6f || full.y > 1.0f + 1e-6f ||
+                         full.z < -1e-6f || full.z > 1.0f + 1e-6f) ? 1 : 0;
+
+    float lo_s = 0.0f;
+    float hi_s = 1.0f;
+    for (int i = 0; i < 10; i++) {
+        float s = 0.5f * (lo_s + hi_s);
+        float3 t = bnc_oklab_to_lin(make_float3(L, s * a, s * b));
+        int inside = (t.x >= -1e-6f && t.x <= 1.0f + 1e-6f &&
+                      t.y >= -1e-6f && t.y <= 1.0f + 1e-6f &&
+                      t.z >= -1e-6f && t.z <= 1.0f + 1e-6f) ? 1 : 0;
+        if (inside) {
+            lo_s = s;
+        } else {
+            hi_s = s;
+        }
+    }
+
+    float s_final = out_of_gamut ? lo_s : 1.0f;
+    float3 out = bnc_oklab_to_lin(make_float3(L, s_final * a, s_final * b));
+    out.x = _clampf(out.x, 0.0f, 1.0f);
+    out.y = _clampf(out.y, 0.0f, 1.0f);
+    out.z = _clampf(out.z, 0.0f, 1.0f);
+    return out;
+}
+
+// --- Section 5 op implementations: every one takes/returns linear RGB. -----
+
+__DEVICE__ float3 bnc_op_exposure(float3 lin, float ev)
+{
+    float g = _exp2f(ev);
+    return make_float3(lin.x * g, lin.y * g, lin.z * g);
+}
+
+__DEVICE__ float3 bnc_op_white_balance(float3 lin, float warm, float tint)
+{
+    float gr = 1.0f + warm;
+    float gg = 1.0f + tint;
+    float gb = 1.0f - warm;
+    float norm = 0.2126f * gr + 0.7152f * gg + 0.0722f * gb;
+    gr /= norm; gg /= norm; gb /= norm;
+    return make_float3(lin.x * gr, lin.y * gg, lin.z * gb);
+}
+
+__DEVICE__ float bnc_contrast_softclip1(float v, float hi, float lo)
+{
+    if (v > hi) return hi + (1.0f - hi) * _tanhf((v - hi) / (1.0f - hi));
+    if (v < lo) return lo - lo * _tanhf((lo - v) / lo);
+    return v;
+}
+
+__DEVICE__ float3 bnc_op_contrast(float3 lin, float amount, float pivot, float hi, float lo)
+{
+    if (amount == 1.0f) return lin;
+    float cr = pivot + (bnc_to_code(lin.x) - pivot) * amount;
+    float cg = pivot + (bnc_to_code(lin.y) - pivot) * amount;
+    float cb = pivot + (bnc_to_code(lin.z) - pivot) * amount;
+    if (amount > 1.0f) {
+        cr = bnc_contrast_softclip1(cr, hi, lo);
+        cg = bnc_contrast_softclip1(cg, hi, lo);
+        cb = bnc_contrast_softclip1(cb, hi, lo);
+    }
+    return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
+}
+
+__DEVICE__ float3 bnc_op_lift_blacks(float3 lin, float amount)
+{
+    float cr = amount + bnc_to_code(lin.x) * (1.0f - amount);
+    float cg = amount + bnc_to_code(lin.y) * (1.0f - amount);
+    float cb = amount + bnc_to_code(lin.z) * (1.0f - amount);
+    return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
+}
+
+__DEVICE__ float bnc_toe1(float code, float strength, float range)
+{
+    if (code < range) {
+        float u = code / range;
+        float w = 1.0f - u;
+        return code - strength * code * w * w;
+    }
+    return code;
+}
+
+__DEVICE__ float3 bnc_op_toe(float3 lin, float strength, float range)
+{
+    float cr = bnc_toe1(bnc_to_code(lin.x), strength, range);
+    float cg = bnc_toe1(bnc_to_code(lin.y), strength, range);
+    float cb = bnc_toe1(bnc_to_code(lin.z), strength, range);
+    return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
+}
+
+__DEVICE__ float bnc_shoulder1(float code, float start, float k)
+{
+    if (code > start) {
+        float u = (code - start) / (1.0f - start);
+        return start + (1.0f - start) * u / _sqrtf(1.0f + k * u * u);
+    }
+    return code;
+}
+
+__DEVICE__ float3 bnc_op_shoulder(float3 lin, float start, float k)
+{
+    float cr = bnc_shoulder1(bnc_to_code(lin.x), start, k);
+    float cg = bnc_shoulder1(bnc_to_code(lin.y), start, k);
+    float cb = bnc_shoulder1(bnc_to_code(lin.z), start, k);
+    return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
+}
+
+__DEVICE__ float bnc_softclip1(float code, float hi, float lo)
+{
+    float out = code;
+    if (code > hi) out = hi + (1.0f - hi) * _tanhf((code - hi) / (1.0f - hi));
+    if (lo > 0.0f && code < lo) out = lo - lo * _tanhf((lo - code) / lo);
+    return out;
+}
+
+__DEVICE__ float3 bnc_op_softclip(float3 lin, float hi, float lo)
+{
+    float cr = bnc_softclip1(bnc_to_code(lin.x), hi, lo);
+    float cg = bnc_softclip1(bnc_to_code(lin.y), hi, lo);
+    float cb = bnc_softclip1(bnc_to_code(lin.z), hi, lo);
+    return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
+}
+
+__DEVICE__ float3 bnc_op_saturation(float3 lin, float amount)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    lab.y *= amount;
+    lab.z *= amount;
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+__DEVICE__ float3 bnc_op_vibrance(float3 lin, float amount)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float C = bnc_chroma(lab);
+    float factor = 1.0f + (amount - 1.0f) * (1.0f - _fminf(1.0f, C / 0.20f));
+    lab.y *= factor;
+    lab.z *= factor;
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+__DEVICE__ float3 bnc_op_density(float3 lin, float k)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float C = bnc_chroma(lab);
+    lab.x = lab.x * (1.0f - k * _fminf(1.0f, C / 0.25f));
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+__DEVICE__ float3 bnc_op_split_tone(float3 lin, float sh_hue, float sh_amt, float hi_hue, float hi_amt,
+                                     float sh_r0, float sh_r1, float hi_r0, float hi_r1)
+{
+    float Y = 0.2126f * lin.x + 0.7152f * lin.y + 0.0722f * lin.z;
+    float Yc = bnc_to_code(Y);
+    // Shadow weight fades to zero at black (smoothstep 0..0.08) so pure
+    // black stays black and the tint ramps in smoothly instead of milking
+    // the floor; also keeps the grey axis monotone under strong tints.
+    float w_sh = (1.0f - bnc_smoothstep(sh_r0, sh_r1, Yc)) * bnc_smoothstep(0.0f, 0.08f, Yc);
+    float w_hi = bnc_smoothstep(hi_r0, hi_r1, Yc);
+
+    float3 lab = bnc_lin_to_oklab(lin);
+    float sh_rad = sh_hue * (BNC_PI / 180.0f);
+    float hi_rad = hi_hue * (BNC_PI / 180.0f);
+    lab.y += w_sh * sh_amt * _cosf(sh_rad) + w_hi * hi_amt * _cosf(hi_rad);
+    lab.z += w_sh * sh_amt * _sinf(sh_rad) + w_hi * hi_amt * _sinf(hi_rad);
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+__DEVICE__ float3 bnc_op_hue_shift(float3 lin, float centre, float width, float shift)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float L = lab.x;
+    float C = bnc_chroma(lab);
+    float h = bnc_hue_deg(lab);
+    float h_new = h + shift * bnc_hue_window(h, centre, width);
+    float rad = h_new * (BNC_PI / 180.0f);
+    float3 lab_new = make_float3(L, C * _cosf(rad), C * _sinf(rad));
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab_new));
+}
+
+__DEVICE__ float3 bnc_op_hue_sat(float3 lin, float centre, float width, float mult)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float L = lab.x;
+    float C = bnc_chroma(lab);
+    float h = bnc_hue_deg(lab);
+    float C_new = C * (1.0f + (mult - 1.0f) * bnc_hue_window(h, centre, width));
+    float rad = h * (BNC_PI / 180.0f);
+    float3 lab_new = make_float3(L, C_new * _cosf(rad), C_new * _sinf(rad));
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab_new));
+}
+
+__DEVICE__ float3 bnc_op_hue_lum(float3 lin, float centre, float width, float mult)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float C = bnc_chroma(lab);
+    float h = bnc_hue_deg(lab);
+    float w = bnc_hue_window(h, centre, width);
+    lab.x = lab.x * (1.0f + (mult - 1.0f) * w * _fminf(1.0f, C / 0.10f));
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+__DEVICE__ float3 bnc_op_bw_mix(float3 lin, float wr, float wg, float wb)
+{
+    float s = wr + wg + wb;
+    float wr2 = wr / s, wg2 = wg / s, wb2 = wb / s;
+    float Y = wr2 * lin.x + wg2 * lin.y + wb2 * lin.z;
+    return make_float3(Y, Y, Y);
+}
+
+__DEVICE__ float3 bnc_op_tint(float3 lin, float hue, float amount)
+{
+    float3 lab = bnc_lin_to_oklab(lin);
+    float w = bnc_smoothstep(0.0f, 0.08f, lab.x);
+    float rad = hue * (BNC_PI / 180.0f);
+    lab.y += amount * _cosf(rad) * w;
+    lab.z += amount * _sinf(rad) * w;
+    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+}
+
+// ---------------------------------------------------------------------------
+// The "Nocturne" recipe (spec section 5, in order -- see header above).
+// ---------------------------------------------------------------------------
+__DEVICE__ float3 bnc_look_apply(float3 lin)
+{
+    lin = bnc_op_white_balance(lin, -0.06f, 0.0f);
+    lin = bnc_op_contrast(lin, 1.15f, 0.43f, 0.85f, 0.06f);
+    lin = bnc_op_toe(lin, 0.3f, 0.25f);
+    lin = bnc_op_split_tone(lin, 240.0f, 0.038f, 60.0f, 0.012f, 0.0f, 0.55f, 0.45f, 1.0f);
+    lin = bnc_op_hue_sat(lin, 60.0f, 30.0f, 1.05f);
+    lin = bnc_op_hue_sat(lin, 142.0f, 40.0f, 0.8f);
+    lin = bnc_op_saturation(lin, 0.9f);
+    lin = bnc_op_density(lin, 0.1f);
+    lin = bnc_op_softclip(lin, 0.88f, 0.0f);
+    return lin;
+}
+
+// ---------------------------------------------------------------------------
+// Entry point: apply_look()'s wrapper (spec 5) -- decode, run the recipe,
+// gamut_clip, re-encode -- then blend with the untouched input by Strength.
+// ---------------------------------------------------------------------------
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 lin = make_float3(bnc_to_lin(p_R), bnc_to_lin(p_G), bnc_to_lin(p_B));
+    lin = bnc_look_apply(lin);
+    lin = bnc_gamut_clip(lin);
+    float3 code_out = make_float3(bnc_to_code(lin.x), bnc_to_code(lin.y), bnc_to_code(lin.z));
+
+    float3 result;
+    result.x = p_R + (code_out.x - p_R) * strength;
+    result.y = p_G + (code_out.y - p_G) * strength;
+    result.z = p_B + (code_out.z - p_B) * strength;
+    return result;
+}

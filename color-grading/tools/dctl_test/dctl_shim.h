@@ -39,8 +39,34 @@ static inline float3 make_float3(float x, float y, float z) { float3 v = {x, y, 
 #define _DCTL_DEFINE_1(name, def, ...) static int name = (int)(def);
 #define _DCTL_DEFINE_2(name, def, ...) static int name = (int)(def);
 #define _DCTL_DEFINE_4(name, def, ...) static float name = (float)(def);
-/* Combo boxes: DEFINE_UI_PARAMS(name, label, DCTLUI_COMBO_BOX, default, {A, B}, {"A","B"}) */
-#define _DCTL_DEFINE_3(name, def, enums, labels) enum name##_enum enums; static int name = (int)(def);
+/* Combo boxes: DEFINE_UI_PARAMS(name, label, DCTLUI_COMBO_BOX, default, {A, B}, {"A","B"})
+ *
+ * The C preprocessor only treats parentheses as argument-grouping -- braces
+ * are ordinary tokens to it -- so a naive fixed-arity _DCTL_DEFINE_3(name,
+ * def, enums, labels) macro mis-splits {A, B} and {"A","B"} at their inner
+ * commas into extra arguments the moment it is re-invoked with them (this
+ * breaks even the 2-item example above). Since the enum list and the label
+ * list are always the same length, the fix below counts the comma-split
+ * pieces of the combined tail and takes the first half back (which, because
+ * splitting-then-rejoining-with-commas is lossless, reconstructs the
+ * original {A, B, ...} text -- braces and all -- as the enum body); the
+ * label half is left unused. Supports up to 8 combo items. */
+#define _DCTL_CAT(a, b) a##b
+#define _DCTL_CAT2(a, b) _DCTL_CAT(a, b)
+#define _DCTL_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,N,...) N
+#define _DCTL_RSEQ_N() 16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
+#define _DCTL_NARG_(...) _DCTL_ARG_N(__VA_ARGS__)
+#define _DCTL_NARG(...) _DCTL_NARG_(__VA_ARGS__, _DCTL_RSEQ_N())
+#define _DCTL_TAKE_HALF_2(a,b) a
+#define _DCTL_TAKE_HALF_4(a,b,c,d) a,b
+#define _DCTL_TAKE_HALF_6(a,b,c,d,e,f) a,b,c
+#define _DCTL_TAKE_HALF_8(a,b,c,d,e,f,g,h) a,b,c,d
+#define _DCTL_TAKE_HALF_10(a,b,c,d,e,f,g,h,i,j) a,b,c,d,e
+#define _DCTL_TAKE_HALF_12(a,b,c,d,e,f,g,h,i,j,k,l) a,b,c,d,e,f
+#define _DCTL_TAKE_HALF_14(a,b,c,d,e,f,g,h,i,j,k,l,m,n) a,b,c,d,e,f,g
+#define _DCTL_TAKE_HALF_16(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p) a,b,c,d,e,f,g,h
+#define _DCTL_TAKE_HALF(N, ...) _DCTL_CAT2(_DCTL_TAKE_HALF_, N)(__VA_ARGS__)
+#define _DCTL_DEFINE_3(name, def, ...) enum name##_enum _DCTL_TAKE_HALF(_DCTL_NARG(__VA_ARGS__), __VA_ARGS__); static int name = (int)(def);
 
 /* Math intrinsics (DCTL names) */
 #define _powf(a, b) powf((a), (b))

@@ -87,9 +87,9 @@ Full recipes and previews: `docs/08-lookbook.md` and `lookbook/index.html`.
 | Look | Character | Use for |
 |---|---|---|
 | L01 Clean | A neutral, true-to-life grade with a light punch -- the default 'just make it look intentional' pass. | General-purpose delivery and client review cuts that should read as graded without looking stylised. |
-| L02 Print2383 | Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off. | Cinematic narrative work and trailers wanting a classic release-print look. |
-| L03 GoldenHour | Warm, golden-hour glow with an amber split-tone and a soft top end. | Sunset and outdoor lifestyle footage, weddings and travel work shot near golden hour. |
-| L04 TealOrange | Complementary teal shadows against warm orange skin tones -- the modern high-contrast blockbuster look. | Action, travel and commercial work wanting a punchy, contemporary grade. |
+| L02 Print 2383 | Kodak 2383 print-stock emulation: punchy contrast, a crushed toe, cool-leaning shadows against warm highlights, and an overall desaturated, filmic roll-off. | Cinematic narrative work and trailers wanting a classic release-print look. |
+| L03 Golden Hour | Warm, golden-hour glow with an amber split-tone and a soft top end. | Sunset and outdoor lifestyle footage, weddings and travel work shot near golden hour. |
+| L04 Teal & Orange | Complementary teal shadows against warm orange skin tones -- the modern high-contrast blockbuster look. | Action, travel and commercial work wanting a punchy, contemporary grade. |
 | L05 Chrome | Muted, cross-processed 'chrome' look: rotated primaries, reduced saturation and cool highlights. | Music videos, fashion and moody narrative pieces. |
 | L06 Nostalgic | Soft vintage look: lifted blacks, warm greens, cyan-leaning shadows and a gentle highlight shoulder. | Home-movie style memory pieces and documentary retrospectives. |
 | L07 Eterna | Fujifilm Eterna-style flat, low-contrast cinema stock emulation with soft highlights and gentle desaturation. | Naturalistic drama and documentary work that needs to sit gently rather than pop. |

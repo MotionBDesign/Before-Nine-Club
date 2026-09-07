@@ -1,0 +1,244 @@
+// BNC_Base_Display_Transform.dctl
+//
+// BNC Grade -- base technical display transform (camera log -> Rec.709 gamma 2.4).
+//
+// What this is: a LUT-free, resolution-independent DCTL port of
+// tools/bnc_color.py::base_transform() (see tools/SPEC.md section 3). It
+// decodes Sony S-Log3 or Fujifilm F-Log2 / F-Log camera code into
+// scene-linear light, matrices it into the Rec.709 primaries, compresses
+// out-of-gamut highlights back into range (section 3.1), and applies a
+// monotone filmic tone curve with a per-channel / luminance-preserving
+// blend (sections 3.2-3.3), finally clamping to a Rec.709 gamma 2.4 code.
+//
+// Install: copy this file into your DaVinci Resolve LUT folder (macOS:
+// /Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT;
+// Windows: %PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\LUT;
+// Linux: /opt/resolve/LUT), then in Resolve: Preferences > General > Look
+// Up Tables > "Update Lists" (or restart Resolve). Add the DCTL from the
+// Color page's OpenFX / DCTL panel (or right-click a node > DCTL), or
+// drag it onto a node from the LUTs panel under the DCTL category. Apply
+// it on the node that holds camera-original log footage.
+//
+// Parameters:
+//   Camera            -- S-Log3/S-Gamut3.Cine, F-Log2/F-Gamut or F-Log/F-Gamut.
+//                         Must match the footage's camera log encoding.
+//   Exposure (stops)  -- scene-linear exposure trim applied before the
+//                         camera-to-Rec.709 matrix (range -3..+3 EV, default 0).
+//   Per-channel Mix   -- blend between the per-channel tone curve (can
+//                         shift hue/saturation at the highlight roll-off)
+//                         and the hue-preserving luminance path (spec 3.3;
+//                         range 0..1, default 0.8, matching per_channel_mix
+//                         in bnc_color.base_transform).
+//
+// Honest note: this DCTL has been verified only against the tools/bnc_color.py
+// reference maths, evaluated with a small gcc-based emulation of the DCTL
+// environment (tools/dctl_test/), on 5,000 random inputs, a full grey ramp
+// and the spec's reference points (tools/dctl_test/run_dctl_tests.py). It has
+// NOT been run or visually checked inside DaVinci Resolve itself -- confirm
+// on a real timeline before using it for delivery.
+
+DEFINE_UI_PARAMS(camera, Camera, DCTLUI_COMBO_BOX, 0, {CAMERA_SLOG3, CAMERA_FLOG2, CAMERA_FLOG}, {"S-Log3 / S-Gamut3.Cine", "F-Log2 / F-Gamut", "F-Log / F-Gamut"})
+DEFINE_UI_PARAMS(exposureEV, Exposure (stops), DCTLUI_SLIDER_FLOAT, 0.0, -3.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(perChannelMix, Per-channel Mix, DCTLUI_SLIDER_FLOAT, 0.8, 0.0, 1.0, 0.01)
+
+// ---------------------------------------------------------------------------
+// Tone curve T(t): stops-from-grey -> Rec.709 gamma 2.4 display code.
+// Monotone PCHIP (Fritsch-Carlson) through the 18 control points of spec
+// 3.2. Node x/y and the precomputed Fritsch-Carlson slopes m are generated
+// once in Python from tools/bnc_color.py's PCHIP object (TONE_CURVE_T.x /
+// .y / .m) so the DCTL evaluates the same Hermite cubic instead of
+// re-deriving monotone slopes at runtime.
+// ---------------------------------------------------------------------------
+__CONSTANT__ float TONE_T[18] = { -9.0f, -8.0f, -7.0f, -6.0f, -5.0f, -4.0f, -3.0f, -2.0f, -1.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f };
+__CONSTANT__ float TONE_Y[18] = { 0.0f, 0.002f, 0.007f, 0.017f, 0.036f, 0.068f, 0.12f, 0.195f, 0.295f, 0.43f, 0.595f, 0.735f, 0.835f, 0.905f, 0.95f, 0.978f, 0.993f, 1.0f };
+__CONSTANT__ float TONE_M[18] = { 0.0005f, 0.002857142857142857f, 0.006666666666666667f, 0.013103448275862071f, 0.02384313725490196f, 0.03961904761904762f, 0.06141732283464567f, 0.08571428571428572f, 0.11489361702127658f, 0.14850000000000002f, 0.15147540983606558f, 0.11666666666666667f, 0.08235294117647061f, 0.054782608695652144f, 0.034520547945205475f, 0.01953488372093025f, 0.009545454545454555f, 0.0030000000000000027f };
+
+// Evaluate the piecewise-cubic Hermite curve through (TONE_T, TONE_Y, TONE_M)
+// at t, flat-extrapolated outside [-9, 8] (spec 3.2: t<=-9 -> 0.0, t>=8 -> 1.0,
+// which falls out automatically because the end control points are 0.0/1.0
+// and the search below clamps t into range first). Mirrors bnc_color.pchip_eval.
+__DEVICE__ float bnc_tone_eval(float t)
+{
+    float tc = _clampf(t, TONE_T[0], TONE_T[17]);
+
+    // Linear scan for the largest idx with TONE_T[idx] <= tc (18 points is
+    // small; this matches np.searchsorted(x, tc, side="right") - 1, clipped
+    // to [0, 16]).
+    int idx = 0;
+    for (int i = 1; i < 18; i++) {
+        if (tc >= TONE_T[i]) idx = i;
+    }
+    if (idx > 16) idx = 16;
+
+    float x0 = TONE_T[idx];
+    float x1 = TONE_T[idx + 1];
+    float y0 = TONE_Y[idx];
+    float y1 = TONE_Y[idx + 1];
+    float m0 = TONE_M[idx];
+    float m1 = TONE_M[idx + 1];
+
+    float h = x1 - x0;
+    float u = (tc - x0) / h;
+    float u2 = u * u;
+    float u3 = u2 * u;
+
+    float h00 = 2.0f * u3 - 3.0f * u2 + 1.0f;
+    float h10 = u3 - 2.0f * u2 + u;
+    float h01 = -2.0f * u3 + 3.0f * u2;
+    float h11 = u3 - u2;
+
+    return h00 * y0 + h10 * h * m0 + h01 * y1 + h11 * h * m1;
+}
+
+// ---------------------------------------------------------------------------
+// Section 2: camera decodes (code -> scene-linear reflectance).
+// ---------------------------------------------------------------------------
+
+// Section 2.1: Sony S-Log3.
+__DEVICE__ float bnc_slog3_decode(float y)
+{
+    float hi = _powf(10.0f, (y * 1023.0f - 420.0f) / 261.5f) * (0.18f + 0.01f) - 0.01f;
+    float lo = (y * 1023.0f - 95.0f) * 0.01125000f / (171.2102946929f - 95.0f);
+    return (y >= (171.2102946929f / 1023.0f)) ? hi : lo;
+}
+
+// Section 2.2: Fujifilm F-Log2.
+__DEVICE__ float bnc_flog2_decode(float y)
+{
+    float a = 5.555556f, b = 0.064829f, c = 0.245281f, d = 0.384316f, e = 8.799461f, f = 0.092864f;
+    float cut2 = 0.100686685370811f;
+    float hi = _powf(10.0f, (y - d) / c) / a - b / a;
+    float lo = (y - f) / e;
+    return (y >= cut2) ? hi : lo;
+}
+
+// Section 2.2: Fujifilm F-Log.
+__DEVICE__ float bnc_flog_decode(float y)
+{
+    float a = 0.555556f, b = 0.009468f, c = 0.344676f, d = 0.790453f, e = 8.735631f, f = 0.092864f;
+    float cut2 = 0.100537775223865f;
+    float hi = _powf(10.0f, (y - d) / c) / a - b / a;
+    float lo = (y - f) / e;
+    return (y >= cut2) ? hi : lo;
+}
+
+// ---------------------------------------------------------------------------
+// Section 2.3: camera gamut matrices (scene-linear, D65 -> D65) -> Rec.709.
+// ---------------------------------------------------------------------------
+
+__DEVICE__ float3 bnc_mat_slog3_to_709(float3 v)
+{
+    float r = 1.6269474097f * v.x + -0.5401385389f * v.y + -0.0868088709f * v.z;
+    float g = -0.1785155271f * v.x + 1.4179409275f * v.y + -0.2394254003f * v.z;
+    float b = -0.0444361150f * v.x + -0.1959199662f * v.y + 1.2403560812f * v.z;
+    return make_float3(r, g, b);
+}
+
+__DEVICE__ float3 bnc_mat_fgamut_to_709(float3 v)
+{
+    float r = 1.6604910021f * v.x + -0.5876411388f * v.y + -0.0728498633f * v.z;
+    float g = -0.1245504745f * v.x + 1.1328998971f * v.y + -0.0083494226f * v.z;
+    float b = -0.0181507634f * v.x + -0.1005788980f * v.y + 1.1187296614f * v.z;
+    return make_float3(r, g, b);
+}
+
+// ---------------------------------------------------------------------------
+// Section 3.1: gamut compression (ACES-derived, asymptotes at the boundary).
+// thr = 0.80, power = 1.2 on all three channels (spec 3.1).
+// ---------------------------------------------------------------------------
+
+__DEVICE__ float bnc_gc_compress1(float d, float thr, float p)
+{
+    if (d <= thr) return d;
+    float x = (d - thr) / (1.0f - thr);
+    return thr + (1.0f - thr) * x / _powf(1.0f + _powf(x, p), 1.0f / p);
+}
+
+__DEVICE__ float3 bnc_gamut_compress(float3 lin709)
+{
+    float ach = _fmaxf(_fmaxf(lin709.x, lin709.y), lin709.z);
+    if (ach <= 1e-6f) return lin709;
+
+    float thr = 0.80f;
+    float p = 1.2f;
+
+    float dr = (ach - lin709.x) / ach;
+    float dg = (ach - lin709.y) / ach;
+    float db = (ach - lin709.z) / ach;
+
+    dr = bnc_gc_compress1(dr, thr, p);
+    dg = bnc_gc_compress1(dg, thr, p);
+    db = bnc_gc_compress1(db, thr, p);
+
+    float r = ach - dr * ach;
+    float g = ach - dg * ach;
+    float b = ach - db * ach;
+    return make_float3(r, g, b);
+}
+
+// ---------------------------------------------------------------------------
+// Section 3.3: per-channel / luminance-preserving blend of the tone curve.
+// ---------------------------------------------------------------------------
+
+__DEVICE__ float bnc_stops_from_grey(float x)
+{
+    return _log2f(_fmaxf(x, 1e-6f) / 0.18f);
+}
+
+__DEVICE__ float3 bnc_tonemap_blend(float3 lin709, float k)
+{
+    float r = lin709.x, g = lin709.y, b = lin709.z;
+
+    float pc_r = bnc_tone_eval(bnc_stops_from_grey(r));
+    float pc_g = bnc_tone_eval(bnc_stops_from_grey(g));
+    float pc_b = bnc_tone_eval(bnc_stops_from_grey(b));
+
+    float Y = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+    float Yc = bnc_tone_eval(bnc_stops_from_grey(Y));
+    float ratio = _powf(Yc, 2.4f) / _fmaxf(Y, 1e-6f);
+
+    float lp_r = _powf(_clampf(r * ratio, 0.0f, 1.0f), 1.0f / 2.4f);
+    float lp_g = _powf(_clampf(g * ratio, 0.0f, 1.0f), 1.0f / 2.4f);
+    float lp_b = _powf(_clampf(b * ratio, 0.0f, 1.0f), 1.0f / 2.4f);
+
+    float out_r = k * pc_r + (1.0f - k) * lp_r;
+    float out_g = k * pc_g + (1.0f - k) * lp_g;
+    float out_b = k * pc_b + (1.0f - k) * lp_b;
+    return make_float3(out_r, out_g, out_b);
+}
+
+// ---------------------------------------------------------------------------
+// Entry point. Section 3, steps 1-6.
+// ---------------------------------------------------------------------------
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 lin_cam;
+
+    // step 1: camera code -> scene-linear (section 2).
+    if (camera == CAMERA_SLOG3) {
+        lin_cam = make_float3(bnc_slog3_decode(p_R), bnc_slog3_decode(p_G), bnc_slog3_decode(p_B));
+    } else if (camera == CAMERA_FLOG2) {
+        lin_cam = make_float3(bnc_flog2_decode(p_R), bnc_flog2_decode(p_G), bnc_flog2_decode(p_B));
+    } else {
+        lin_cam = make_float3(bnc_flog_decode(p_R), bnc_flog_decode(p_G), bnc_flog_decode(p_B));
+    }
+
+    // step 2: exposure trim (2**EV).
+    float gain = _exp2f(exposureEV);
+    lin_cam = make_float3(lin_cam.x * gain, lin_cam.y * gain, lin_cam.z * gain);
+
+    // step 3: camera gamut -> Rec.709 (section 2.3).
+    float3 lin709 = (camera == CAMERA_SLOG3) ? bnc_mat_slog3_to_709(lin_cam) : bnc_mat_fgamut_to_709(lin_cam);
+
+    // step 4: gamut compression (section 3.1).
+    lin709 = bnc_gamut_compress(lin709);
+
+    // step 5: tone curve + per-channel/luminance blend (sections 3.2, 3.3).
+    float3 out = bnc_tonemap_blend(lin709, perChannelMix);
+
+    // step 6: clamp to [0,1].
+    out.x = _clampf(out.x, 0.0f, 1.0f);
+    out.y = _clampf(out.y, 0.0f, 1.0f);
+    out.z = _clampf(out.z, 0.0f, 1.0f);
+    return out;
+}
