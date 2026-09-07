@@ -1,0 +1,182 @@
+{
+  "generated_at": "2026-09-07T12:11:40+00:00",
+  "preview_long_edge": 720,
+  "jpeg_quality": 85,
+  "samples": {
+    "astronaut": {
+      "looks": {
+        "L01": "astronaut__L01_Clean.jpg",
+        "L02": "astronaut__L02_Print2383.jpg",
+        "L03": "astronaut__L03_GoldenHour.jpg",
+        "L04": "astronaut__L04_TealOrange.jpg",
+        "L05": "astronaut__L05_Chrome.jpg",
+        "L06": "astronaut__L06_Nostalgic.jpg",
+        "L07": "astronaut__L07_Eterna.jpg",
+        "L08": "astronaut__L08_Bleach.jpg",
+        "L09": "astronaut__L09_Nocturne.jpg",
+        "L10": "astronaut__L10_Faded.jpg",
+        "L11": "astronaut__L11_Acros.jpg",
+        "L12": "astronaut__L12_Vivid.jpg",
+        "L13": "astronaut__L13_Airy.jpg"
+      },
+      "combined": {
+        "L01": "astronaut__SLog3_L01_Clean.jpg",
+        "L02": "astronaut__SLog3_L02_Print2383.jpg",
+        "L03": "astronaut__SLog3_L03_GoldenHour.jpg",
+        "L04": "astronaut__SLog3_L04_TealOrange.jpg",
+        "L05": "astronaut__SLog3_L05_Chrome.jpg",
+        "L06": "astronaut__SLog3_L06_Nostalgic.jpg",
+        "L07": "astronaut__SLog3_L07_Eterna.jpg",
+        "L08": "astronaut__SLog3_L08_Bleach.jpg",
+        "L09": "astronaut__SLog3_L09_Nocturne.jpg",
+        "L10": "astronaut__SLog3_L10_Faded.jpg",
+        "L11": "astronaut__SLog3_L11_Acros.jpg",
+        "L12": "astronaut__SLog3_L12_Vivid.jpg",
+        "L13": "astronaut__SLog3_L13_Airy.jpg"
+      },
+      "original": "astronaut__original.jpg",
+      "slog3": "astronaut__slog3.jpg",
+      "slog3_exposure_scale": 0.660571017807927,
+      "base709": "astronaut__base709.jpg"
+    },
+    "chelsea": {
+      "looks": {
+        "L01": "chelsea__L01_Clean.jpg",
+        "L02": "chelsea__L02_Print2383.jpg",
+        "L03": "chelsea__L03_GoldenHour.jpg",
+        "L04": "chelsea__L04_TealOrange.jpg",
+        "L05": "chelsea__L05_Chrome.jpg",
+        "L06": "chelsea__L06_Nostalgic.jpg",
+        "L07": "chelsea__L07_Eterna.jpg",
+        "L08": "chelsea__L08_Bleach.jpg",
+        "L09": "chelsea__L09_Nocturne.jpg",
+        "L10": "chelsea__L10_Faded.jpg",
+        "L11": "chelsea__L11_Acros.jpg",
+        "L12": "chelsea__L12_Vivid.jpg",
+        "L13": "chelsea__L13_Airy.jpg"
+      },
+      "combined": {
+        "L01": "chelsea__SLog3_L01_Clean.jpg",
+        "L02": "chelsea__SLog3_L02_Print2383.jpg",
+        "L03": "chelsea__SLog3_L03_GoldenHour.jpg",
+        "L04": "chelsea__SLog3_L04_TealOrange.jpg",
+        "L05": "chelsea__SLog3_L05_Chrome.jpg",
+        "L06": "chelsea__SLog3_L06_Nostalgic.jpg",
+        "L07": "chelsea__SLog3_L07_Eterna.jpg",
+        "L08": "chelsea__SLog3_L08_Bleach.jpg",
+        "L09": "chelsea__SLog3_L09_Nocturne.jpg",
+        "L10": "chelsea__SLog3_L10_Faded.jpg",
+        "L11": "chelsea__SLog3_L11_Acros.jpg",
+        "L12": "chelsea__SLog3_L12_Vivid.jpg",
+        "L13": "chelsea__SLog3_L13_Airy.jpg"
+      },
+      "original": "chelsea__original.jpg",
+      "slog3": "chelsea__slog3.jpg",
+      "slog3_exposure_scale": 0.879281340289965,
+      "base709": "chelsea__base709.jpg"
+    },
+    "coffee": {
+      "looks": {
+        "L01": "coffee__L01_Clean.jpg",
+        "L02": "coffee__L02_Print2383.jpg",
+        "L03": "coffee__L03_GoldenHour.jpg",
+        "L04": "coffee__L04_TealOrange.jpg",
+        "L05": "coffee__L05_Chrome.jpg",
+        "L06": "coffee__L06_Nostalgic.jpg",
+        "L07": "coffee__L07_Eterna.jpg",
+        "L08": "coffee__L08_Bleach.jpg",
+        "L09": "coffee__L09_Nocturne.jpg",
+        "L10": "coffee__L10_Faded.jpg",
+        "L11": "coffee__L11_Acros.jpg",
+        "L12": "coffee__L12_Vivid.jpg",
+        "L13": "coffee__L13_Airy.jpg"
+      },
+      "combined": {
+        "L01": "coffee__SLog3_L01_Clean.jpg",
+        "L02": "coffee__SLog3_L02_Print2383.jpg",
+        "L03": "coffee__SLog3_L03_GoldenHour.jpg",
+        "L04": "coffee__SLog3_L04_TealOrange.jpg",
+        "L05": "coffee__SLog3_L05_Chrome.jpg",
+        "L06": "coffee__SLog3_L06_Nostalgic.jpg",
+        "L07": "coffee__SLog3_L07_Eterna.jpg",
+        "L08": "coffee__SLog3_L08_Bleach.jpg",
+        "L09": "coffee__SLog3_L09_Nocturne.jpg",
+        "L10": "coffee__SLog3_L10_Faded.jpg",
+        "L11": "coffee__SLog3_L11_Acros.jpg",
+        "L12": "coffee__SLog3_L12_Vivid.jpg",
+        "L13": "coffee__SLog3_L13_Airy.jpg"
+      },
+      "original": "coffee__original.jpg",
+      "slog3": "coffee__slog3.jpg",
+      "slog3_exposure_scale": 0.8816122120466342,
+      "base709": "coffee__base709.jpg"
+    },
+    "rocket": {
+      "looks": {
+        "L01": "rocket__L01_Clean.jpg",
+        "L02": "rocket__L02_Print2383.jpg",
+        "L03": "rocket__L03_GoldenHour.jpg",
+        "L04": "rocket__L04_TealOrange.jpg",
+        "L05": "rocket__L05_Chrome.jpg",
+        "L06": "rocket__L06_Nostalgic.jpg",
+        "L07": "rocket__L07_Eterna.jpg",
+        "L08": "rocket__L08_Bleach.jpg",
+        "L09": "rocket__L09_Nocturne.jpg",
+        "L10": "rocket__L10_Faded.jpg",
+        "L11": "rocket__L11_Acros.jpg",
+        "L12": "rocket__L12_Vivid.jpg",
+        "L13": "rocket__L13_Airy.jpg"
+      },
+      "combined": {
+        "L01": "rocket__SLog3_L01_Clean.jpg",
+        "L02": "rocket__SLog3_L02_Print2383.jpg",
+        "L03": "rocket__SLog3_L03_GoldenHour.jpg",
+        "L04": "rocket__SLog3_L04_TealOrange.jpg",
+        "L05": "rocket__SLog3_L05_Chrome.jpg",
+        "L06": "rocket__SLog3_L06_Nostalgic.jpg",
+        "L07": "rocket__SLog3_L07_Eterna.jpg",
+        "L08": "rocket__SLog3_L08_Bleach.jpg",
+        "L09": "rocket__SLog3_L09_Nocturne.jpg",
+        "L10": "rocket__SLog3_L10_Faded.jpg",
+        "L11": "rocket__SLog3_L11_Acros.jpg",
+        "L12": "rocket__SLog3_L12_Vivid.jpg",
+        "L13": "rocket__SLog3_L13_Airy.jpg"
+      },
+      "original": "rocket__original.jpg",
+      "slog3": "rocket__slog3.jpg",
+      "slog3_exposure_scale": 2.0,
+      "base709": "rocket__base709.jpg"
+    }
+  },
+  "charts": {
+    "size_per_element": [
+      1200,
+      300
+    ],
+    "composite_size": [
+      1200,
+      900
+    ],
+    "original": "chart__original.png",
+    "looks": {
+      "L01": "chart__L01_Clean.png",
+      "L02": "chart__L02_Print2383.png",
+      "L03": "chart__L03_GoldenHour.png",
+      "L04": "chart__L04_TealOrange.png",
+      "L05": "chart__L05_Chrome.png",
+      "L06": "chart__L06_Nostalgic.png",
+      "L07": "chart__L07_Eterna.png",
+      "L08": "chart__L08_Bleach.png",
+      "L09": "chart__L09_Nocturne.png",
+      "L10": "chart__L10_Faded.png",
+      "L11": "chart__L11_Acros.png",
+      "L12": "chart__L12_Vivid.png",
+      "L13": "chart__L13_Airy.png"
+    }
+  },
+  "counts": {
+    "files_written": 130,
+    "samples": 4,
+    "looks": 13
+  }
+}

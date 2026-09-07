@@ -115,25 +115,32 @@ step 5  out = tonemap_blend(lin709)                # section 3.2 + 3.3
 step 6  clamp to [0,1]
 ```
 
-### 3.1 Gamut compression (ACES 1.3 reference-gamut-compress algorithm, retuned)
+### 3.1 Gamut compression (derived from the ACES 1.3 reference gamut compressor)
 
 Operates per pixel in Rec.709 linear.
 ```
 ach = max(r, g, b)
 if ach <= 1e-6: return unchanged
 d_i = (ach - c_i) / ach                 # for i in r,g,b; 0 for the max channel
-d_i' = compress(d_i, thr_i, lim_i, power)
+d_i' = compress(d_i, thr_i, power_i)
 c_i' = ach - d_i' * ach
 ```
 where, for d > thr (else identity):
 ```
-scale = (lim - thr) / ( ( ((1 - thr)/(lim - thr)) ** (-power) - 1 ) ** (1/power) )
-d' = thr + scale * ((d - thr)/scale) / ( (1 + ((d - thr)/scale) ** power) ** (1/power) )
+x  = (d - thr) / (1 - thr)
+d' = thr + (1 - thr) * x / (1 + x ** power) ** (1 / power)
 ```
+The curve is the identity up to `thr`, C1-continuous at the knee, and
+asymptotes exactly at the gamut boundary (d' → 1 as d → ∞), so every input
+lands inside Rec.709 with no negative channels. (The ACES original maps its
+`limit` distance to exactly 1.0 and lets larger distances stay outside the
+gamut; that leaves negative channel values which, combined with the log tone
+curve, produce a kink a 33-point LUT cannot follow. The change above removes
+it.)
 Parameters (per channel r,g,b = cyan, magenta, yellow directions):
-thr = (0.80, 0.80, 0.80), lim = (1.60, 1.35, 1.25), power = 1.2.
-Property to assert: for the six S-Gamut3.Cine cube corners converted to
-Rec.709 linear, all channels of the compressed result are ≥ -1e-9.
+thr = (0.80, 0.80, 0.80), power = (1.2, 1.2, 1.2).
+Property to assert: for any input, all channels of the compressed result are
+≥ -1e-9; a colour exactly on the boundary (d = 1) maps to d' ≈ 0.912.
 
 ### 3.2 Tone curve T(t) — monotone PCHIP through control points
 
@@ -214,7 +221,7 @@ Ops that are naturally defined on code values convert internally
 * `exposure(ev)`: lin * 2**ev.
 * `white_balance(warm=0, tint=0)`: gains g = (1+warm, 1+tint, 1-warm);
   divide g by (0.2126 g_r + 0.7152 g_g + 0.0722 g_b); lin *= g.
-* `contrast(amount, pivot=0.43, hi=0.75, lo=0.08)`: on code v:
+* `contrast(amount, pivot=0.43, hi=0.85, lo=0.06)`: on code v:
   v = pivot + (v - pivot)*amount. If amount > 1 apply soft clip:
   v>hi: v = hi + (1-hi)*tanh((v-hi)/(1-hi)); v<lo: v = lo - lo*tanh((lo-v)/lo).
   If amount == 1 the op is the identity.
@@ -232,7 +239,8 @@ Ops that are naturally defined on code values convert internally
 * `density(k)`: Oklab L *= (1 - k*min(1, C/0.25)).   # subtractive, film-like
 * `split_tone(sh_hue, sh_amt, hi_hue, hi_amt, sh_range=(0.0,0.55), hi_range=(0.45,1.0))`:
   Yc = (0.2126R+0.7152G+0.0722B)**(1/2.4) from the *input* lin;
-  w_sh = 1 - smoothstep(sh_range[0], sh_range[1], Yc); w_hi = smoothstep(hi_range[0], hi_range[1], Yc);
+  w_sh = (1 - smoothstep(sh_range[0], sh_range[1], Yc)) * smoothstep(0, 0.08, Yc)  (fades to zero at black);
+  w_hi = smoothstep(hi_range[0], hi_range[1], Yc);
   Oklab a += w_sh*sh_amt*cos(sh_hue) + w_hi*hi_amt*cos(hi_hue); b likewise with sin.
 * `hue_shift(centre, width, shift)`: h += shift * w(h; centre, width).
 * `hue_sat(centre, width, mult)`: C *= 1 + (mult-1)*w(h).
@@ -249,35 +257,24 @@ Ops that are naturally defined on code values convert internally
 Hue centres (Oklab degrees): RED=29, ORANGE=60 (skin), YELLOW=110, GREEN=142,
 CYAN=195, BLUE=264, MAGENTA=328.
 
+(Current recipes, regenerated from `tools/bnc_looks.py` after visual tuning;
+hue-shift sign convention: Oklab hue increases red 29° → yellow 110° → green 142° →
+cyan 195° → blue 264° → magenta 328°, so "greens toward yellow" is a negative shift.)
+
 ```
-L01 Clean        : contrast(1.05); density(0.03); vibrance(1.04)
-L02 Print2383    : white_balance(0.01,0); contrast(1.18); toe(0.35,0.30);
-                   hue_shift(BLUE,45,-10); hue_shift(YELLOW,30,-8); hue_sat(RED,30,0.90);
-                   density(0.12); split_tone(195,0.012, 75,0.010); saturation(0.93); softclip(0.86)
-L03 GoldenHour   : white_balance(0.05,-0.01); contrast(1.10); split_tone(40,0.008, 65,0.026);
-                   hue_sat(ORANGE,35,1.08); density(0.06); lift_blacks(0.008); vibrance(1.06); softclip(0.88)
-L04 TealOrange   : contrast(1.12); split_tone(210,0.030, 55,0.016); hue_shift(BLUE,45,-14);
-                   hue_sat(ORANGE,25,1.05); density(0.08); softclip(0.88)
-L05 Chrome       : contrast(1.15); toe(0.30,0.30); saturation(0.82); hue_shift(RED,30,8);
-                   hue_sat(RED,30,0.85); hue_shift(BLUE,45,-12); hue_sat(BLUE,45,0.90);
-                   hue_shift(GREEN,40,10); hue_sat(GREEN,40,0.85); split_tone(250,0.008, 80,0.006);
-                   density(0.10); softclip(0.87)
-L06 Nostalgic    : contrast(1.06); lift_blacks(0.02); saturation(0.90); hue_shift(GREEN,40,12);
-                   hue_sat(GREEN,40,0.90); split_tone(195,0.012, 70,0.028); hue_sat(ORANGE,30,1.05);
-                   density(0.08); shoulder(0.80,0.15)
-L07 Eterna       : contrast(0.95); lift_blacks(0.015); shoulder(0.72,0.25); saturation(0.78);
-                   hue_sat(GREEN,40,0.85); split_tone(220,0.008, 60,0.004); density(0.06)
-L08 Bleach       : contrast(1.28); toe(0.40,0.30); saturation(0.50); density(0.15);
-                   split_tone(220,0.006, 85,0.008); softclip(0.85)
-L09 Nocturne     : white_balance(-0.05,0); contrast(1.15); toe(0.30,0.25); split_tone(240,0.030, 60,0.012);
-                   hue_sat(ORANGE,30,1.05); hue_sat(GREEN,40,0.80); saturation(0.90); density(0.10); softclip(0.88)
-L10 Faded        : lift_blacks(0.06); contrast(0.98); shoulder(0.75,0.30); saturation(0.85);
-                   split_tone(50,0.012, 70,0.015); hue_shift(GREEN,40,10); density(0.04)
-L11 Acros        : bw_mix(0.45,0.45,0.10); contrast(1.15); toe(0.25,0.25); softclip(0.88)
-L12 Vivid        : contrast(1.12); vibrance(1.25); hue_lum(BLUE,45,0.90); hue_sat(GREEN,40,1.10);
-                   hue_shift(GREEN,40,-6); density(0.14); softclip(0.88)
-L13 Airy         : exposure(0.12); lift_blacks(0.03); contrast(0.92,pivot=0.5); shoulder(0.70,0.15);
-                   saturation(0.90); split_tone(230,0.006, 25,0.012); hue_sat(GREEN,40,0.90)
+L01 Clean       : contrast(amount=1.05, pivot=0.43, hi=0.85, lo=0.06); density(k=0.03); vibrance(amount=1.04)
+L02 Print2383   : white_balance(warm=0.01, tint=0); contrast(amount=1.2, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.4, range=0.3); hue_shift(centre=264, width=45, shift=-6); hue_shift(centre=110, width=30, shift=-8); hue_sat(centre=29, width=30, mult=0.9); hue_sat(centre=142, width=40, mult=0.9); density(k=0.14); split_tone(sh_hue=195, sh_amt=0.014, hi_hue=75, hi_amt=0.014, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); saturation(amount=0.9); softclip(hi=0.86, lo=0.0)
+L03 GoldenHour  : white_balance(warm=0.05, tint=-0.01); contrast(amount=1.1, pivot=0.43, hi=0.85, lo=0.06); split_tone(sh_hue=40, sh_amt=0.008, hi_hue=65, hi_amt=0.026, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_sat(centre=60, width=35, mult=1.08); density(k=0.06); lift_blacks(amount=0.008); vibrance(amount=1.06); softclip(hi=0.88, lo=0.0)
+L04 TealOrange  : contrast(amount=1.12, pivot=0.43, hi=0.85, lo=0.06); split_tone(sh_hue=210, sh_amt=0.042, hi_hue=55, hi_amt=0.02, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_shift(centre=264, width=45, shift=-16); hue_shift(centre=142, width=40, shift=20); hue_sat(centre=142, width=40, mult=0.85); hue_sat(centre=60, width=25, mult=1.06); density(k=0.08); softclip(hi=0.88, lo=0.0)
+L05 Chrome      : contrast(amount=1.15, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.3, range=0.3); saturation(amount=0.82); hue_shift(centre=29, width=30, shift=8); hue_sat(centre=29, width=30, mult=0.85); hue_shift(centre=264, width=45, shift=-12); hue_sat(centre=264, width=45, mult=0.9); hue_shift(centre=142, width=40, shift=-10); hue_sat(centre=142, width=40, mult=0.85); split_tone(sh_hue=250, sh_amt=0.01, hi_hue=80, hi_amt=0.006, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); density(k=0.1); softclip(hi=0.87, lo=0.0)
+L06 Nostalgic   : contrast(amount=1.04, pivot=0.43, hi=0.85, lo=0.06); lift_blacks(amount=0.025); saturation(amount=0.88); hue_shift(centre=142, width=40, shift=-14); hue_sat(centre=142, width=40, mult=0.9); split_tone(sh_hue=190, sh_amt=0.016, hi_hue=70, hi_amt=0.03, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); tint(hue=340, amount=0.005); hue_sat(centre=60, width=30, mult=1.05); density(k=0.08); shoulder(start=0.8, k=0.15)
+L07 Eterna      : contrast(amount=0.95, pivot=0.43, hi=0.85, lo=0.06); lift_blacks(amount=0.015); shoulder(start=0.72, k=0.25); saturation(amount=0.78); hue_shift(centre=142, width=40, shift=8); hue_sat(centre=142, width=40, mult=0.85); split_tone(sh_hue=220, sh_amt=0.008, hi_hue=60, hi_amt=0.004, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); density(k=0.06)
+L08 Bleach      : contrast(amount=1.28, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.4, range=0.3); saturation(amount=0.5); density(k=0.15); split_tone(sh_hue=220, sh_amt=0.006, hi_hue=85, hi_amt=0.008, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); softclip(hi=0.85, lo=0.0)
+L09 Nocturne    : white_balance(warm=-0.06, tint=0); contrast(amount=1.15, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.3, range=0.25); split_tone(sh_hue=240, sh_amt=0.038, hi_hue=60, hi_amt=0.012, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_sat(centre=60, width=30, mult=1.05); hue_sat(centre=142, width=40, mult=0.8); saturation(amount=0.9); density(k=0.1); softclip(hi=0.88, lo=0.0)
+L10 Faded       : lift_blacks(amount=0.06); contrast(amount=0.98, pivot=0.43, hi=0.85, lo=0.06); shoulder(start=0.75, k=0.3); saturation(amount=0.85); split_tone(sh_hue=50, sh_amt=0.012, hi_hue=70, hi_amt=0.015, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_shift(centre=142, width=40, shift=-10); density(k=0.04)
+L11 Acros       : bw_mix(wr=0.45, wg=0.45, wb=0.1); contrast(amount=1.15, pivot=0.43, hi=0.85, lo=0.06); toe(strength=0.25, range=0.25); softclip(hi=0.88, lo=0.0)
+L12 Vivid       : contrast(amount=1.12, pivot=0.43, hi=0.85, lo=0.06); vibrance(amount=1.25); hue_lum(centre=264, width=45, mult=0.9); hue_sat(centre=142, width=40, mult=1.1); hue_shift(centre=142, width=40, shift=6); density(k=0.14); softclip(hi=0.88, lo=0.0)
+L13 Airy        : exposure(ev=0.12); lift_blacks(amount=0.03); contrast(amount=0.92, pivot=0.5, hi=0.85, lo=0.06); shoulder(start=0.7, k=0.15); saturation(amount=0.9); split_tone(sh_hue=230, sh_amt=0.006, hi_hue=25, hi_amt=0.012, sh_range=(0.0, 0.55), hi_range=(0.45, 1.0)); hue_sat(centre=142, width=40, mult=0.9)
 ```
 Put the recipes in `tools/bnc_looks.py` as data (list of (name, kwargs)),
 with a `describe(look)` helper that renders the recipe as plain English
@@ -329,9 +326,13 @@ For every .cube under `luts/` (or paths given):
    spread for all).
 3. Technical LUTs: reference values from section 3.3 (evaluate the LUT
    with tetrahedral interpolation at those inputs). Also compare the LUT
-   output to the analytic pipeline on 2,000 random inputs and on a 1,001
-   point grey ramp: report max abs error; fail if > 0.01 (this proves 33
-   points is enough).
+   output to the analytic pipeline on (a) 20,000 random codes over the whole
+   cube (fail if > 0.035 -- most of the cube is physically unreachable, e.g.
+   one channel below the log black level while the others sit 5 stops over
+   grey), (b) a 1,001-point grey ramp (fail if > 0.005) and (c) the 24
+   ColorChecker patches at every half stop from -6 to +6, encoded into the
+   camera's log space (fail if > 0.01). (c) is the region real footage
+   lives in and is what proves 33 points is enough.
 4. Looks: assert black (0,0,0) → luminance ≤ lift_blacks (or ≤ 0.002 if none);
    white (1,1,1) → luminance ≥ 0.85 and ≤ 1.0; grey-axis monotone.
 5. Print a table (file, size, grey spread, max error, PASS/FAIL) and exit
