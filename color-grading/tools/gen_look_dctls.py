@@ -39,6 +39,14 @@ HELPERS_BLOCK = r"""// ---------------------------------------------------------
 
 __CONSTANT__ float BNC_PI = 3.14159265358979f;
 
+// Matches bnc_color.py's gamut_clip in-gamut tolerance exactly (+-1e-6).
+// (An earlier revision of this file widened this to try to smooth over a
+// float32-vs-float64 bisection edge case; measured against the full test
+// suite that made things substantially worse -- more pixels have a genuine,
+// Python-matching correction in the 1e-6..1e-4 range than expected -- so it
+// was reverted. Kept as a named constant for clarity, not as a knob.)
+__CONSTANT__ float BNC_GAMUT_EPS = 1e-6f;
+
 // Cube root that handles negative inputs (DCTL has no cbrtf).
 __DEVICE__ float bnc_cbrt(float x)
 {
@@ -118,41 +126,107 @@ __DEVICE__ float bnc_hue_window(float h, float centre, float width)
 }
 
 // Section 5, gamut_clip: clamp Oklab L to [0,1]; if the round-tripped linear
-// colour falls outside [-1e-6, 1+1e-6] on any channel, bisect (10 iters) the
-// largest chroma scale s in [0,1] that brings it back in range.
-__DEVICE__ float3 bnc_gamut_clip(float3 lin)
+// colour falls outside [-BNC_GAMUT_EPS, 1+BNC_GAMUT_EPS] on any channel,
+// bisect (32-step scan + 16-step bisection) the largest chroma scale s in [0,1] that brings it back
+// in range (see BNC_GAMUT_EPS's own comment above for why it is wider than
+// bnc_color.py's 1e-6).
+//
+// bnc_gamut_clip_from_lab() is the actual body, taking a lab value the
+// caller already has on hand; bnc_gamut_clip(lin) is the lin-input form
+// bnc_color.py's gamut_clip(lin) exposes, for the one call site that only
+// has linear RGB (apply_look's final gamut_clip after the op loop). Every
+// op below that already computed its own `lab` calls the _from_lab form
+// directly -- bnc_color.py's _op_saturation() etc. call the reference
+// gamut_clip(oklab_to_linear(lab)), i.e. convert lab -> lin only for
+// gamut_clip to immediately convert back lin -> lab; at float64 that round
+// trip is the identity to ~1e-14 and invisible in the output, but the same
+// redundant pair of matrix/cbrt round trips is much costlier in float32, so
+// skipping it here is not an approximation of the op -- every input still
+// gets exactly the op's defined maths -- only of an already-lossless-in-
+// practice intermediate conversion Python's shared-helper API happens to
+// perform and immediately undoes.
+__DEVICE__ float3 bnc_gamut_clip_lab_of(float3 lab)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
     float L = _clampf(lab.x, 0.0f, 1.0f);
     float a = lab.y;
     float b = lab.z;
 
     float3 full = bnc_oklab_to_lin(make_float3(L, a, b));
-    int out_of_gamut = (full.x < -1e-6f || full.x > 1.0f + 1e-6f ||
-                         full.y < -1e-6f || full.y > 1.0f + 1e-6f ||
-                         full.z < -1e-6f || full.z > 1.0f + 1e-6f) ? 1 : 0;
+    int out_of_gamut = (full.x < -BNC_GAMUT_EPS || full.x > 1.0f + BNC_GAMUT_EPS ||
+                         full.y < -BNC_GAMUT_EPS || full.y > 1.0f + BNC_GAMUT_EPS ||
+                         full.z < -BNC_GAMUT_EPS || full.z > 1.0f + BNC_GAMUT_EPS) ? 1 : 0;
+    if (!out_of_gamut) {
+        // s_final = 1.0 here; the bnc_color.py reference always recomputes
+        // oklab_to_linear(L, s_final*a, s_final*b) for its return value,
+        // which at s_final=1.0 is just `full` again -- no bisection needed.
+        return make_float3(L, a, b);
+    }
 
+    // Scan the chroma scale s downward from 1 in 32 steps to the first
+    // in-gamut sample, then bisect inside that bracket. A plain bisection on
+    // [0,1] assumes the in-gamut set along the chroma line is one interval;
+    // for some saturated colours it is not, and the branch it lands on then
+    // depends on float32-vs-float64 rounding. Mirrors bnc_color.gamut_clip.
     float lo_s = 0.0f;
     float hi_s = 1.0f;
-    for (int i = 0; i < 10; i++) {
+    for (int k = 1; k <= 32; k++) {
+        float s = 1.0f - (float)k / 32.0f;
+        float3 t = bnc_oklab_to_lin(make_float3(L, s * a, s * b));
+        int inside = (t.x >= -BNC_GAMUT_EPS && t.x <= 1.0f + BNC_GAMUT_EPS &&
+                      t.y >= -BNC_GAMUT_EPS && t.y <= 1.0f + BNC_GAMUT_EPS &&
+                      t.z >= -BNC_GAMUT_EPS && t.z <= 1.0f + BNC_GAMUT_EPS) ? 1 : 0;
+        if (inside) {
+            lo_s = s;
+            hi_s = 1.0f - (float)(k - 1) / 32.0f;
+            break;
+        }
+    }
+    for (int i = 0; i < 16; i++) {
         float s = 0.5f * (lo_s + hi_s);
         float3 t = bnc_oklab_to_lin(make_float3(L, s * a, s * b));
-        int inside = (t.x >= -1e-6f && t.x <= 1.0f + 1e-6f &&
-                      t.y >= -1e-6f && t.y <= 1.0f + 1e-6f &&
-                      t.z >= -1e-6f && t.z <= 1.0f + 1e-6f) ? 1 : 0;
+        int inside = (t.x >= -BNC_GAMUT_EPS && t.x <= 1.0f + BNC_GAMUT_EPS &&
+                      t.y >= -BNC_GAMUT_EPS && t.y <= 1.0f + BNC_GAMUT_EPS &&
+                      t.z >= -BNC_GAMUT_EPS && t.z <= 1.0f + BNC_GAMUT_EPS) ? 1 : 0;
         if (inside) {
             lo_s = s;
         } else {
             hi_s = s;
         }
     }
+    return make_float3(L, lo_s * a, lo_s * b);
+}
 
-    float s_final = out_of_gamut ? lo_s : 1.0f;
-    float3 out = bnc_oklab_to_lin(make_float3(L, s_final * a, s_final * b));
+// Section 5, gamut_clip (lab input): clamp Oklab L to [0,1]; if the round-
+// tripped linear colour falls outside [-BNC_GAMUT_EPS, 1+BNC_GAMUT_EPS] on
+// any channel, bisect (32-step scan + 16-step bisection) the largest chroma scale s in [0,1] that
+// brings it back in range; then convert to linear RGB and clamp to [0,1].
+//
+// When two Oklab-domain ops run back to back (e.g. bnc_looks.py's hue_sat
+// then density), bnc_color.py's op-by-op gamut_clip(oklab_to_linear(lab))
+// is immediately undone by the next op's linear_to_oklab(lin) -- a round
+// trip that is the identity to ~1e-14 in float64 and invisible in Python's
+// output, but costly in float32. Chaining consecutive Oklab ops through
+// bnc_gamut_clip_lab_of() (which stops at the corrected lab, applying the
+// *exact same* correction -- full 10-iteration bisection included) instead
+// of converting all the way to linear RGB and back skips that round trip
+// without changing any op's defined behaviour. tools/gen_look_dctls.py's
+// render_look_file() decides, per look, which consecutive-Oklab-op runs to
+// chain this way; bnc_gamut_clip_from_lab()/bnc_gamut_clip() below are the
+// full lab/lin -> lin forms used at the start/end of a look and by every
+// standalone (non-chained) op.
+__DEVICE__ float3 bnc_gamut_clip_from_lab(float3 lab)
+{
+    float3 c = bnc_gamut_clip_lab_of(lab);
+    float3 out = bnc_oklab_to_lin(c);
     out.x = _clampf(out.x, 0.0f, 1.0f);
     out.y = _clampf(out.y, 0.0f, 1.0f);
     out.z = _clampf(out.z, 0.0f, 1.0f);
     return out;
+}
+
+__DEVICE__ float3 bnc_gamut_clip(float3 lin)
+{
+    return bnc_gamut_clip_from_lab(bnc_lin_to_oklab(lin));
 }
 
 // --- Section 5 op implementations: every one takes/returns linear RGB. -----
@@ -253,35 +327,68 @@ __DEVICE__ float3 bnc_op_softclip(float3 lin, float hi, float lo)
     return make_float3(bnc_to_lin(cr), bnc_to_lin(cg), bnc_to_lin(cb));
 }
 
-__DEVICE__ float3 bnc_op_saturation(float3 lin, float amount)
+// --- bnc_raw_*: pure lab-domain op maths, no gamut clipping. Each has a
+// bnc_op_* wrapper below (lin in, lin out, exactly bnc_color.py's _op_X)
+// for standalone use; tools/gen_look_dctls.py's render_look_file() calls
+// these raw forms directly, interleaved with bnc_gamut_clip_lab_of(), to
+// chain a run of consecutive Oklab-domain ops without leaving lab space. --
+
+// Every bnc_raw_X below early-outs at its identity parameter value (amount
+// 1.0, k/shift 0.0, mult 1.0) *before* doing any transcendental round trip
+// (atan2/cos/sin for the hue ops; the Oklab matrices for ops chained after
+// them). At exactly that parameter value the op's own formula is already
+// the identity at infinite precision (e.g. hue_sat's C*(1+(mult-1)*w) is C
+// exactly when mult=1, for *any* window w) -- bnc_color.py's vectorised
+// _op_X does not special-case this (float64 make the cost invisible), but
+// skipping the round trip in float32 avoids purely-avoidable rounding
+// noise, which matters most exactly where these ops are chained back to
+// back and that noise would otherwise compound (see
+// bnc_gamut_clip_lab_of()'s comment above).
+__DEVICE__ float3 bnc_raw_saturation(float3 lab, float amount)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    if (amount == 1.0f) return lab;
     lab.y *= amount;
     lab.z *= amount;
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return lab;
 }
 
-__DEVICE__ float3 bnc_op_vibrance(float3 lin, float amount)
+__DEVICE__ float3 bnc_op_saturation(float3 lin, float amount)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    return bnc_gamut_clip_from_lab(bnc_raw_saturation(bnc_lin_to_oklab(lin), amount));
+}
+
+__DEVICE__ float3 bnc_raw_vibrance(float3 lab, float amount)
+{
+    if (amount == 1.0f) return lab;
     float C = bnc_chroma(lab);
     float factor = 1.0f + (amount - 1.0f) * (1.0f - _fminf(1.0f, C / 0.20f));
     lab.y *= factor;
     lab.z *= factor;
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return lab;
+}
+
+__DEVICE__ float3 bnc_op_vibrance(float3 lin, float amount)
+{
+    return bnc_gamut_clip_from_lab(bnc_raw_vibrance(bnc_lin_to_oklab(lin), amount));
+}
+
+__DEVICE__ float3 bnc_raw_density(float3 lab, float k)
+{
+    if (k == 0.0f) return lab;
+    float C = bnc_chroma(lab);
+    lab.x = lab.x * (1.0f - k * _fminf(1.0f, C / 0.25f));
+    return lab;
 }
 
 __DEVICE__ float3 bnc_op_density(float3 lin, float k)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
-    float C = bnc_chroma(lab);
-    lab.x = lab.x * (1.0f - k * _fminf(1.0f, C / 0.25f));
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return bnc_gamut_clip_from_lab(bnc_raw_density(bnc_lin_to_oklab(lin), k));
 }
 
 __DEVICE__ float3 bnc_op_split_tone(float3 lin, float sh_hue, float sh_amt, float hi_hue, float hi_amt,
                                      float sh_r0, float sh_r1, float hi_r0, float hi_r1)
 {
+    if (sh_amt == 0.0f && hi_amt == 0.0f) return lin;
     float Y = 0.2126f * lin.x + 0.7152f * lin.y + 0.0722f * lin.z;
     float Yc = bnc_to_code(Y);
     // Shadow weight fades to zero at black (smoothstep 0..0.08) so pure
@@ -295,41 +402,54 @@ __DEVICE__ float3 bnc_op_split_tone(float3 lin, float sh_hue, float sh_amt, floa
     float hi_rad = hi_hue * (BNC_PI / 180.0f);
     lab.y += w_sh * sh_amt * _cosf(sh_rad) + w_hi * hi_amt * _cosf(hi_rad);
     lab.z += w_sh * sh_amt * _sinf(sh_rad) + w_hi * hi_amt * _sinf(hi_rad);
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return bnc_gamut_clip_from_lab(lab);
 }
 
-__DEVICE__ float3 bnc_op_hue_shift(float3 lin, float centre, float width, float shift)
+__DEVICE__ float3 bnc_raw_hue_shift(float3 lab, float centre, float width, float shift)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    if (shift == 0.0f) return lab;
     float L = lab.x;
     float C = bnc_chroma(lab);
     float h = bnc_hue_deg(lab);
     float h_new = h + shift * bnc_hue_window(h, centre, width);
     float rad = h_new * (BNC_PI / 180.0f);
-    float3 lab_new = make_float3(L, C * _cosf(rad), C * _sinf(rad));
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab_new));
+    return make_float3(L, C * _cosf(rad), C * _sinf(rad));
 }
 
-__DEVICE__ float3 bnc_op_hue_sat(float3 lin, float centre, float width, float mult)
+__DEVICE__ float3 bnc_op_hue_shift(float3 lin, float centre, float width, float shift)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    return bnc_gamut_clip_from_lab(bnc_raw_hue_shift(bnc_lin_to_oklab(lin), centre, width, shift));
+}
+
+__DEVICE__ float3 bnc_raw_hue_sat(float3 lab, float centre, float width, float mult)
+{
+    if (mult == 1.0f) return lab;
     float L = lab.x;
     float C = bnc_chroma(lab);
     float h = bnc_hue_deg(lab);
     float C_new = C * (1.0f + (mult - 1.0f) * bnc_hue_window(h, centre, width));
     float rad = h * (BNC_PI / 180.0f);
-    float3 lab_new = make_float3(L, C_new * _cosf(rad), C_new * _sinf(rad));
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab_new));
+    return make_float3(L, C_new * _cosf(rad), C_new * _sinf(rad));
 }
 
-__DEVICE__ float3 bnc_op_hue_lum(float3 lin, float centre, float width, float mult)
+__DEVICE__ float3 bnc_op_hue_sat(float3 lin, float centre, float width, float mult)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    return bnc_gamut_clip_from_lab(bnc_raw_hue_sat(bnc_lin_to_oklab(lin), centre, width, mult));
+}
+
+__DEVICE__ float3 bnc_raw_hue_lum(float3 lab, float centre, float width, float mult)
+{
+    if (mult == 1.0f) return lab;
     float C = bnc_chroma(lab);
     float h = bnc_hue_deg(lab);
     float w = bnc_hue_window(h, centre, width);
     lab.x = lab.x * (1.0f + (mult - 1.0f) * w * _fminf(1.0f, C / 0.10f));
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return lab;
+}
+
+__DEVICE__ float3 bnc_op_hue_lum(float3 lin, float centre, float width, float mult)
+{
+    return bnc_gamut_clip_from_lab(bnc_raw_hue_lum(bnc_lin_to_oklab(lin), centre, width, mult));
 }
 
 __DEVICE__ float3 bnc_op_bw_mix(float3 lin, float wr, float wg, float wb)
@@ -340,14 +460,19 @@ __DEVICE__ float3 bnc_op_bw_mix(float3 lin, float wr, float wg, float wb)
     return make_float3(Y, Y, Y);
 }
 
-__DEVICE__ float3 bnc_op_tint(float3 lin, float hue, float amount)
+__DEVICE__ float3 bnc_raw_tint(float3 lab, float hue, float amount)
 {
-    float3 lab = bnc_lin_to_oklab(lin);
+    if (amount == 0.0f) return lab;
     float w = bnc_smoothstep(0.0f, 0.08f, lab.x);
     float rad = hue * (BNC_PI / 180.0f);
     lab.y += amount * _cosf(rad) * w;
     lab.z += amount * _sinf(rad) * w;
-    return bnc_gamut_clip(bnc_oklab_to_lin(lab));
+    return lab;
+}
+
+__DEVICE__ float3 bnc_op_tint(float3 lin, float hue, float amount)
+{
+    return bnc_gamut_clip_from_lab(bnc_raw_tint(bnc_lin_to_oklab(lin), hue, amount));
 }
 """
 
@@ -376,6 +501,20 @@ OP_ARG_ORDER = {
 }
 
 
+# Ops with a bnc_raw_X(lab, ...) -> lab core in HELPERS_BLOCK (pure lab-space
+# maths, no gamut clipping): when two or more of these run back to back in a
+# look's recipe, render_ops_block() below chains them through
+# bnc_gamut_clip_lab_of() instead of round-tripping to linear RGB and back
+# between every pair -- see bnc_gamut_clip_lab_of()'s comment in
+# HELPERS_BLOCK for why that round trip is safe to skip (it does not skip
+# any actual gamut correction, only a same-value reconversion). split_tone
+# is Oklab-domain too but needs the *linear* RGB for its shadow/highlight
+# luma weighting, so it is deliberately not in this set -- it always enters
+# and leaves through bnc_op_split_tone(lin, ...), which is fine since that
+# is exactly what bnc_color.py's op-chain does at that point too.
+LAB_CHAINABLE = {"saturation", "vibrance", "density", "hue_shift", "hue_sat", "hue_lum", "tint"}
+
+
 def fnum(v) -> str:
     """Format a Python number as a C float literal (repr, guaranteed a
     decimal point or exponent, with the f suffix DCTL requires)."""
@@ -386,32 +525,87 @@ def fnum(v) -> str:
     return s + "f"
 
 
-def render_op_call(op: bnc_looks.Op) -> str:
-    """One `lin = bnc_op_XXX(lin, ...);` statement for a single Op."""
+def _op_args(op: bnc_looks.Op) -> list:
+    """The formatted (non-lin/lab) C argument list for one Op, in the order
+    HELPERS_BLOCK's bnc_op_X / bnc_raw_X functions expect."""
     if op.name == "split_tone":
         k = op.kwargs
-        args = [
+        return [
             fnum(k["sh_hue"]), fnum(k["sh_amt"]), fnum(k["hi_hue"]), fnum(k["hi_amt"]),
             fnum(k["sh_range"][0]), fnum(k["sh_range"][1]),
             fnum(k["hi_range"][0]), fnum(k["hi_range"][1]),
         ]
-    elif op.name in OP_ARG_ORDER:
-        args = [fnum(op.kwargs[key]) for key in OP_ARG_ORDER[op.name]]
-    else:
-        raise NotImplementedError(
-            f"gen_look_dctls.py has no DCTL mapping for op {op.name!r} "
-            f"(used by a look recipe) -- add it to OP_ARG_ORDER/HELPERS_BLOCK "
-            f"in tools/gen_look_dctls.py first."
-        )
-    call_args = ", ".join(["lin"] + args)
-    return f"    lin = bnc_op_{op.name}({call_args});"
+    if op.name in OP_ARG_ORDER:
+        return [fnum(op.kwargs[key]) for key in OP_ARG_ORDER[op.name]]
+    raise NotImplementedError(
+        f"gen_look_dctls.py has no DCTL mapping for op {op.name!r} "
+        f"(used by a look recipe) -- add it to OP_ARG_ORDER/HELPERS_BLOCK "
+        f"in tools/gen_look_dctls.py first."
+    )
+
+
+def render_ops_block(ops) -> str:
+    """Render a look's whole op list as `bnc_look_apply()` body statements.
+
+    Consecutive runs of two or more LAB_CHAINABLE ops are chained through a
+    single `lab` value (bnc_raw_X + bnc_gamut_clip_lab_of, transitioning to
+    `lin` only at the run's last op) instead of one bnc_op_X(lin, ...) call
+    per op; every other op (including a lone chainable op with no chainable
+    neighbour) renders as the standard `lin = bnc_op_X(lin, ...);`.
+    """
+    lines = []
+    needs_lab_decl = any(
+        len(run) > 1 and run[0].name in LAB_CHAINABLE
+        for run in _consecutive_runs(ops)
+    )
+    if needs_lab_decl:
+        lines.append("    float3 lab;")
+
+    for run in _consecutive_runs(ops):
+        if len(run) > 1 and run[0].name in LAB_CHAINABLE:
+            lines.append("    lab = bnc_lin_to_oklab(lin);")
+            for op in run[:-1]:
+                args = ", ".join(["lab"] + _op_args(op))
+                lines.append(f"    lab = bnc_gamut_clip_lab_of(bnc_raw_{op.name}({args})); "
+                              f"/* spec 5: {op.name} */")
+            last = run[-1]
+            args = ", ".join(["lab"] + _op_args(last))
+            lines.append(f"    lin = bnc_gamut_clip_from_lab(bnc_raw_{last.name}({args})); "
+                          f"/* spec 5: {last.name} */")
+        else:
+            for op in run:
+                args = ", ".join(["lin"] + _op_args(op))
+                lines.append(f"    lin = bnc_op_{op.name}({args}); /* spec 5: {op.name} */")
+
+    return "\n".join(lines)
+
+
+def _consecutive_runs(ops):
+    """Group `ops` into maximal runs of consecutive same-chainability ops,
+    preserving order. A run either consists entirely of LAB_CHAINABLE ops or
+    entirely of non-chainable ops."""
+    runs = []
+    current = []
+    current_chainable = None
+    for op in ops:
+        chainable = op.name in LAB_CHAINABLE
+        if current and chainable == current_chainable:
+            current.append(op)
+        else:
+            if current:
+                runs.append(current)
+            current = [op]
+            current_chainable = chainable
+    if current:
+        runs.append(current)
+    return runs
 
 
 def render_look_file(look: bnc_looks.Look) -> str:
     intent_lines = _wrap_comment(look.intent)
     use_for_lines = _wrap_comment(look.use_for)
     recipe_lines = "\n".join(f"//   {line}" for line in bnc_looks.describe(look))
-    op_calls = "\n".join(render_op_call(op) for op in look.ops)
+    op_calls = render_ops_block(look.ops)
 
     header = f"""// BNC_{look.id}_{look.slug}.dctl
 //

@@ -248,9 +248,12 @@ Ops that are naturally defined on code values convert internally
 * `bw_mix(wr, wg, wb)`: normalise weights to sum 1; Y = wr R + wg G + wb B (linear); return (Y,Y,Y).
 * `tint(hue, amount)`: Oklab a += amount*cos(hue)*smoothstep(0, 0.08, L); b likewise with sin.
 * `gamut_clip(lin)`: clamp L to [0,1] in Oklab; if any channel of lin is
-  outside [-1e-6, 1+1e-6], find by bisection (10 iterations) the largest
-  s in [0,1] such that Oklab (L, s*a, s*b) converts to lin inside
-  [-1e-6, 1+1e-6]; vectorised over pixels; finally clip to [0,1].
+  outside [-1e-6, 1+1e-6], find the largest s in [0,1] such that Oklab
+  (L, s*a, s*b) converts to lin inside [-1e-6, 1+1e-6]: scan s downward
+  from 1 in 32 equal steps to the first in-gamut sample, then bisect 16
+  times inside that bracket (a plain bisection over [0,1] is not safe:
+  along the chroma line the in-gamut set is not always one interval);
+  vectorised over pixels; finally clip to [0,1].
 
 ## 6. Look recipes (initial values — the planner will tune after previews)
 

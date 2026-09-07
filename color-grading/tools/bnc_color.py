@@ -477,9 +477,10 @@ def gamut_clip(lin: np.ndarray) -> np.ndarray:
     """Clamp a linear-light Oklab-round-tripped colour back into gamut.
 
     Clamps Oklab L to [0,1]; for any pixel whose linear RGB then falls
-    outside [-1e-6, 1+1e-6], finds by vectorised bisection (10 iterations)
-    the largest chroma scale s in [0,1] such that Oklab (L, s*a, s*b) maps
-    back inside that range, then finally clips to [0,1].
+    outside [-1e-6, 1+1e-6], finds the largest chroma scale s in [0,1] such
+    that Oklab (L, s*a, s*b) maps back inside that range (a 32-step downward
+    scan followed by a 16-step bisection in the first in-gamut bracket),
+    then finally clips to [0,1].
     """
     lin = np.asarray(lin, dtype=np.float64)
     lab = linear_to_oklab(lin)
@@ -490,12 +491,26 @@ def gamut_clip(lin: np.ndarray) -> np.ndarray:
     lin_full = oklab_to_linear(np.stack([L, a, b], axis=-1))
     out_of_gamut = np.any((lin_full < -1e-6) | (lin_full > 1.0 + 1e-6), axis=-1)
 
-    lo_s = np.zeros_like(L)
-    hi_s = np.ones_like(L)
-    for _ in range(10):
-        s = 0.5 * (lo_s + hi_s)
+    # Scan the chroma scale s downward from 1 in 32 steps to find the first
+    # in-gamut sample, then bisect inside that bracket. A plain bisection on
+    # [0, 1] assumes the in-gamut set along the chroma line is one interval;
+    # for some saturated colours it is not (one channel dips through zero
+    # part-way), and a rounding-dependent branch choice then shows up as
+    # isolated pixel mismatches between float32 (DCTL) and float64 (here).
+    def _inside(s):
         test = oklab_to_linear(np.stack([L, s * a, s * b], axis=-1))
-        inside = np.all((test >= -1e-6) & (test <= 1.0 + 1e-6), axis=-1)
+        return np.all((test >= -1e-6) & (test <= 1.0 + 1e-6), axis=-1)
+
+    steps = 32
+    samples = 1.0 - np.arange(1, steps + 1) / steps           # 31/32 ... 0
+    inside_k = np.stack([_inside(np.full_like(L, sv)) for sv in samples])  # (32, N)
+    has_any = inside_k.any(axis=0)
+    first = np.argmax(inside_k, axis=0)                        # first in-gamut sample
+    lo_s = np.where(has_any, samples[first], 0.0)
+    hi_s = np.where(has_any, 1.0 - first / steps, 1.0)          # the sample just above it
+    for _ in range(16):
+        s = 0.5 * (lo_s + hi_s)
+        inside = _inside(s)
         lo_s = np.where(inside, s, lo_s)
         hi_s = np.where(inside, hi_s, s)
 

@@ -111,6 +111,8 @@ python3 tools/render_previews.py       # re-renders lookbook previews
 python3 tools/build_lookbook.py        # rebuilds lookbook/index.html
 python3 tools/gen_lookbook_doc.py      # refreshes the recipes in docs/08 and this README
 python3 tools/test_pipeline.py         # 120 checks on the maths
+python3 tools/gen_look_dctls.py        # regenerates resolve/dctl/looks/ from the recipes
+python3 tools/dctl_test/run_dctl_tests.py   # compiles every DCTL with gcc and checks it against the maths
 ```
 
 `--prefix MBD` renames every file; the recipes live in `tools/bnc_looks.py`
