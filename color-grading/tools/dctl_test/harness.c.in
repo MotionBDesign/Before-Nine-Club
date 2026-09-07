@@ -1,0 +1,13 @@
+/* Test harness: compiled by tools/dctl_test/run_dctl_tests.py with
+ *   gcc -x c -DDCTL_FILE='"<path>"' harness.c.in -lm
+ * Reads "r g b" triples on stdin, writes transformed triples on stdout. */
+#include "dctl_shim.h"
+#include DCTL_FILE
+int main(void) {
+    float r, g, b;
+    while (scanf("%f %f %f", &r, &g, &b) == 3) {
+        float3 o = transform(1920, 1080, 0, 0, r, g, b);
+        printf("%.7f %.7f %.7f\n", o.x, o.y, o.z);
+    }
+    return 0;
+}
